@@ -1,46 +1,41 @@
-from datetime import date
-from src.database.core import init_db, get_db
-from src.database import crud
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import streamlit as st
+from src.database.core import init_db
+from src.ui import views
 
-def test_insertion():
-    print("[INFO] Avvio test inserimento dati...")
+def main():
+    # 1. Configurazione Pagina (Deve essere la prima istruzione Streamlit)
+    st.set_page_config(
+        page_title="FuelPyTracker",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+
+    # 2. Inizializzazione Database (Idempotente)
+    init_db()
+
+    # 3. Sidebar di Navigazione
+    st.sidebar.title("Navigazione")
     
-    # Otteniamo una sessione dal generatore
-    db = next(get_db())
+    # Definiamo le opzioni del menu
+    options = {
+        "Dashboard": views.render_dashboard,
+        "Rifornimenti": views.render_fuel_page,
+        "Manutenzione": views.render_maintenance_page
+    }
     
-    try:
-        # 1. Creazione di un rifornimento di test
-        # Dati simulati: 25 Nov 2025, 100.000 km, 1.75 €/L, 50€ totale, ~28.5L, Pieno SI
-        print("[INFO] Tentativo di inserimento nuovo rifornimento...")
-        refueling = crud.create_refueling(
-            db=db,
-            date_obj=date(2025, 11, 25),
-            total_km=100000,
-            price_per_liter=1.750,
-            total_cost=50.00,
-            liters=28.57,
-            is_full_tank=True,
-            notes="Primo inserimento di test"
-        )
-        print(f"[SUCCESS] Rifornimento inserito. ID generato: {refueling.id}")
+    # Widget di selezione
+    selected_page = st.sidebar.radio("Vai a:", list(options.keys()))
 
-        # 2. Lettura dei dati per verifica
-        print("[INFO] Lettura dati dal database...")
-        records = crud.get_all_refuelings(db)
-        
-        print(f"[INFO] Trovati {len(records)} record nel database:")
-        for record in records:
-            # Stampa tecnica dell'oggetto (__repr__)
-            print(f" - {record}")
+    # 4. Routing (Mostra la funzione associata alla pagina selezionata)
+    # Esegue la funzione corrispondente (es. views.render_dashboard())
+    options[selected_page]()
 
-    except Exception as e:
-        print(f"[ERROR] Si è verificato un errore durante il test: {e}")
-    finally:
-        # La chiusura è gestita dal generatore get_db, ma per sicurezza in script raw:
-        db.close()
+    # Footer nella sidebar
+    st.sidebar.markdown("---")
+    st.sidebar.text("FuelPyTracker v0.1")
 
 if __name__ == "__main__":
-    # Inizializza le tabelle (idempotente: se esistono non fa nulla)
-    init_db()
-    # Esegue il test
-    test_insertion()
+    main()

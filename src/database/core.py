@@ -29,9 +29,9 @@ def init_db():
     """
     Crea le tabelle nel database basandosi sui modelli definiti in models.py.
     """
-    print(f"🔄 Initializing database at: {DB_PATH}")
+    print(f"Initializing database at: {DB_PATH}")
     Base.metadata.create_all(bind=engine)
-    print("✅ Database tables created successfully!")
+    print("Database tables created successfully!")
 
 def get_db():
     """
