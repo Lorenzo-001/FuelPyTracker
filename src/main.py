@@ -5,6 +5,16 @@ import streamlit as st
 from src.database.core import init_db
 from src.ui import views
 
+@st.cache_resource
+def initialize_app():
+    """
+    Funzione wrappata con cache_resource.
+    Streamlit la eseguirà SOLO una volta all'avvio del server,
+    ignorandola ai successivi refresh della pagina.
+    """
+    init_db()
+
+
 def main():
     # 1. Configurazione Pagina (Deve essere la prima istruzione Streamlit)
     st.set_page_config(
@@ -14,7 +24,7 @@ def main():
     )
 
     # 2. Inizializzazione Database (Idempotente)
-    init_db()
+    initialize_app()
 
     # 3. Sidebar di Navigazione
     st.sidebar.title("Navigazione")
