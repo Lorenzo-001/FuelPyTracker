@@ -1,5 +1,5 @@
 from datetime import date
-from src.database import crud
+from database import crud
 
 def test_create_refueling(db_session):
     """

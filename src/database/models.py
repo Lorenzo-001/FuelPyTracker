@@ -4,10 +4,9 @@ from sqlalchemy.orm import declarative_base
 # Base class per i modelli SQLAlchemy
 Base = declarative_base()
 
+# Entità Rifornimento: mappa la tabella 'refuelings'.
+# Gestisce i dati essenziali per il calcolo consumi (Full-to-Full).
 class Refueling(Base):
-    """
-    Modello per la tabella dei rifornimenti (Fuel records).
-    """
     __tablename__ = 'refuelings'
 
     id = Column(Integer, primary_key=True, index=True)
@@ -22,18 +21,16 @@ class Refueling(Base):
     def __repr__(self):
         return f"<Refueling(date={self.date}, km={self.total_km}, cost={self.total_cost})>"
 
-
+# Entità Manutenzione: mappa la tabella 'maintenances'.
+# Traccia spese extra (tagliandi, gomme, tasse) per calcolo TCO.
 class Maintenance(Base):
-    """
-    Modello per la tabella delle manutenzioni e spese extra (Service records).
-    """
     __tablename__ = 'maintenances'
 
     id = Column(Integer, primary_key=True, index=True)
     date = Column(Date, nullable=False)
-    total_km = Column(Integer, nullable=False)
-    expense_type = Column(String, nullable=False)     # Es: "Service", "Tires", "Tax"
-    cost = Column(Float, nullable=False)
+    total_km = Column(Integer, nullable=False)        # Kilometri attuali
+    expense_type = Column(String, nullable=False)     # Tipologia Manutenzione
+    cost = Column(Float, nullable=False)              # Costo Manutenzione
     description = Column(Text, nullable=True)         # Dettagli dell'intervento
 
     def __repr__(self):

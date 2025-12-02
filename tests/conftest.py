@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from src.database.models import Base
+from database.models import Base
 
 # Usiamo un DB in memoria per velocità e isolamento
 TEST_DATABASE_URL = "sqlite:///:memory:"

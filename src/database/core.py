@@ -1,10 +1,9 @@
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from src.database.models import Base
+from database.models import Base
 
 # 1. Setup dei percorsi (Paths)
-# Risaliamo la directory: src/database/core.py -> src/database -> src -> root
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DB_DIR = os.path.join(BASE_DIR, "data")
 DB_PATH = os.path.join(DB_DIR, "tracker.db")
@@ -25,13 +24,12 @@ engine = create_engine(
 # Questa classe serve a creare nuove connessioni al DB quando servono
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Crea le tabelle nel database basandosi sui modelli definiti in models.py.
 def init_db():
-    """
-    Crea le tabelle nel database basandosi sui modelli definiti in models.py.
-    """
     print(f"Initializing database at: {DB_PATH}")
     Base.metadata.create_all(bind=engine)
     print("Database tables created successfully!")
+
 
 def get_db():
     """
