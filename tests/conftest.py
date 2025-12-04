@@ -1,29 +1,34 @@
+import sys
+import os
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
+# 1. Setup Path: Aggiunge la cartella 'src' al path di Python
+# Permette ai test di importare i moduli come 'database' invece di 'src.database'
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+
 from database.models import Base
 
-# Usiamo un DB in memoria per velocità e isolamento
+# DB in memoria per isolamento totale e velocità
 TEST_DATABASE_URL = "sqlite:///:memory:"
 
 @pytest.fixture(scope="function")
 def db_session():
     """
-    Crea un database SQLite in memoria pulito per ogni test.
-    Restituisce una sessione SQLAlchemy pronta all'uso.
+    Fixture che fornisce una sessione DB pulita per ogni singolo test.
+    Ciclo di vita: Setup -> Test -> Teardown (Rollback/Drop).
     """
-    # 1. Setup Engine
+    # 1. Creazione Engine e Tabelle
     engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
-    
-    # 2. Setup Tabelle
     Base.metadata.create_all(bind=engine)
     
-    # 3. Setup Sessione
+    # 2. Creazione Sessione
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()
     
-    yield db  # Qui il test viene eseguito
+    yield db  # Esecuzione del test qui
     
-    # 4. Teardown (Pulizia post-test)
+    # 3. Pulizia risorse
     db.close()
     Base.metadata.drop_all(bind=engine)

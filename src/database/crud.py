@@ -2,7 +2,7 @@ from typing import List, Optional
 from datetime import date
 from sqlalchemy import func, desc
 from sqlalchemy.orm import Session
-from database.models import Refueling, Maintenance
+from database.models import Refueling, Maintenance, AppSettings
 
 # ==========================================
 # SEZIONE: GESTIONE RIFORNIMENTI (Refueling)
@@ -104,3 +104,28 @@ def create_maintenance(
     db.commit()
     db.refresh(new_maintenance)
     return new_maintenance
+
+# ==========================================
+# SEZIONE: SETTINGS
+# ==========================================
+
+def get_settings(db: Session) -> AppSettings:
+    """
+    Recupera le impostazioni. Se non esistono, le crea con i default.
+    """
+    settings = db.query(AppSettings).first()
+    if not settings:
+        settings = AppSettings()
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
+    return settings
+
+def update_settings(db: Session, fluctuation: float, max_cost: float):
+    """Aggiorna le configurazioni globali."""
+    settings = get_settings(db)
+    settings.price_fluctuation_cents = fluctuation
+    settings.max_total_cost = max_cost
+    db.commit()
+    db.refresh(settings)
+    return settings

@@ -12,18 +12,16 @@ def calculate_stats(current: Refueling, history: List[Refueling]) -> dict:
     }
 
     # 1. Filtra record precedenti (escludendo se stesso e futuri)
-    # Assumiamo history ordinata decrescente.
     past_records = [r for r in history if r.date < current.date]
     if not past_records:
         return stats
 
-    # 2. Calcolo Delta Km e Tempo (rispetto al record immediatamente precedente)
+    # 2. Calcolo Delta Km e Tempo
     prev_record = past_records[0]
     stats["delta_km"] = current.total_km - prev_record.total_km
     stats["days_since_last"] = (current.date - prev_record.date).days
 
     # 3. Calcolo Consumo Reale (Logica Full-to-Full)
-    # Calcolabile solo se il pieno corrente è completo.
     if current.is_full_tank:
         liters_consumed = current.liters
         last_full_refuel = None
@@ -43,3 +41,31 @@ def calculate_stats(current: Refueling, history: List[Refueling]) -> dict:
             stats["km_per_liter"] = distance / liters_consumed
 
     return stats
+
+def check_partial_accumulation(history: List[Refueling]) -> dict:
+    """
+    Controlla se l'utente ha accumulato troppi rifornimenti parziali consecutivi.
+    Restituisce un dict con lo stato e l'importo accumulato dall'ultimo pieno.
+    """
+    accumulated_cost = 0.0
+    count = 0
+    is_alert = False
+    
+    # Ordiniamo per data decrescente (più recente prima)
+    sorted_history = sorted(history, key=lambda x: x.date, reverse=True)
+    
+    # Scansioniamo a ritroso dall'ultimo record
+    for r in sorted_history:
+        if r.is_full_tank:
+            # Abbiamo trovato un pieno ("punto fermo"), fermiamo il conteggio
+            break
+        else:
+            # È un parziale, accumuliamo
+            accumulated_cost += r.total_cost
+            count += 1
+            
+    # Se count > 0 significa che l'ultimo (o gli ultimi N) sono parziali
+    return {
+        "accumulated_cost": accumulated_cost,
+        "partials_count": count
+    }

@@ -35,3 +35,14 @@ class Maintenance(Base):
 
     def __repr__(self):
         return f"<Maintenance(date={self.date}, type={self.expense_type}, cost={self.cost})>"
+    
+#Entità Configurazione Applicazione.
+#Salva le preferenze dell'utente (range prezzi, limiti, etc).
+#Si prevede una sola riga in questa tabella (Singleton).
+class AppSettings(Base):
+    __tablename__ = 'settings'
+
+    id = Column(Integer, primary_key=True, index=True)
+    price_fluctuation_cents = Column(Float, default=0.15) # Range oscillazione (es. +/- 0.15€)
+    max_total_cost = Column(Float, default=120.0)         # Tetto massimo spesa
+    max_accumulated_partial_cost = Column(Float, default=80.0)  # Soglia alert parziali cumulati
