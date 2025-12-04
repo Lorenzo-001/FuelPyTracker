@@ -30,3 +30,34 @@ def build_fuel_dataframe(records: list) -> pd.DataFrame:
         })
         
     return pd.DataFrame(data_list)
+
+def build_maintenance_dataframe(records: list) -> pd.DataFrame:
+    """
+    Formatta lo storico manutenzioni aggiungendo icone visive per categoria.
+    """
+    # Mappa icone per categoria
+    icons = {
+        "Tagliando": "🛠️",
+        "Gomme": "🛞",
+        "Batteria": "🔋",
+        "Revisione": "⚖️",
+        "Bollo": "📄",
+        "Riparazione": "🔧",
+        "Altro": "⚙️"
+    }
+
+    data_list = []
+    for r in records:
+        icon = icons.get(r.expense_type, "⚙️")
+        
+        data_list.append({
+            "ID": r.id,
+            "Data": r.date,
+            "Tipo": f"{icon} {r.expense_type}", # Aggiunge icona al testo
+            "Km": r.total_km,
+            "Costo (€)": f"{r.cost:.2f}",
+            "Descrizione": r.description if r.description else "-",
+            "_obj": r
+        })
+        
+    return pd.DataFrame(data_list)

@@ -105,6 +105,30 @@ def create_maintenance(
     db.refresh(new_maintenance)
     return new_maintenance
 
+def get_all_maintenances(db: Session) -> List[Maintenance]:
+    """Restituisce storico manutenzioni ordinato per data (DESC)."""
+    return db.query(Maintenance).order_by(Maintenance.date.desc()).all()
+
+def delete_maintenance(db: Session, record_id: int) -> bool:
+    """Elimina fisicamente un record di manutenzione."""
+    record = db.query(Maintenance).filter(Maintenance.id == record_id).first()
+    if record:
+        db.delete(record)
+        db.commit()
+        return True
+    return False
+
+def update_maintenance(db: Session, record_id: int, new_data: dict) -> bool:
+    """Aggiorna i campi di un record manutenzione esistente."""
+    record = db.query(Maintenance).filter(Maintenance.id == record_id).first()
+    if record:
+        for key, value in new_data.items():
+            setattr(record, key, value)
+        db.commit()
+        db.refresh(record)
+        return True
+    return False
+
 # ==========================================
 # SEZIONE: SETTINGS
 # ==========================================
