@@ -99,7 +99,8 @@ def render():
         yaxis_title="Euro / Litro (€)",
         hovermode="x unified"
     )
-    st.plotly_chart(fig_price, use_container_width=True)
+    st.plotly_chart(fig_price, width="stretch")
+
 
 
     col_left, col_right = st.columns(2)
@@ -128,7 +129,7 @@ def render():
                 yaxis_title="Km per Litro",
                 showlegend=False
             )
-            st.plotly_chart(fig_eff, use_container_width=True)
+            st.plotly_chart(fig_eff, width="stretch")
         else:
             st.warning("Dati insufficienti per il grafico consumi.")
 
@@ -154,6 +155,6 @@ def render():
                 yaxis_title="Totale (€)",
                 showlegend=False
             )
-            st.plotly_chart(fig_cost, use_container_width=True)
+            st.plotly_chart(fig_cost, width="stretch")
         else:
             st.info("Dati insufficienti.")
