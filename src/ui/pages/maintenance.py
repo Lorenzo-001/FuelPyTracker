@@ -167,7 +167,8 @@ def render():
     st.subheader("🛠️ Gestione Interventi")
     
     st.markdown("""
-    > **Come usare questa sezione:** > Qui puoi correggere eventuali errori di inserimento o rimuovere record obsoleti dal database.  
+    > **Come usare questa sezione:** 
+    > Qui puoi correggere eventuali errori di inserimento o cancellare degli Interventi.  
     > 1. Seleziona l'**Anno** di riferimento.  
     > 2. Scegli lo **Specifico Intervento** dal menu a tendina.  
     > 3. Usa i pulsanti **Modifica (✏️)** o **Elimina (🗑️)** per procedere.
