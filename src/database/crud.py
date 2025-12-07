@@ -145,11 +145,12 @@ def get_settings(db: Session) -> AppSettings:
         db.refresh(settings)
     return settings
 
-def update_settings(db: Session, fluctuation: float, max_cost: float):
+def update_settings(db: Session, fluctuation: float, max_cost: float, alert_threshold: float):
     """Aggiorna le configurazioni globali."""
     settings = get_settings(db)
     settings.price_fluctuation_cents = fluctuation
     settings.max_total_cost = max_cost
+    settings.max_accumulated_partial_cost = alert_threshold
     db.commit()
     db.refresh(settings)
     return settings

@@ -88,7 +88,7 @@ def render():
         btn_label = "❌ Chiudi Form" if st.session_state.show_add_form else "➕ Nuovo Intervento"
         btn_type = "secondary" if st.session_state.show_add_form else "primary"
         
-        if st.button(btn_label, type=btn_type, use_container_width=True):
+        if st.button(btn_label, type=btn_type, width="stretch"):
             st.session_state.show_add_form = not st.session_state.show_add_form
             st.rerun()
 
@@ -149,7 +149,7 @@ def render():
 
                 # Pulsanti Form
                 cf1, cf2 = st.columns([6, 1])
-                if cf2.form_submit_button("Salva", type="primary", use_container_width=True):
+                if cf2.form_submit_button("Salva", type="primary", width="stretch"):
                     if m_cost > 0:
                         crud.create_maintenance(db, m_date, m_km, m_type, m_cost, m_desc)
                         st.success("✅ Salvato!")
@@ -197,12 +197,12 @@ def render():
             if selected_label:
                 target_id = rec_options[selected_label]
                 
-                if col_act1.button("✏️", help="Modifica", use_container_width=True):
+                if col_act1.button("✏️", help="Modifica", width="stretch"):
                     st.session_state.active_operation = "edit"
                     st.session_state.selected_record_id = target_id
                     st.rerun() 
                 
-                if col_act2.button("🗑️", help="Elimina", type="primary", use_container_width=True):
+                if col_act2.button("🗑️", help="Elimina", type="primary", width="stretch"):
                     st.session_state.active_operation = "delete"
                     st.session_state.selected_record_id = target_id
                     st.rerun()
@@ -231,7 +231,7 @@ def render():
                             new_desc = st.text_area("Note", value=target_record.description)
                             
                             cb1, cb2 = st.columns([5, 1])
-                            if cb2.form_submit_button("💾 Aggiorna", type="primary", use_container_width=True):
+                            if cb2.form_submit_button("💾 Aggiorna", type="primary", width="stretch"):
                                 changes = {"date": new_date, "total_km": new_km, "expense_type": new_type, "cost": new_cost, "description": new_desc}
                                 crud.update_maintenance(db, target_record.id, changes)
                                 st.success("Record aggiornato!")
@@ -248,7 +248,7 @@ def render():
                     st.error(f"⚠️ Stai per eliminare definitivamente: **{target_record.expense_type}** del {target_record.date} (€ {target_record.cost}).")
                     
                     cd1, cd2, cd3 = st.columns([1, 1, 4])
-                    if cd1.button("✅ Conferma", type="primary", use_container_width=True):
+                    if cd1.button("✅ Conferma", type="primary", width="stretch"):
                         crud.delete_maintenance(db, target_record.id)
                         st.success("Eliminato.")
                         st.session_state.active_operation = None
@@ -256,7 +256,7 @@ def render():
                         st.cache_data.clear()
                         st.rerun()
                     
-                    if cd2.button("❌ Annulla", use_container_width=True):
+                    if cd2.button("❌ Annulla", width="stretch"):
                         st.session_state.active_operation = None
                         st.rerun()
             else:

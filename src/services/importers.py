@@ -1,80 +1,202 @@
 import pandas as pd
+from datetime import datetime, date
 from sqlalchemy.orm import Session
 from database import crud
-from datetime import datetime
 
-def parse_upload_file(df: pd.DataFrame) -> pd.DataFrame:
+def parse_upload_file(db: Session, uploaded_file) -> tuple[pd.DataFrame, str]:
     """
-    Legge il file raw, normalizza i nomi e prepara i dati ma NON salva nel DB.
-    Restituisce un DataFrame pronto per essere mostrato nella Staging Area.
+    Legge il file raw (CSV/Excel) e lo converte in DataFrame iniziale.
     """
-    # Normalizziamo le colonne
-    df.columns = [c.lower().strip() for c in df.columns]
-    
-    clean_data = []
-    
-    for index, row in df.iterrows():
-        raw_date = row.get('data')
-
-        if isinstance(raw_date, str):
-                # Prova formati comuni: DD/MM/YYYY o YYYY-MM-DD
-                try:
-                    d_date = datetime.strptime(raw_date, "%d/%m/%Y").date()
-                except ValueError:
-                    d_date = datetime.strptime(raw_date, "%Y-%m-%d").date()
+    # 1. Lettura Fisica del File
+    try:
+        if uploaded_file.name.endswith('.csv'):
+            df = pd.read_csv(uploaded_file)
         else:
-                d_date = raw_date.date() # Se è già datetime (da Excel)
+            df = pd.read_excel(uploaded_file)
+    except Exception as e:
+        return pd.DataFrame(), f"Errore lettura file: {e}"
 
-            # Parsing Numeri
-        d_km = int(row.get('km'))
-        d_price = float(str(row.get('prezzo')).replace(',', '.'))
-        d_cost = float(str(row.get('costo')).replace(',', '.'))
-            
-            # Litri: se mancano, li calcoliamo
-        if 'litri' in row and pd.notna(row['litri']):
-                 d_liters = float(str(row.get('litri')).replace(',', '.'))
-        else:
-                d_liters = d_cost / d_price
+    if df.empty:
+        return pd.DataFrame(), "Il file caricato è vuoto."
 
-            # Pieno: Default TRUE se manca
-        d_full = True
-        if 'pieno' in row:
-                val = str(row.get('pieno')).lower()
-                if val in ['no', 'false', '0', 'n']:
-                    d_full = False
+    # 2. Normalizzazione Colonne
+    df.columns = [str(c).lower().strip() for c in df.columns]
+    required_cols = {'data', 'km', 'prezzo', 'costo'}
+    
+    if not required_cols.issubset(set(df.columns)):
+        missing = required_cols - set(df.columns)
+        return pd.DataFrame(), f"Colonne mancanti: {', '.join(missing)}"
+
+    # 3. Aggiunta colonne di servizio
+    if 'litri' not in df.columns: df['litri'] = 0.0
+    if 'pieno' not in df.columns: df['pieno'] = True
+
+    # 4. Standardizzazione nomi colonne
+    df = df.rename(columns={
+        'data': 'data', 'km': 'km', 'prezzo': 'prezzo', 'costo': 'costo', 
+        'litri': 'litri', 'pieno': 'pieno'
+    })
+
+    return revalidate_dataframe(db, df), None
+
+def revalidate_dataframe(db: Session, df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Prende un DataFrame, ricalcola Stato, Note e Rimuove righe 'Fantasma'.
+    """
+    last_record = crud.get_last_refueling(db)
+    settings = crud.get_settings(db)
+    
+    last_db_km = last_record.total_km if last_record else 0
+    last_db_date = last_record.date if last_record else date(2000, 1, 1)
+    last_db_price = last_record.price_per_liter if last_record else 0.0
+    
+    existing_dates = set(r.date for r in crud.get_all_refuelings(db))
+    
+    processed_rows = []
+    file_dates = set()
+
+    for _, row in df.iterrows():
+        status = "OK"
+        notes = []
         
-        # Esempio sintetico (usa il tuo parsing completo):
+        # --- A. PARSING & CHECK GHOST ---
+        raw_date = row.get('data') if 'data' in row else row.get('Data')
+        
+        # Recupero valori numerici grezzi per capire se la riga è vuota
+        raw_km = row.get('km') if 'km' in row else row.get('Km')
+        
+        # FIX GHOST RECORD: Se data è vuota E km è 0/Nan, è una riga creata per sbaglio dalla UI
+        is_date_empty = pd.isna(raw_date)
+        is_km_empty = pd.isna(raw_km) or raw_km == 0
+        
+        if is_date_empty and is_km_empty:
+            continue # Saltiamo questa riga -> Verrà cancellata dal DataFrame finale
+
+        # --- B. PARSING EFFETTIVO ---
+        d_date = None
+        d_km = 0
+        d_price = 0.0
+        d_cost = 0.0
+        d_liters = 0.0
+        d_full = True
+
         try:
-            # ... parsing date, km, price ...
-            clean_item = {
-                "data": d_date, # Oggetto date
-                "km": d_km,
-                "prezzo": d_price,
-                "costo": d_cost,
-                "litri": d_liters,
-                "pieno": d_full,
-                "check": True # Colonna per selezionare se importarlo o no
-            }
-            clean_data.append(clean_item)
-        except Exception:
-            continue # O gestisci errore
+            # DATA
+            if is_date_empty:
+                status = "Errore"
+                notes.append("Data mancante")
+            else:
+                if isinstance(raw_date, (datetime, date)):
+                    d_date = raw_date.date() if isinstance(raw_date, datetime) else raw_date
+                else:
+                    found = False
+                    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
+                        try:
+                            d_date = datetime.strptime(str(raw_date), fmt).date()
+                            found = True
+                            break
+                        except: pass
+                    if not found:
+                        status = "Errore"
+                        notes.append("Formato data invalido")
+            
+            # NUMERI
+            def parse_float(val):
+                if pd.isna(val): return 0.0
+                try: return float(str(val).replace(',', '.'))
+                except: return 0.0
 
-    return pd.DataFrame(clean_data)
+            def parse_int(val):
+                if pd.isna(val): return 0
+                try: return int(float(str(val).replace(',', '.')))
+                except: return 0
 
-def save_single_row(db, row):
-    """Salva una singola riga del DataFrame nel DB."""
-    # Ricalcolo litri per sicurezza
-    liters = float(row['Litri'])
-    if liters <= 0 and float(row['Prezzo']) > 0:
-        liters = float(row['Costo']) / float(row['Prezzo'])
+            d_km = parse_int(raw_km)
+            d_price = parse_float(row.get('prezzo') if 'prezzo' in row else row.get('Prezzo'))
+            d_cost = parse_float(row.get('costo') if 'costo' in row else row.get('Costo'))
+            d_liters = parse_float(row.get('litri') if 'litri' in row else row.get('Litri'))
 
-    crud.create_refueling(
-        db, 
-        pd.to_datetime(row['Data']).date(), 
-        int(row['Km']), 
-        float(row['Prezzo']), 
-        float(row['Costo']), 
-        liters, 
-        bool(row['Pieno']),
-        "Import Massivo"
-    )
+            # PIENO
+            raw_full = row.get('pieno') if 'pieno' in row else row.get('Pieno')
+            if str(raw_full).lower() in ['false', 'no', '0', 'falso', 'n']:
+                d_full = False
+            else:
+                d_full = True
+
+        except Exception as e:
+            status = "Errore"
+            notes.append(f"Errore tecnico: {str(e)}")
+
+        # --- C. LOGICA RICALCOLO ---
+        if d_price > 0 and d_cost > 0:
+            d_liters = d_cost / d_price
+        
+        # --- D. VALIDAZIONI ---
+        if status != "Errore":
+            # Date
+            if d_date:
+                if d_date > date.today():
+                    status = "Errore"
+                    notes.append("Data futura")
+                if d_date in existing_dates:
+                    status = "Errore" 
+                    notes.append("Data già presente nel DB")
+                if d_date in file_dates:
+                    status = "Errore"
+                    notes.append("Duplicato nel file")
+                file_dates.add(d_date)
+
+            # Km
+            if d_km <= 0:
+                status = "Errore"
+                notes.append("Km <= 0")
+            elif d_date and d_date > last_db_date and d_km < last_db_km:
+                status = "Errore"
+                notes.append(f"Km incoerenti (Ultimo DB: {last_db_km})")
+
+            # Prezzi
+            if d_price <= 0 or d_cost <= 0:
+                status = "Errore"
+                notes.append("Prezzo/Costo <= 0")
+            else:
+                if d_cost > settings.max_total_cost:
+                    status = "Warning"
+                    notes.append(f"Spesa > Max Config ({settings.max_total_cost}€)")
+                
+                if last_db_price > 0:
+                    min_p = max(0.0, last_db_price - settings.price_fluctuation_cents)
+                    max_p = last_db_price + settings.price_fluctuation_cents
+                    if not (min_p <= d_price <= max_p):
+                        status = "Warning"
+                        notes.append(f"Prezzo fuori range ({min_p:.3f}-{max_p:.3f})")
+
+        # --- E. Output ---
+        processed_rows.append({
+            "Stato": status,
+            "Note": " | ".join(notes),
+            "Data": d_date,
+            "Km": d_km,
+            "Prezzo": d_price,
+            "Costo": d_cost,
+            "Litri": round(d_liters, 2),
+            "Pieno": d_full
+        })
+
+    return pd.DataFrame(processed_rows)
+
+def save_single_row(db: Session, row):
+    if row['Stato'] == "Errore":
+        return
+    try:
+        crud.create_refueling(
+            db, 
+            pd.to_datetime(row['Data']).date(), 
+            int(row['Km']), 
+            float(row['Prezzo']), 
+            float(row['Costo']), 
+            float(row['Litri']), 
+            bool(row['Pieno']),
+            f"Import (Note: {row['Note']})" if row['Note'] else "Import Massivo"
+        )
+    except Exception:
+        pass
