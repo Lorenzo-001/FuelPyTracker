@@ -73,3 +73,63 @@ def render_fuel_cards(year, cost, liters, km_est, avg_price, min_eff, max_eff):
     
     st.markdown(css_style, unsafe_allow_html=True)
     st.html(html_content)
+
+
+def render_maintenance_card(cost, year_label):
+    """
+    Renderizza una card compatta per il totale manutenzione.
+    Altezza forzata per allinearsi alle Selectbox di Streamlit.
+    """
+    css = textwrap.dedent("""
+        <style>
+            .maint-card {
+                background-color: #f0f2f6; 
+                border-radius: 8px; /* Un po' meno arrotondato per matchare gli input */
+                padding: 0 12px;    /* Padding laterale, verticale gestito da flex */
+                border-left: 5px solid #ffa600; 
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                
+                /* TRUCCO VISIVO: 
+                   40px è circa l'altezza di una st.selectbox (Label + Input) 
+                   Questo forza la card ad avere lo stesso "spessore" */
+                height: 40px; 
+                width: 100%;
+                box-sizing: border-box;
+            }
+            .maint-label { 
+                font-size: 0.7rem; 
+                font-weight: 700; 
+                color: #555; 
+                text-transform: uppercase; 
+                line-height: 1.2;
+                margin-top: 2px;
+            }
+            .maint-value { 
+                font-size: 1.2rem; 
+                font-weight: 700; 
+                color: #31333F; 
+                line-height: 1.2;
+                text-align: right;
+                margin-bottom: 2px;
+            }
+            
+            @media (prefers-color-scheme: dark) {
+                .maint-card { background-color: #262730; border: 1px solid #444; border-left: 5px solid #ffa600; }
+                .maint-label { color: #aaa; }
+                .maint-value { color: #fff; }
+            }
+        </style>
+    """)
+    
+    html = textwrap.dedent(f"""
+        <div class="maint-card">
+            <div class="maint-label">Totale {year_label}:</div>
+            <div class="maint-value">{cost:.2f} €</div>
+        </div>
+    """)
+    
+    st.markdown(css, unsafe_allow_html=True)
+    st.html(html)
