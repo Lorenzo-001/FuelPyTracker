@@ -74,60 +74,70 @@ def render_fuel_cards(year, cost, liters, km_est, avg_price, min_eff, max_eff):
     st.markdown(css_style, unsafe_allow_html=True)
     st.html(html_content)
 
-
 def render_maintenance_card(cost, year_label):
-    """
-    Renderizza una card compatta per il totale manutenzione.
-    Altezza forzata per allinearsi alle Selectbox di Streamlit.
-    """
     css = textwrap.dedent("""
         <style>
-            .maint-card {
-                background-color: #f0f2f6; 
-                border-radius: 8px; /* Un po' meno arrotondato per matchare gli input */
-                padding: 0 12px;    /* Padding laterale, verticale gestito da flex */
-                border-left: 5px solid #ffa600; 
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            .maint-card-grad {
+                /* DIMENSIONI CUSTOM */
+                height: 40px;           /* Altezza fissa (simile agli input Streamlit) */
+                width: 100%;            /* Occupa tutta la larghezza della colonna */
+                box-sizing: border-box; /* Include padding e bordi nel calcolo altezza */
                 
-                /* TRUCCO VISIVO: 
-                   40px è circa l'altezza di una st.selectbox (Label + Input) 
-                   Questo forza la card ad avere lo stesso "spessore" */
-                height: 40px; 
-                width: 100%;
-                box-sizing: border-box;
+                /* LAYOUT ORIZZONTALE */
+                display: flex;
+                flex-direction: row;    /* Mette gli elementi in riga (sx -> dx) */
+                justify-content: space-around; /* Spinge testo a SX e numero a DX */
+                align-items: center;    /* Centra verticalmente */
+                
+                /* STILE VISIVO */
+                background: linear-gradient(135deg, #FFF8E1 0%, #FFFFFF 100%);
+                border-radius: 10px;
+                padding: 0 16px;        /* Padding solo laterale */
+                border: 1px solid rgba(255, 166, 0, 0.3);
+                border-left: 6px solid #ffa600;
+                box-shadow: 0 2px 5px rgba(255, 166, 0, 0.1);
+                overflow: hidden;
             }
-            .maint-label { 
-                font-size: 0.7rem; 
-                font-weight: 700; 
-                color: #555; 
-                text-transform: uppercase; 
-                line-height: 1.2;
-                margin-top: 2px;
+
+            .maint-label-grad {
+                font-size: 0.7rem;
+                font-weight: 800;
+                color: #000000;
+                margin: 0;             /* Rimosso margin-bottom */
             }
-            .maint-value { 
-                font-size: 1.2rem; 
-                font-weight: 700; 
-                color: #31333F; 
-                line-height: 1.2;
-                text-align: right;
-                margin-bottom: 2px;
+
+            .maint-value-grad {
+                font-size: 1rem;     /* Leggermente ridotto per stare nell'altezza */
+                font-weight: 800;
+                background: -webkit-linear-gradient(rgb(255 0 0), #ff6b00);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                line-height: 1;        /* Importante per il centraggio verticale */
+                white-space: nowrap;   /* Evita che il testo vada a capo */
             }
             
             @media (prefers-color-scheme: dark) {
-                .maint-card { background-color: #262730; border: 1px solid #444; border-left: 5px solid #ffa600; }
-                .maint-label { color: #aaa; }
-                .maint-value { color: #fff; }
+                .maint-card-grad { 
+                    background: linear-gradient(135deg, #3e3020 0%, #262730 100%);
+                    border: 1px solid #554433;
+                    border-left: 6px solid #ffa600;
+                }
+                .maint-label-grad { color: #ffb74d; }
+                .maint-value-grad { 
+                    background: none; 
+                    -webkit-text-fill-color: #fff;
+                    color: #fff;
+                }
             }
         </style>
     """)
-    
+
     html = textwrap.dedent(f"""
-        <div class="maint-card">
-            <div class="maint-label">Totale {year_label}:</div>
-            <div class="maint-value">{cost:.2f} €</div>
+        <div class="maint-card-grad">
+            <div class="maint-label-grad">
+                <span>Spesa totale {year_label}:</span>
+            </div>
+            <div class="maint-value-grad">[{cost:,.2f} €]</div>
         </div>
     """)
     

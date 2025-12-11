@@ -50,7 +50,7 @@ def render():
     # Filtro Dati
     if selected_year_option == "Tutti gli anni":
         records_filtered = records 
-        label_kpi = "Storico"
+        label_kpi = "storico"
     else:
         records_filtered = [r for r in records if r.date.year == selected_year_option]
         label_kpi = str(selected_year_option)
@@ -71,7 +71,7 @@ def render():
             
             # Il bottone è alto ~42px. Essendo allineato in basso (bottom),
             # sarà perfettamente in linea con il campo input della selectbox e la parte inferiore della card.
-            if st.button(btn_label, type=btn_type, use_container_width=True):
+            if st.button(btn_label, type=btn_type, width="stretch"):
                 st.session_state.show_add_form = not st.session_state.show_add_form
                 st.rerun()
 
@@ -86,7 +86,7 @@ def render():
                 # Uso Helper per generare i campi
                 form_data = _render_maint_form(date.today(), last_km, "Tagliando", 0.0, "")
                 
-                if st.form_submit_button("Salva Intervento", type="primary", use_container_width=True):
+                if st.form_submit_button("Salva Intervento", type="primary", width="stretch"):
                     if form_data['cost'] > 0:
                         crud.create_maintenance(db, form_data['date'], form_data['km'], form_data['type'], form_data['cost'], form_data['desc'])
                         st.success("✅ Salvato!")
@@ -122,7 +122,7 @@ def render():
             df_display = grids.build_maintenance_dataframe(final_records)
             st.dataframe(
                 df_display.drop(columns=["_obj"]), 
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
                 column_config={
                     "ID": None,
@@ -150,11 +150,11 @@ def render():
                 
                 # Bottoni Azione
                 c_edit, c_del = st.columns(2)
-                if c_edit.button("✏️ Modifica", use_container_width=True):
+                if c_edit.button("✏️ Modifica", width="stretch"):
                     st.session_state.active_operation = "edit"
                     st.session_state.selected_record_id = target_id
                     st.rerun()
-                if c_del.button("🗑️ Elimina", type="primary", use_container_width=True):
+                if c_del.button("🗑️ Elimina", type="primary", width="stretch"):
                     st.session_state.active_operation = "delete"
                     st.session_state.selected_record_id = target_id
                     st.rerun()
@@ -172,7 +172,7 @@ def render():
                                 # Uso Helper precompilato
                                 d_edit = _render_maint_form(target_rec.date, target_rec.total_km, target_rec.expense_type, target_rec.cost, target_rec.description)
                                 
-                                if st.form_submit_button("Aggiorna", type="primary", use_container_width=True):
+                                if st.form_submit_button("Aggiorna", type="primary", width="stretch"):
                                     changes = {"date": d_edit['date'], "total_km": d_edit['km'], "expense_type": d_edit['type'], "cost": d_edit['cost'], "description": d_edit['desc']}
                                     crud.update_maintenance(db, target_id, changes)
                                     st.success("Aggiornato!")
@@ -180,7 +180,7 @@ def render():
                                     st.cache_data.clear()
                                     st.rerun()
                             
-                            if st.button("Annulla", use_container_width=True):
+                            if st.button("Annulla", width="stretch"):
                                 st.session_state.active_operation = None
                                 st.rerun()
 
@@ -188,13 +188,13 @@ def render():
                         elif st.session_state.active_operation == "delete":
                             st.error(f"Eliminare {target_rec.expense_type}?")
                             cd1, cd2 = st.columns(2)
-                            if cd1.button("Sì, Elimina", type="primary", use_container_width=True):
+                            if cd1.button("Sì, Elimina", type="primary", width="stretch"):
                                 crud.delete_maintenance(db, target_id)
                                 st.success("Eliminato.")
                                 st.session_state.active_operation = None
                                 st.cache_data.clear()
                                 st.rerun()
-                            if cd2.button("No", use_container_width=True):
+                            if cd2.button("No", width="stretch"):
                                 st.session_state.active_operation = None
                                 st.rerun()
             else:
