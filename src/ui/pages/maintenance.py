@@ -1,269 +1,185 @@
 import streamlit as st
-import pandas as pd
-import streamlit.components.v1 as components 
 from datetime import date
 from database.core import get_db
 from database import crud
-from ui.components import grids
+from ui.components import grids, kpi, forms
+from services import maintenance_logic
 
 def render():
+    """Vista Principale: Registro Manutenzioni (Refactored)."""
     st.header("🔧 Registro Manutenzioni")
     
-    # Spazietto richiesto tra Titolo e Contenuto
-    st.write("") 
-    st.write("")
-
-    # Inizializzazione Stato Sessione
-    if "show_add_form" not in st.session_state:
-        st.session_state.show_add_form = False
-    if "active_operation" not in st.session_state:
-        st.session_state.active_operation = None
-    if "selected_record_id" not in st.session_state:
-        st.session_state.selected_record_id = None
-
+    # --- 1. Init Stato & DB ---
+    _init_session_state()
+    
     db = next(get_db())
     records = crud.get_all_maintenances(db)
     
-    # ---------------------------------------------------------
-    # PREPARAZIONE DATI (Anni disponibili + Opzione "Tutti")
-    # ---------------------------------------------------------
-    current_year = date.today().year
-    
-    # Set degli anni presenti nel DB
-    db_years = sorted(list(set(r.date.year for r in records)), reverse=True)
-    if not db_years:
-        db_years = [current_year]
-    
-    # Creiamo la lista opzioni mista: Stringa ("Tutti gli anni") + Interi (Anni)
+    # --- 2. Top Bar & Filtri Globali ---
+    # Logica recupero anni
+    db_years = maintenance_logic.get_available_years(records)
     year_options = ["Tutti gli anni"] + db_years
     
-    # Calcolo indice di default (Anno corrente)
-    try:
-        default_idx = db_years.index(current_year) + 1
-    except ValueError:
-        default_idx = 0 
-
-    # ---------------------------------------------------------
-    # 1. LAYOUT PRINCIPALE (Colonna SX: KPI/Btn - Colonna DX: Tabella)
-    # ---------------------------------------------------------
+    # Calcolo indice default (anno corrente)
+    curr_year = date.today().year
+    def_idx = db_years.index(curr_year) + 1 if curr_year in db_years else 0
     
-    col_ctrl, col_data = st.columns([1, 3.5], gap="medium")
+    # Render controlli superiori
+    c_year, c_kpi, c_btn = st.columns([1.5, 1.5, 1.2], gap="small", vertical_alignment="bottom")
+    
+    with c_year:
+        sel_year_opt = st.selectbox("📅 Anno Riferimento", year_options, index=def_idx, key="maint_year_filter")
 
-    # Variabile per contenere i record filtrati per anno
-    records_year_filtered = []
+    # Applicazione Filtro Logico
+    recs_filtered, label_kpi = maintenance_logic.filter_records_by_year(records, sel_year_opt)
+    total_spent = sum(r.cost for r in recs_filtered)
 
-    # --- COLONNA SINISTRA: Controlli e KPI ---
-    with col_ctrl:
-        with st.container(border=True):
-            # A. Selectbox Unificata (Controlla tutto)
-            selected_year_option = st.selectbox(
-                "📅 Anno Spesa", 
-                year_options, 
-                index=default_idx,
-                key="unified_year_filter"
-            )
-            
-            # B. Logica Filtro Anno
-            if selected_year_option == "Tutti gli anni":
-                records_year_filtered = records 
-                label_kpi = "Totale Storico"
-            else:
-                records_year_filtered = [r for r in records if r.date.year == selected_year_option]
-                label_kpi = f"Spesa {selected_year_option}"
+    with c_kpi:
+        kpi.render_maintenance_card(total_spent, label_kpi)
 
-            # C. Calcolo KPI
-            total_spent_kpi = sum(r.cost for r in records_year_filtered)
-            
-            # D. Visualizzazione KPI
-            st.metric(
-                label=label_kpi, 
-                value=f"{total_spent_kpi:.2f} €",
-                delta_color="inverse"
-            )
+    with c_btn:
+        _render_add_button()
 
-        # Spaziatura verticale
-        st.write("") 
-        
-        # E. Pulsante Nuovo
-        btn_label = "❌ Chiudi Form" if st.session_state.show_add_form else "➕ Nuovo Intervento"
-        btn_type = "secondary" if st.session_state.show_add_form else "primary"
-        
-        if st.button(btn_label, type=btn_type, width="stretch"):
-            st.session_state.show_add_form = not st.session_state.show_add_form
-            st.rerun()
-
-    # --- COLONNA DESTRA: Filtri Categoria e Tabella ---
-    with col_data:
-        # A. Filtro Categoria (Full Width)
-        # Rimosse le colonne interne per estendere il filtro a tutta la larghezza
-        all_categories = sorted(list(set(r.expense_type for r in records)))
-        selected_cats = st.multiselect(
-            "Categoria", 
-            all_categories, 
-            placeholder="🔍 Filtra Categoria (Multiselezione)...",
-            label_visibility="collapsed"
-        )
-
-        # B. Applicazione Filtro Categoria (sui dati già filtrati per anno)
-        final_display_records = records_year_filtered
-        if selected_cats:
-            final_display_records = [r for r in final_display_records if r.expense_type in selected_cats]
-        
-        # C. Render Tabella
-        if final_display_records:
-            df_display = grids.build_maintenance_dataframe(final_display_records)
-            st.dataframe(
-                df_display.drop(columns=["_obj"]), 
-                width="stretch",
-                hide_index=True,
-                column_config={
-                    "ID": None,
-                    "Descrizione": st.column_config.TextColumn(width="large"),
-                    "Tipo": st.column_config.TextColumn(width="medium")
-                }
-            )
-        else:
-            if not records:
-                st.info("Database vuoto.")
-            else:
-                st.info("Nessun dato con i filtri selezionati.")
-
-    # ---------------------------------------------------------
-    # 2. PANNELLO AGGIUNTA (A comparsa - Sotto la struttura principale)
-    # ---------------------------------------------------------
+    # --- 3. Area Inserimento (Add Form) ---
     if st.session_state.show_add_form:
-        st.divider()
+        _render_add_form(db)
 
-        with st.container(border=True):
-            st.markdown("##### ✨ Registra Nuovo Intervento")
-            with st.form("new_maint_form", clear_on_submit=True):
-                c1, c2 = st.columns(2)
-                last_km_refuel = crud.get_max_km(db)
-                
-                m_date = c1.date_input("Data Intervento", value=date.today())
-                m_km = c1.number_input("Odometro (Km)", value=last_km_refuel, step=1)
-                
-                m_type = c2.selectbox("Categoria", ["Tagliando", "Gomme", "Batteria", "Revisione", "Bollo", "Riparazione", "Altro"])
-                m_cost = c2.number_input("Costo (€)", min_value=0.0, step=1.0, format="%.2f")
-                m_desc = st.text_area("Note / Dettagli", placeholder="Es. Cambio olio Castrol 5W30...")
+    st.write("") # Spacer
 
-                # Pulsanti Form
-                cf1, cf2 = st.columns([6, 1])
-                if cf2.form_submit_button("Salva", type="primary", width="stretch"):
-                    if m_cost > 0:
-                        crud.create_maintenance(db, m_date, m_km, m_type, m_cost, m_desc)
-                        st.success("✅ Salvato!")
-                        st.session_state.show_add_form = False # Chiude dopo il salvataggio
-                        st.cache_data.clear()
-                        st.rerun()
-                    else:
-                        st.error("Costo > 0 richiesto")
+    # --- 4. Tabs: Storico & Gestione ---
+    tab_hist, tab_mgmt = st.tabs(["📋 Storico", "🛠️ Gestione"])
 
-    st.divider()
+    with tab_hist:
+        _render_history_tab(recs_filtered, records) # Passiamo records originali per le categorie
 
-    # ---------------------------------------------------------
-    # 3. AREA GESTIONE (Modifica / Elimina Avanzata)
-    # ---------------------------------------------------------
-    st.subheader("🛠️ Gestione Interventi")
-    
-    st.markdown("""
-    > **Come usare questa sezione:** 
-    > Qui puoi correggere eventuali errori di inserimento o cancellare degli Interventi.  
-    > 1. Seleziona l'**Anno** di riferimento.  
-    > 2. Scegli lo **Specifico Intervento** dal menu a tendina.  
-    > 3. Usa i pulsanti **Modifica (✏️)** o **Elimina (🗑️)** per procedere.
-    """)
-
-    if records:
-        # A. Selezione Anno (Indipendente dal filtro superiore)
-        years = sorted(list(set(r.date.year for r in records)), reverse=True)
-        try:
-            curr_year_idx = years.index(current_year)
-        except ValueError:
-            curr_year_idx = 0
-            
-        col_year, col_rec, col_act1, col_act2 = st.columns([1.5, 5, 0.7, 0.7], gap="small")
-        
-        selected_year = col_year.selectbox("Anno Gestione", years, index=curr_year_idx, label_visibility="collapsed", key="mgmt_year_select")
-        
-        records_for_year = [r for r in records if r.date.year == selected_year]
-        
-        if not records_for_year:
-            col_rec.warning("Nessun record in questo anno.")
-        else:
-            rec_options = {f"{r.date.strftime('%d/%m')} - {r.expense_type} (€ {r.cost:.0f})": r.id for r in records_for_year}
-            selected_label = col_rec.selectbox("Seleziona Record", list(rec_options.keys()), label_visibility="collapsed")
-            
-            if selected_label:
-                target_id = rec_options[selected_label]
-                
-                if col_act1.button("✏️", help="Modifica", width="stretch"):
-                    st.session_state.active_operation = "edit"
-                    st.session_state.selected_record_id = target_id
-                    st.rerun() 
-                
-                if col_act2.button("🗑️", help="Elimina", type="primary", width="stretch"):
-                    st.session_state.active_operation = "delete"
-                    st.session_state.selected_record_id = target_id
-                    st.rerun()
-
-        # ---------------------------------------------------------
-        # 4. PANNELLI DINAMICI (Edit / Delete)
-        # ---------------------------------------------------------
-        
-        if st.session_state.active_operation and st.session_state.selected_record_id:
-            target_record = next((r for r in records if r.id == st.session_state.selected_record_id), None)
-            
-            if target_record:
-                # --- PANNELLO MODIFICA ---
-                if st.session_state.active_operation == "edit":
-                    st.markdown(f"**Modifica Intervento del {target_record.date.strftime('%d/%m/%Y')}**")
-                    with st.container(border=True):
-                        with st.form("edit_dynamic_form"):
-                            ce1, ce2 = st.columns(2)
-                            new_date = ce1.date_input("Data", value=target_record.date)
-                            new_km = ce1.number_input("Km", value=target_record.total_km, step=1)
-                            
-                            cat_opts = ["Tagliando", "Gomme", "Batteria", "Revisione", "Bollo", "Riparazione", "Altro"]
-                            curr_idx = cat_opts.index(target_record.expense_type) if target_record.expense_type in cat_opts else 0
-                            new_type = ce2.selectbox("Categoria", cat_opts, index=curr_idx)
-                            new_cost = ce2.number_input("Costo", value=target_record.cost, min_value=0.0, step=1.0)
-                            new_desc = st.text_area("Note", value=target_record.description)
-                            
-                            cb1, cb2 = st.columns([5, 1])
-                            if cb2.form_submit_button("💾 Aggiorna", type="primary", width="stretch"):
-                                changes = {"date": new_date, "total_km": new_km, "expense_type": new_type, "cost": new_cost, "description": new_desc}
-                                crud.update_maintenance(db, target_record.id, changes)
-                                st.success("Record aggiornato!")
-                                st.session_state.active_operation = None
-                                st.cache_data.clear()
-                                st.rerun()
-                                
-                        if st.button("Annulla Modifica"):
-                            st.session_state.active_operation = None
-                            st.rerun()
-
-                # --- PANNELLO ELIMINAZIONE ---
-                elif st.session_state.active_operation == "delete":
-                    st.error(f"⚠️ Stai per eliminare definitivamente: **{target_record.expense_type}** del {target_record.date} (€ {target_record.cost}).")
-                    
-                    cd1, cd2, cd3 = st.columns([1, 1, 4])
-                    if cd1.button("✅ Conferma", type="primary", width="stretch"):
-                        crud.delete_maintenance(db, target_record.id)
-                        st.success("Eliminato.")
-                        st.session_state.active_operation = None
-                        st.session_state.selected_record_id = None
-                        st.cache_data.clear()
-                        st.rerun()
-                    
-                    if cd2.button("❌ Annulla", width="stretch"):
-                        st.session_state.active_operation = None
-                        st.rerun()
-            else:
-                st.session_state.active_operation = None
-                st.rerun()
-
-    else:
-        st.info("Database vuoto.")
+    with tab_mgmt:
+        _render_management_tab(db, records) # Qui serve tutto lo storico per permettere modifiche su altri anni
 
     db.close()
+
+# ==========================================
+# PRIVATE HELPER FUNCTIONS (View Logic)
+# ==========================================
+
+def _init_session_state():
+    if "show_add_form" not in st.session_state: st.session_state.show_add_form = False
+    if "active_operation" not in st.session_state: st.session_state.active_operation = None
+    if "selected_record_id" not in st.session_state: st.session_state.selected_record_id = None
+
+def _render_add_button():
+    lbl = "Chiudi" if st.session_state.show_add_form else "➕ Nuovo"
+    typ = "secondary" if st.session_state.show_add_form else "primary"
+    if st.button(lbl, type=typ, width="stretch"):
+        st.session_state.show_add_form = not st.session_state.show_add_form
+        st.rerun()
+
+def _render_add_form(db):
+    with st.container(border=True):
+        st.markdown("##### ✨ Nuovo Intervento")
+        with st.form("new_maint_form", clear_on_submit=True):
+            last_km = crud.get_max_km(db)
+            # Form delegato a ui/forms.py
+            data = forms.render_maintenance_inputs(date.today(), last_km, "Tagliando", 0.0, "")
+            
+            if st.form_submit_button("Salva Intervento", type="primary", width="stretch"):
+                if data['cost'] >= 0:
+                    crud.create_maintenance(db, data['date'], data['km'], data['type'], data['cost'], data['desc'])
+                    st.success("✅ Salvato!")
+                    st.session_state.show_add_form = False
+                    st.cache_data.clear()
+                    st.rerun()
+                else:
+                    st.error("Inserire un costo valido.")
+
+def _render_history_tab(records_filtered, all_records):
+    # Filtro Categoria
+    all_cats = maintenance_logic.get_all_categories(all_records)
+    sel_cats = st.multiselect("Filtra Categoria", all_cats, placeholder="Tutte...", label_visibility="collapsed")
+    
+    final_recs = maintenance_logic.filter_records_by_category(records_filtered, sel_cats)
+
+    if final_recs:
+        df = grids.build_maintenance_dataframe(final_recs)
+        st.dataframe(
+            df.drop(columns=["_obj"]), 
+            width="stretch", hide_index=True,
+            column_config={
+                "ID": None,
+                "Descrizione": st.column_config.TextColumn(width="medium"),
+                "Tipo": st.column_config.TextColumn(width="small")
+            }
+        )
+    else:
+        st.info("Nessun dato da visualizzare.")
+
+def _render_management_tab(db, all_records):
+    if not all_records:
+        st.info("Nessun dato nel database."); return
+
+    # Selezione Anno per Gestione (indipendente dal filtro top bar)
+    mgmt_years = maintenance_logic.get_available_years(all_records)
+    sel_year = st.selectbox("Anno Gestione", mgmt_years, index=0, key="mgmt_year_maint")
+    
+    recs_mgmt, _ = maintenance_logic.filter_records_by_year(all_records, sel_year)
+    
+    if not recs_mgmt:
+        st.warning("Nessun intervento in questo anno."); return
+
+    # Selezione Record
+    opts = {f"{r.date.strftime('%d/%m')} - {r.expense_type} (€ {r.cost:.0f})": r.id for r in recs_mgmt}
+    sel_label = st.selectbox("Seleziona Intervento", list(opts.keys()))
+    target_id = opts[sel_label] if sel_label else None
+    
+    # Pulsanti
+    c1, c2 = st.columns(2)
+    if c1.button("✏️ Modifica", width="stretch"):
+        st.session_state.active_operation = "edit"
+        st.session_state.selected_record_id = target_id
+        st.rerun()
+    if c2.button("🗑️ Elimina", type="primary", width="stretch"):
+        st.session_state.active_operation = "delete"
+        st.session_state.selected_record_id = target_id
+        st.rerun()
+
+    # Pannelli Edit/Delete
+    if st.session_state.active_operation and st.session_state.selected_record_id == target_id:
+        target_rec = next((r for r in all_records if r.id == target_id), None)
+        if target_rec:
+            st.divider()
+            if st.session_state.active_operation == "edit":
+                _handle_edit(db, target_rec)
+            elif st.session_state.active_operation == "delete":
+                _handle_delete(db, target_id, target_rec.expense_type)
+
+def _handle_edit(db, rec):
+    st.markdown(f"**Modifica:** {rec.date.strftime('%d/%m/%Y')}")
+    with st.form("edit_maint_form"):
+        # Reuse Form UI
+        d_edit = forms.render_maintenance_inputs(rec.date, rec.total_km, rec.expense_type, rec.cost, rec.description)
+        
+        if st.form_submit_button("Aggiorna", type="primary", width="stretch"):
+            changes = {
+                "date": d_edit['date'], "total_km": d_edit['km'], 
+                "expense_type": d_edit['type'], "cost": d_edit['cost'], 
+                "description": d_edit['desc']
+            }
+            crud.update_maintenance(db, rec.id, changes)
+            st.success("Aggiornato!")
+            st.session_state.active_operation = None
+            st.cache_data.clear()
+            st.rerun()
+            
+    if st.button("Annulla", width="stretch"):
+        st.session_state.active_operation = None; st.rerun()
+
+def _handle_delete(db, rec_id, rec_type):
+    st.error(f"Eliminare {rec_type}?")
+    c1, c2 = st.columns(2)
+    if c1.button("Sì, Elimina", type="primary", width="stretch"):
+        crud.delete_maintenance(db, rec_id)
+        st.success("Eliminato.")
+        st.session_state.active_operation = None
+        st.cache_data.clear()
+        st.rerun()
+    if c2.button("No", width="stretch"):
+        st.session_state.active_operation = None; st.rerun()
