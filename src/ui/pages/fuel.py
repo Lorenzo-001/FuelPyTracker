@@ -3,13 +3,14 @@ import pandas as pd
 from datetime import date
 from database.core import get_db
 from database import crud
-from ui.components import grids, kpi
-from services.calculations import calculate_stats
+from ui.components import grids, kpi, forms
+from services import fuel_logic
 
 def render():
+    """Vista Principale: Gestione Rifornimenti (Refactored)."""
     st.header("⛽ Gestione Rifornimenti")
     
-    # --- INIT STATE ---
+    # --- 1. Init Stato & DB ---
     if "active_operation" not in st.session_state:
         st.session_state.active_operation = None
     if "selected_record_id" not in st.session_state:
@@ -20,175 +21,159 @@ def render():
     last_record = crud.get_last_refueling(db)
     settings = crud.get_settings(db)
     
-    # Defaults
+    # Setup Defaults
     last_km = last_record.total_km if last_record else 0
     last_price = last_record.price_per_liter if last_record else 1.650
-
-    # Gestione Anni
     years = sorted(list(set(r.date.year for r in all_records)), reverse=True)
     if not years: years = [date.today().year]
-    try:
-        default_idx = years.index(date.today().year)
-    except ValueError:
-        default_idx = 0
 
-    # --- TOP BAR: SELETTORE ANNO ---
-    view_year = st.selectbox("📅 Visualizza Anno", years, index=default_idx, key="view_year_sel")
+    # --- 2. Top Bar & KPI ---
+    # Determina indice default in modo sicuro
+    def_idx = years.index(date.today().year) if date.today().year in years else 0
+    view_year = st.selectbox("📅 Visualizza Anno", years, index=def_idx, key="view_year_sel")
     
-    # --- DATA PREPARATION PER KPI ---
-    view_records = [r for r in all_records if r.date.year == view_year]
+    # Calcolo KPI (Delegato al service logic)
+    stats = fuel_logic.calculate_year_kpis(all_records, view_year)
     
-    # Aggregazione dati (Logica invariata)
-    total_liters = sum(r.liters for r in view_records)
-    total_cost = sum(r.total_cost for r in view_records)
-    avg_price = (total_cost / total_liters) if total_liters > 0 else 0.0
-    
-    km_est = 0
-    if len(view_records) > 1:
-        km_vals = [r.total_km for r in view_records]
-        km_est = max(km_vals) - min(km_vals)
-    
-    efficiencies = [
-        stats["km_per_liter"] 
-        for r in view_records 
-        if (stats := calculate_stats(r, all_records))["km_per_liter"]
-    ]
-    min_eff = min(efficiencies) if efficiencies else 0.0
-    max_eff = max(efficiencies) if efficiencies else 0.0
+    kpi.render_fuel_cards(
+        view_year, stats["total_cost"], stats["total_liters"], 
+        stats["km_est"], stats["avg_price"], stats["min_eff"], stats["max_eff"]
+    )
 
-    # --- RENDER KPI (Delegato al componente) ---
-    kpi.render_fuel_cards(view_year, total_cost, total_liters, km_est, avg_price, min_eff, max_eff)
-
-    # --- AREA INSERIMENTO (ADD) ---
+    # --- 3. Area Inserimento (ADD) ---
     range_val = settings.price_fluctuation_cents
     min_p, max_p = max(0.0, last_price - range_val), last_price + range_val
 
     with st.expander("➕ Registra Nuovo Rifornimento", expanded=False):
         st.caption(f"Range suggerito: {min_p:.3f} - {max_p:.3f} €/L")
         with st.form("fuel_form_add", clear_on_submit=True):
-            # Usiamo l'helper per generare i campi
-            data = _render_form_fields(date.today(), last_km, last_price, 0.0, True, "", min_p, max_p, settings.max_total_cost)
+            # Form delegato al componente UI
+            new_data = forms.render_refueling_inputs(
+                date.today(), last_km, last_price, 0.0, True, "", 
+                min_p, max_p, settings.max_total_cost
+            )
             
             if st.form_submit_button("Salva", type="primary", width="stretch"):
-                 _handle_submit(db, data, last_km)
+                is_valid, err_msg = fuel_logic.validate_refueling(new_data, last_km)
+                if not is_valid:
+                    st.error(err_msg)
+                else:
+                    try:
+                        liters = new_data['cost'] / new_data['price']
+                        crud.create_refueling(db, new_data['date'], new_data['km'], new_data['price'], 
+                                            new_data['cost'], liters, new_data['full'], new_data['notes'])
+                        st.success(f"✅ Salvato! ({liters:.2f} L)")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Errore DB: {e}")
 
     st.write("") 
 
-    # --- TABS: TABELLA & GESTIONE ---
+    # --- 4. Tabs: Storico & Gestione ---
     tab_list, tab_manage = st.tabs(["📋 Storico", "🛠️ Gestione"])
 
+    # TAB A: Lista
     with tab_list:
-        if all_records:
-            df = grids.build_fuel_dataframe(all_records)
-            df['Data'] = pd.to_datetime(df['Data'])
-            df_show = df[df['Data'].dt.year == view_year].copy()
-            df_show['Data'] = df_show['Data'].dt.strftime('%Y-%m-%d')
-            
-            if not df_show.empty:
-                st.dataframe(
-                    df_show.drop(columns=["_obj"]), 
-                    width="stretch", hide_index=True,
-                    column_config={
-                        "ID": None, "Pieno": st.column_config.TextColumn(width="small"),
-                        "Km/L": st.column_config.TextColumn(width="small"),
-                        "Descrizione": st.column_config.TextColumn(width="medium")
-                    }
-                )
-            else:
-                st.info(f"Nessun dato nel {view_year}.")
-        else:
-            st.info("Nessun dato.")
+        _render_history_tab(stats["view_records"], view_year)
 
+    # TAB B: Modifica/Elimina
     with tab_manage:
-        if all_records:
-            # Selezione record per edit/delete
-            mgmt_year = st.selectbox("Anno Gestione", years, index=default_idx, key="mgmt_year_sel")
-            recs_year = [r for r in all_records if r.date.year == mgmt_year]
-            
-            if recs_year:
-                opts = {f"{r.date.strftime('%d/%m')} - {r.total_km}km (€ {r.total_cost:.2f})": r.id for r in recs_year}
-                sel_label = st.selectbox("Seleziona Record", list(opts.keys()))
-                target_id = opts[sel_label] if sel_label else None
-                
-                c1, c2 = st.columns(2)
-                if c1.button("✏️ Modifica", width="stretch"):
-                    st.session_state.active_operation = "edit"
-                    st.session_state.selected_record_id = target_id
-                    st.rerun()
-                if c2.button("🗑️ Elimina", type="primary", width="stretch"):
-                    st.session_state.active_operation = "delete"
-                    st.session_state.selected_record_id = target_id
-                    st.rerun()
-                
-                # Pannelli dinamici Edit/Delete
-                if st.session_state.active_operation and st.session_state.selected_record_id == target_id:
-                    rec = next((r for r in all_records if r.id == target_id), None)
-                    if rec:
-                        st.divider()
-                        if st.session_state.active_operation == "edit":
-                            st.markdown(f"**Modifica:** {rec.date}")
-                            with st.form("fuel_form_edit"):
-                                # Riutilizzo l'helper pre-compilando i campi con i dati del record
-                                min_pe, max_pe = max(0.0, rec.price_per_liter-0.5), rec.price_per_liter+0.5
-                                data_edit = _render_form_fields(rec.date, rec.total_km, rec.price_per_liter, rec.total_cost, rec.is_full_tank, rec.notes, min_pe, max_pe, settings.max_total_cost)
-                                
-                                if st.form_submit_button("Aggiorna", type="primary", width="stretch"):
-                                    # Update logic
-                                    new_liters = data_edit['cost'] / data_edit['price'] if data_edit['price'] > 0 else 0
-                                    changes = {
-                                        "date": data_edit['date'], "total_km": data_edit['km'], 
-                                        "price_per_liter": data_edit['price'], "total_cost": data_edit['cost'], 
-                                        "liters": new_liters, "is_full_tank": data_edit['full'], "notes": data_edit['notes']
-                                    }
-                                    crud.update_refueling(db, target_id, changes)
-                                    st.success("Aggiornato!"); st.session_state.active_operation = None; st.rerun()
-                                    
-                            if st.button("Annulla", width="stretch"):
-                                st.session_state.active_operation = None; st.rerun()
-
-                        elif st.session_state.active_operation == "delete":
-                            st.error("Eliminare definitivamente?")
-                            cd1, cd2 = st.columns(2)
-                            if cd1.button("Sì", type="primary", width="stretch"):
-                                crud.delete_refueling(db, target_id)
-                                st.success("Eliminato."); st.session_state.active_operation = None; st.rerun()
-                            if cd2.button("No", width="stretch"):
-                                st.session_state.active_operation = None; st.rerun()
-            else:
-                st.warning("Nessun record modificabile.")
+        _render_management_tab(db, all_records, years, def_idx, settings)
     
     db.close()
 
-# --- HELPER FUNCTIONS (Internal) ---
+# --- Helper Functions Locali (per pulizia render principale) ---
 
-def _render_form_fields(def_date, def_km, def_price, def_cost, def_full, def_notes, min_p, max_p, max_cost):
-    """Genera i campi standard del form per evitare duplicazioni di codice UI"""
-    c1, c2 = st.columns(2)
-    d_date = c1.date_input("Data", value=def_date)
-    d_km = c1.number_input("Odometro", value=def_km, step=1, format="%d")
-    d_price = c2.slider("Prezzo €/L", float(f"{min_p:.3f}"), float(f"{max_p:.3f}"), float(f"{def_price:.3f}"), 0.001, format="%.3f")
-    d_cost = c2.number_input("Totale €", 0.0, float(max_cost), float(f"{def_cost:.2f}"), 0.01, format="%.2f")
-    d_full = st.checkbox("Pieno Completato?", value=def_full)
-    d_notes = st.text_area("Note", value=def_notes, height=80)
+def _render_history_tab(records, year):
+    if not records:
+        st.info(f"Nessun dato nel {year}.")
+        return
+
+    df = grids.build_fuel_dataframe(records)
+    # Formattazione per visualizzazione
+    df['Data'] = pd.to_datetime(df['Data'])
+    df_show = df.copy()
+    df_show['Data'] = df_show['Data'].dt.strftime('%Y-%m-%d')
     
-    return {
-        "date": d_date, "km": d_km, "price": d_price, 
-        "cost": d_cost, "full": d_full, "notes": d_notes
-    }
+    st.dataframe(
+        df_show.drop(columns=["_obj"]), 
+        width="stretch", hide_index=True,
+        column_config={
+            "ID": None, 
+            "Pieno": st.column_config.TextColumn(width="small"),
+            "Km/L": st.column_config.TextColumn(width="small"),
+            "Descrizione": st.column_config.TextColumn(width="medium")
+        }
+    )
 
-def _handle_submit(db, data, last_km):
-    """Gestisce il salvataggio di un NUOVO record"""
-    if data['date'] >= date.today() and data['km'] < last_km:
-        st.error(f"⛔ Errore Km: impossibile inserire {data['km']} se ultimo era {last_km}.")
+def _render_management_tab(db, all_records, years, def_idx, settings):
+    if not all_records:
+        st.info("Nessun dato modificabile.")
         return
-    if data['price'] <= 0 or data['cost'] <= 0:
-        st.error("Valori non validi.")
+
+    # Selezione Record
+    mgmt_year = st.selectbox("Anno Gestione", years, index=def_idx, key="mgmt_year_sel")
+    recs_year = [r for r in all_records if r.date.year == mgmt_year]
+    
+    if not recs_year:
+        st.warning("Nessun record in questo anno.")
         return
-    try:
-        liters = data['cost'] / data['price']
-        crud.create_refueling(db, data['date'], data['km'], data['price'], data['cost'], liters, data['full'], data['notes'])
-        st.success(f"✅ Salvato! ({liters:.2f} L)")
-        st.cache_data.clear()
+
+    opts = {f"{r.date.strftime('%d/%m')} - {r.total_km}km (€ {r.total_cost:.2f})": r.id for r in recs_year}
+    sel_label = st.selectbox("Seleziona Record", list(opts.keys()))
+    target_id = opts[sel_label] if sel_label else None
+    
+    # Pulsanti Azione
+    c1, c2 = st.columns(2)
+    if c1.button("✏️ Modifica", width="stretch"):
+        st.session_state.active_operation = "edit"
+        st.session_state.selected_record_id = target_id
         st.rerun()
-    except Exception as e:
-        st.error(f"Errore DB: {e}")
+    if c2.button("🗑️ Elimina", type="primary", width="stretch"):
+        st.session_state.active_operation = "delete"
+        st.session_state.selected_record_id = target_id
+        st.rerun()
+    
+    # Gestione Pannelli Operativi
+    if st.session_state.active_operation and st.session_state.selected_record_id == target_id:
+        target_rec = next((r for r in all_records if r.id == target_id), None)
+        if target_rec:
+            st.divider()
+            if st.session_state.active_operation == "edit":
+                _handle_edit_flow(db, target_rec, settings)
+            elif st.session_state.active_operation == "delete":
+                _handle_delete_flow(db, target_id)
+
+def _handle_edit_flow(db, rec, settings):
+    st.markdown(f"**Modifica Record:** {rec.date}")
+    with st.form("fuel_form_edit"):
+        min_pe, max_pe = max(0.0, rec.price_per_liter-0.5), rec.price_per_liter+0.5
+        
+        # Riutilizzo componente UI form
+        edit_data = forms.render_refueling_inputs(
+            rec.date, rec.total_km, rec.price_per_liter, rec.total_cost, 
+            rec.is_full_tank, rec.notes, min_pe, max_pe, settings.max_total_cost
+        )
+        
+        if st.form_submit_button("Aggiorna", type="primary", width="stretch"):
+            # Nota: In edit non controlliamo "last_km" stretto come in insert per flessibilità
+            new_liters = edit_data['cost'] / edit_data['price'] if edit_data['price'] > 0 else 0
+            changes = {
+                "date": edit_data['date'], "total_km": edit_data['km'], 
+                "price_per_liter": edit_data['price'], "total_cost": edit_data['cost'], 
+                "liters": new_liters, "is_full_tank": edit_data['full'], "notes": edit_data['notes']
+            }
+            crud.update_refueling(db, rec.id, changes)
+            st.success("Record aggiornato!"); st.session_state.active_operation = None; st.rerun()
+            
+    if st.button("Annulla", width="stretch"):
+        st.session_state.active_operation = None; st.rerun()
+
+def _handle_delete_flow(db, record_id):
+    st.error("Sei sicuro di voler eliminare definitivamente questo record?")
+    cd1, cd2 = st.columns(2)
+    if cd1.button("Sì, Elimina", type="primary", width="stretch"):
+        crud.delete_refueling(db, record_id)
+        st.success("Eliminato."); st.session_state.active_operation = None; st.rerun()
+    if cd2.button("No, Annulla", width="stretch"):
+        st.session_state.active_operation = None; st.rerun()

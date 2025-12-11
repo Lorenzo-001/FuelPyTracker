@@ -27,25 +27,30 @@ def parse_upload_file(db: Session, uploaded_file) -> tuple[pd.DataFrame, str]:
         missing = required_cols - set(df.columns)
         return pd.DataFrame(), f"Colonne mancanti: {', '.join(missing)}"
 
-    # 3. Aggiunta colonne di servizio
+    # 3. Aggiunta colonne di servizio se mancano
     if 'litri' not in df.columns: df['litri'] = 0.0
     if 'pieno' not in df.columns: df['pieno'] = True
 
-    # 4. Standardizzazione nomi colonne
+    # 4. Standardizzazione nomi colonne per l'uso interno
     df = df.rename(columns={
         'data': 'data', 'km': 'km', 'prezzo': 'prezzo', 'costo': 'costo', 
         'litri': 'litri', 'pieno': 'pieno'
     })
 
+    # 5. Prima validazione massiva
     return revalidate_dataframe(db, df), None
 
 def revalidate_dataframe(db: Session, df: pd.DataFrame) -> pd.DataFrame:
     """
-    Prende un DataFrame, ricalcola Stato, Note e Rimuove righe 'Fantasma'.
+    Prende un DataFrame (anche sporco o modificato dall'utente) e ricalcola Stato e Note.
+    Ricalcola SEMPRE i Litri per mantenere coerenza matematica (L = C / P).
+    Rimuove le righe 'Fantasma' (aggiunte per sbaglio con valori nulli).
     """
+    # Recupero contesto dal DB
     last_record = crud.get_last_refueling(db)
     settings = crud.get_settings(db)
     
+    # Valori di riferimento
     last_db_km = last_record.total_km if last_record else 0
     last_db_date = last_record.date if last_record else date(2000, 1, 1)
     last_db_price = last_record.price_per_liter if last_record else 0.0
@@ -60,6 +65,7 @@ def revalidate_dataframe(db: Session, df: pd.DataFrame) -> pd.DataFrame:
         notes = []
         
         # --- A. PARSING & CHECK GHOST ---
+        # Cerchiamo la chiave sia minuscola (dal file) che Maiuscola (dal data_editor)
         raw_date = row.get('data') if 'data' in row else row.get('Data')
         
         # Recupero valori numerici grezzi per capire se la riga è vuota
@@ -89,6 +95,7 @@ def revalidate_dataframe(db: Session, df: pd.DataFrame) -> pd.DataFrame:
                 if isinstance(raw_date, (datetime, date)):
                     d_date = raw_date.date() if isinstance(raw_date, datetime) else raw_date
                 else:
+                    # Parsing stringa flessibile
                     found = False
                     for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
                         try:
@@ -100,10 +107,11 @@ def revalidate_dataframe(db: Session, df: pd.DataFrame) -> pd.DataFrame:
                         status = "Errore"
                         notes.append("Formato data invalido")
             
-            # NUMERI
+            # NUMERI (Helper per parsing sicuro)
             def parse_float(val):
                 if pd.isna(val): return 0.0
-                try: return float(str(val).replace(',', '.'))
+                try:
+                    return float(str(val).replace(',', '.'))
                 except: return 0.0
 
             def parse_int(val):
@@ -127,13 +135,13 @@ def revalidate_dataframe(db: Session, df: pd.DataFrame) -> pd.DataFrame:
             status = "Errore"
             notes.append(f"Errore tecnico: {str(e)}")
 
-        # --- C. LOGICA RICALCOLO ---
+        # --- C. LOGICA RICALCOLO (Coerenza Dati) ---
         if d_price > 0 and d_cost > 0:
             d_liters = d_cost / d_price
         
-        # --- D. VALIDAZIONI ---
+        # --- D. VALIDAZIONI LOGICHE ---
         if status != "Errore":
-            # Date
+            # Date Logic
             if d_date:
                 if d_date > date.today():
                     status = "Errore"
@@ -146,7 +154,7 @@ def revalidate_dataframe(db: Session, df: pd.DataFrame) -> pd.DataFrame:
                     notes.append("Duplicato nel file")
                 file_dates.add(d_date)
 
-            # Km
+            # Km Logic
             if d_km <= 0:
                 status = "Errore"
                 notes.append("Km <= 0")
@@ -154,23 +162,26 @@ def revalidate_dataframe(db: Session, df: pd.DataFrame) -> pd.DataFrame:
                 status = "Errore"
                 notes.append(f"Km incoerenti (Ultimo DB: {last_db_km})")
 
-            # Prezzi
+            # Prezzi Logic
             if d_price <= 0 or d_cost <= 0:
                 status = "Errore"
                 notes.append("Prezzo/Costo <= 0")
             else:
+                # C1. Check Massimale Spesa
                 if d_cost > settings.max_total_cost:
                     status = "Warning"
                     notes.append(f"Spesa > Max Config ({settings.max_total_cost}€)")
                 
+                # C2. Check Range Prezzo (vs Ultimo Record)
                 if last_db_price > 0:
                     min_p = max(0.0, last_db_price - settings.price_fluctuation_cents)
                     max_p = last_db_price + settings.price_fluctuation_cents
+                    
                     if not (min_p <= d_price <= max_p):
                         status = "Warning"
                         notes.append(f"Prezzo fuori range ({min_p:.3f}-{max_p:.3f})")
 
-        # --- E. Output ---
+        # --- E. Output Normalizzato ---
         processed_rows.append({
             "Stato": status,
             "Note": " | ".join(notes),
@@ -178,15 +189,17 @@ def revalidate_dataframe(db: Session, df: pd.DataFrame) -> pd.DataFrame:
             "Km": d_km,
             "Prezzo": d_price,
             "Costo": d_cost,
-            "Litri": round(d_liters, 2),
+            "Litri": round(d_liters, 2), # Litri ricalcolati e arrotondati
             "Pieno": d_full
         })
 
     return pd.DataFrame(processed_rows)
 
 def save_single_row(db: Session, row):
+    """Salva una riga nel DB. Presuppone che i dati siano già validati."""
     if row['Stato'] == "Errore":
         return
+
     try:
         crud.create_refueling(
             db, 

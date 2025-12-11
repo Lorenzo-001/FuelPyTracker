@@ -1,18 +1,26 @@
 import pandas as pd
 from services.calculations import calculate_stats
 
+# ==========================================
+# SEZIONE: RIFORNIMENTI (Fuel Grid)
+# ==========================================
+
 def build_fuel_dataframe(records: list) -> pd.DataFrame:
     """
-    1. Trasforma i record ORM in un DataFrame Pandas per la UI.
-    2. Arricchisce i dati con calcoli (Delta Km, Km/L).
+    Costruisce il DataFrame per la visualizzazione dello storico rifornimenti.
+    
+    Logica applicata:
+    1. Calcolo metriche puntuali (Delta Km, Km/L) tramite service dedicato.
+    2. Formattazione visuale (es. aggiunta simboli, decimali).
+    3. Mantenimento oggetto originale (_obj) per operazioni CRUD.
     """
     data_list = []
     
     for r in records:
-        # Calcolo metriche puntuali
+        # Calcolo metriche avanzate (es. Full-to-Full)
         stats = calculate_stats(r, records)
         
-        # Formattazione condizionale
+        # Formattazione Dati
         kml_str = f"{stats['km_per_liter']:.2f}" if stats['km_per_liter'] else "-"
         delta_str = f"+{stats['delta_km']}" if stats['delta_km'] > 0 else "-"
         
@@ -26,17 +34,23 @@ def build_fuel_dataframe(records: list) -> pd.DataFrame:
             "Litri": f"{r.liters:.2f}",
             "Km/L": kml_str,
             "Pieno": "✅" if r.is_full_tank else "❌",
-            "_obj": r  # Riferimento interno nascosto
+            "_obj": r  # Hidden object per logica interna
         })
         
     return pd.DataFrame(data_list)
 
+
+# ==========================================
+# SEZIONE: MANUTENZIONE (Maintenance Grid)
+# ==========================================
+
 def build_maintenance_dataframe(records: list) -> pd.DataFrame:
     """
-    Formatta lo storico manutenzioni aggiungendo icone visive per categoria.
+    Costruisce il DataFrame per lo storico manutenzioni.
+    Include la logica di mappatura icone per categoria.
     """
-    # Mappa icone per categoria
-    icons = {
+    # Mappa Icone Categoria
+    ICONS_MAP = {
         "Tagliando": "🛠️",
         "Gomme": "🛞",
         "Batteria": "🔋",
@@ -48,12 +62,12 @@ def build_maintenance_dataframe(records: list) -> pd.DataFrame:
 
     data_list = []
     for r in records:
-        icon = icons.get(r.expense_type, "⚙️")
+        icon = ICONS_MAP.get(r.expense_type, "⚙️")
         
         data_list.append({
             "ID": r.id,
             "Data": r.date,
-            "Tipo": f"{icon} {r.expense_type}", # Aggiunge icona al testo
+            "Tipo": f"{icon} {r.expense_type}", 
             "Km": r.total_km,
             "Costo (€)": f"{r.cost:.2f}",
             "Descrizione": r.description if r.description else "-",

@@ -71,9 +71,9 @@ def _render_import_tab():
 
     st.markdown("""
     > **Workflow Importazione Sicura:**
-    > 1. **Carica** il file Excel/CSV.
-    > 2. **Correggi** eventuali errori segnalati direttamente nella tabella.
-    > 3. Premi **'🔄 Rivalida Dati'** per confermare le correzioni.
+    > 1. **Carica** il file Excel.
+    > 2. **Correggi o Elimina** eventuali errori segnalati direttamente nella tabella.
+    > 3. Premi **'🔄 Rivalida Dati'** per aggiornare lo stato e rimuovere righe vuote.
     > 4. Quando non ci sono errori bloccanti, il pulsante **Conferma** si attiverà, permettendo l'importazione.
     """)
 
@@ -98,7 +98,7 @@ def _render_import_tab():
             else:
                 st.session_state.import_df = raw_df
 
-    # Se c'è un DataFrame in memoria (Staging)
+    # Se c'è un DataFrame in memoria
     if st.session_state.import_df is not None:
         df = st.session_state.import_df
         
@@ -112,16 +112,14 @@ def _render_import_tab():
         c2.metric("Errori Bloccanti", n_err, delta_color="inverse")
         c3.metric("Avvisi", n_warn, delta_color="normal")
 
-        # Pulsante Rivalida (Sopra la tabella per essere visibile)
+        # Pulsante Rivalida
         if st.button("🔄 Rivalida Dati Modificati", type="secondary", width="stretch"):
             db = next(get_db())
-            # Ricalcola stati basandosi sui dati attuali nel session_state
-            # (che sono aggiornati automaticamente dall'editor)
             st.session_state.import_df = importers.revalidate_dataframe(db, st.session_state.import_df)
             db.close()
             st.rerun()
 
-        # Tabella Editabile
+        # Tabella Editabile con DYNAMIC (Permette Delete)
         edited_df = st.data_editor(
             st.session_state.import_df,
             num_rows="dynamic", # Permette di CANCELLARE righe
@@ -132,7 +130,7 @@ def _render_import_tab():
                     "Stato", 
                     width="small",
                     help="OK = Pronto | Warning = Attenzione | Errore = Bloccante",
-                    validate="^(OK|Warning)$" # Evidenzia in rosso se non matcha (es. Errore)
+                    validate="^(OK|Warning)$"
                 ),
                 "Note": st.column_config.TextColumn("Problemi Rilevati", width="large", disabled=True),
                 "Data": st.column_config.DateColumn("Data", format="DD/MM/YYYY"),
@@ -144,17 +142,16 @@ def _render_import_tab():
             key="editor_import_key"
         )
         
-        # Sincronizzazione: Se l'utente tocca la tabella, aggiorniamo lo stato
         if not edited_df.equals(st.session_state.import_df):
             st.session_state.import_df = edited_df
 
         st.divider()
 
-        # Pulsante Conferma (Logica Bloccante)
+        # Pulsante Conferma
         btn_disabled = n_err > 0
         btn_label = f"🚫 Correggi {n_err} errori per proseguire" if btn_disabled else "🚀 Conferma e Scrivi nel Database"
         
-        if st.button(btn_label, type="primary", disabled=btn_disabled, width="stretch"):
+        if st.button(btn_label, type="primary", disabled=btn_disabled, use_container_width=True):
             db = next(get_db())
             bar = st.progress(0)
             try:
