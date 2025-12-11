@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-from database.core import get_db
-from database import crud
-from ui.components import grids, kpi, forms
-from services import fuel_logic
+from src.database.core import get_db
+from src.database import crud
+from src.ui.components import grids, kpi, forms
+from src.services import fuel_logic
 
 def render():
     """Vista Principale: Gestione Rifornimenti (Refactored)."""

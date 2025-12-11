@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
-from database.core import get_db
-from database import crud
-from services import importers
+from src.database.core import get_db
+from src.database import crud
+from src.services import importers
 
 def render():
     st.header("⚙️ Gestione Dati e Configurazioni")
