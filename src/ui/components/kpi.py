@@ -20,12 +20,18 @@ def render_dashboard_last_record(dati: dict):
             flex: 1 1 45%; /* 2 colonne su mobile */
             text-align: center; border: 1px solid #e0e0e0;
         }
-        .db-kpi-label { font-size: 0.8rem; color: #555; margin-bottom: 2px; }
-        .db-kpi-value { font-size: 1.1rem; font-weight: 600; color: #000; }
+
+        .db-kpi-label { 
+            font-size: 1rem; 
+            font-weight: 600; 
+            color: #444; 
+            margin-bottom: 2px; 
+        }
+        .db-kpi-value { font-size: 1.1rem; font-weight: 800; color: #000; }
         
         @media (prefers-color-scheme: dark) {
             .db-kpi-card { background-color: #262730; border-color: #444; }
-            .db-kpi-label { color: #aaa; }
+            .db-kpi-label { color: #ccc; } /* Più chiaro in dark mode */
             .db-kpi-value { color: #fff; }
         }
     </style>
@@ -90,15 +96,21 @@ def render_fuel_cards(year, cost, liters, km_est, avg_price, min_eff, max_eff):
                 justify-content: center; align-items: center; text-align: center;
                 box-shadow: 0 1px 3px rgba(0,0,0,0.1); white-space: nowrap;
             }
-            .kpi-label { font-size: 0.75rem; color: #666; margin-bottom: 2px; }
-            .kpi-value { font-size: clamp(0.9rem, 2vw, 1.1rem); font-weight: 600; color: #333; }
+            
+            .kpi-label { 
+                font-size: 1rem; 
+                font-weight: 800; 
+                color: #444; 
+                margin-bottom: 2px; 
+            }
+            .kpi-value { font-size: clamp(0.9rem, 2vw, 1.1rem); font-weight: 700; color: #333; }
             
             /* Dark Mode Overrides */
             @media (prefers-color-scheme: dark) {
                 .big-card-compact { background-color: #262730; border: 1px solid #444; color: #FFF; }
                 .big-card-title { color: #FFF; }
                 .kpi-card-compact { background-color: #262730; border: 1px solid #444; }
-                .kpi-label { color: #aaa; }
+                .kpi-label { color: #ccc; }
                 .kpi-value { color: #fff; }
             }
         </style>
@@ -109,9 +121,9 @@ def render_fuel_cards(year, cost, liters, km_est, avg_price, min_eff, max_eff):
         <div class="kpi-container-wrapper">
             <div class="kpi-main-section">
                 <div class="big-card-compact">
-                    <p style="margin:0; font-size: 14px; opacity: 0.8;">💰 Spesa Totale {year}</p>
+                    <p style="margin:0; font-size: 1rem; opacity: 0.9; font-weight: 600;">💰 Spesa Totale {year}</p>
                     <h2 class="big-card-title">{cost:.2f} €</h2>
-                    <p style="margin:0; font-size: 13px; opacity: 0.7;">⛽ <b>{liters:.1f}</b> Litri</p>
+                    <p style="margin:0; font-size: 1rem; opacity: 0.8;">⛽ <b>{liters:.1f}</b> Litri</p>
                 </div>
             </div>
             
@@ -167,7 +179,10 @@ def render_maintenance_card(cost, year_label):
             }
 
             .maint-label-grad {
-                font-size: 0.85rem; font-weight: 600; color: #444; margin: 0;
+                font-size: 0.9rem; /* Leggermente aumentato */
+                font-weight: 700; /* Più bold */
+                color: #333; 
+                margin: 0;
             }
 
             .maint-value-grad {

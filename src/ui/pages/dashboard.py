@@ -36,8 +36,16 @@ def render():
 
     # 3. Header e Info
     st.title("📊 Dashboard")
-    with st.expander("ℹ️ Guida Rapida", expanded=False):
-        st.markdown("Visualizza l'andamento dei costi, l'efficienza del veicolo e lo storico delle spese.")
+    with st.expander("ℹ️ Guida Rapida e Funzionalità", expanded=False):
+        st.markdown("""
+        **Benvenuto in FuelPyTracker!** Ecco come ottenere il massimo dalla tua app:
+        
+        * **⛽ Rifornimenti:** Registra ogni sosta alla pompa. Per calcolare i consumi reali (**Km/L**), è fondamentale segnare correttamente quando fai il **Pieno**.
+        * **🔧 Manutenzione:** Tieni traccia di Tagliandi, Gomme e Scadenze (Bollo/Revisione).
+        * **⚙️ Configurazione:** Dalle Impostazioni puoi importare il tuo storico Excel e tarare gli avvisi di spesa.
+        
+        *I grafici qui sotto si aggiorneranno automaticamente in base ai tuoi inserimenti.*
+        """)
 
     # 4. KPI Ultimo Rifornimento (Delegato a component)
     last_record = df.iloc[-1]

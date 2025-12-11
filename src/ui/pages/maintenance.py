@@ -82,7 +82,7 @@ def _render_add_form(db):
             data = forms.render_maintenance_inputs(date.today(), last_km, "Tagliando", 0.0, "")
             
             if st.form_submit_button("Salva Intervento", type="primary", width="stretch"):
-                if data['cost'] > 0:
+                if data['cost'] >= 0:
                     crud.create_maintenance(db, data['date'], data['km'], data['type'], data['cost'], data['desc'])
                     st.success("✅ Salvato!")
                     st.session_state.show_add_form = False

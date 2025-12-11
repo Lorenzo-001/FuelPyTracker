@@ -49,7 +49,7 @@ def build_spending_bar_chart(df: pd.DataFrame) -> go.Figure:
     """Genera il grafico a barre per la spesa mensile."""
     # Resampling Mensile
     # Nota: usiamo .copy() per non modificare il df originale
-    monthly = df.copy().set_index("Data")[["Costo"]].resample("ME").sum().reset_index()
+    monthly = df.copy().set_index("Data")[["Costo"]].resample("M").sum().reset_index()
     monthly["MeseStr"] = monthly["Data"].dt.strftime('%b %y')
     
     fig = px.bar(
