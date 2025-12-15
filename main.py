@@ -4,10 +4,9 @@ import streamlit as st
 
 # 1. Configurazione Path Assoluti
 # Aggiunge la cartella corrente (src) al path per permettere import diretti (es. 'from database...')
-sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-
-from database.core import init_db
-from ui.pages import dashboard, fuel, maintenance, settings
+sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
+from src.database.core import init_db
+from src.ui.pages import dashboard, fuel, maintenance, settings
 
 @st.cache_resource
 def initialize_app():

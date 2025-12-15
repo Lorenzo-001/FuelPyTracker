@@ -3,4 +3,6 @@ pandas
 matplotlib
 sqlalchemy
 pytest
+plotly
+openpyxl
 psycopg2-binary

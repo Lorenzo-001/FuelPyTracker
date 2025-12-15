@@ -1,14 +1,14 @@
 import streamlit as st
 import pandas as pd
-from database.core import get_db
-from database import crud
-from services.calculations import calculate_stats, check_partial_accumulation
-from services import analysis
-from ui.components import kpi, charts
+from src.database.core import get_db
+from src.database import crud
+from src.services.calculations import calculate_stats, check_partial_accumulation
+from src.services import analysis
+from src.ui.components import kpi, charts
 
 def render():
     """Vista Dashboard: Analisi Dati e Trend (Refactored)."""
-    
+
     # 1. Recupero Dati
     db = next(get_db())
     records = crud.get_all_refuelings(db)

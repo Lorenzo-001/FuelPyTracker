@@ -1,7 +1,9 @@
 .venv/
 venv/
-.vscode/
 __pycache__/
-*.db
+*.pyc
+.DS_Store
+.env
+data/*.db
 .streamlit/secrets.toml
 !.streamlit/config.toml
