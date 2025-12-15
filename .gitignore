@@ -3,3 +3,5 @@ venv/
 .vscode/
 __pycache__/
 *.db
+.streamlit/secrets.toml
+!.streamlit/config.toml
