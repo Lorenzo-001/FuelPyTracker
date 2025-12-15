@@ -2,31 +2,50 @@ import sys
 import os
 import random
 from datetime import date, timedelta
-
-# Fix Path per vedere i moduli src
+from sqlalchemy import text
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 from database.core import init_db, SessionLocal
 from database import crud
+from database.models import Refueling, Maintenance
+
+def clean_database(db):
+    """Svuota le tabelle per ripartire da zero (senza dropparle)."""
+    print("🧹 Pulizia dati esistenti...")
+    try:
+        # Cancelliamo prima le manutenzioni e poi i rifornimenti
+        db.query(Maintenance).delete()
+        db.query(Refueling).delete()
+        db.commit()
+        print("✅ Tabelle svuotate.")
+    except Exception as e:
+        print(f"⚠️ Errore pulizia (potrebbe essere il primo avvio): {e}")
+        db.rollback()
 
 def seed():
-    print("🌱 Inizio popolamento database (Rifornimenti + Manutenzione)...")
+    print("🌱 Inizio popolamento database su Supabase...")
     
-    # 1. Ricrea DB pulito
-    db = SessionLocal()
-    init_db() 
+    # 2. Connessione e Init
+    # Nota: Richiede che .streamlit/secrets.toml esista e sia corretto
+    try:
+        init_db() 
+        db = SessionLocal()
+    except Exception as e:
+        print(f"❌ Errore connessione DB. Sei nella root del progetto? Hai i secrets? \nErrore: {e}")
+        return
+
+    # 3. Pulizia preliminare (Opzionale, commenta se vuoi solo aggiungere)
+    clean_database(db)
     
-    # 2. Configurazione Iniziale
-    start_date = date(2020, 1, 1) # Partiamo un po' prima per avere più storico
-    current_km = 45000            # Km iniziali dell'auto
-    base_price = 1.450            # Prezzo benzina nel 2020
+    # 4. Configurazione Generatore
+    start_date = date(2020, 1, 1) 
+    current_km = 45000            
+    base_price = 1.450            
     
-    # Variabili di stato per le manutenzioni
-    last_service_km = current_km  # Ultimo tagliando
-    last_tires_km = current_km    # Ultimo cambio gomme
-    last_tax_year = start_date.year - 1 # Ultimo bollo pagato
+    last_service_km = current_km  
+    last_tires_km = current_km    
+    last_tax_year = start_date.year - 1 
     
-    print("Generazione eventi dal 2020 a oggi...")
+    print("🚀 Generazione eventi dal 2020 a oggi...")
     
     fuel_count = 0
     maint_count = 0

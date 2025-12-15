@@ -1,40 +1,36 @@
-import os
+import streamlit as st
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from database.models import Base
 
-# 1. Setup dei percorsi (Paths)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DB_DIR = os.path.join(BASE_DIR, "data")
-DB_PATH = os.path.join(DB_DIR, "tracker.db")
+# 1. Recupero URL Database
+# Proviamo a prenderlo dai secrets di Streamlit (funziona sia in locale che in cloud)
+try:
+    DATABASE_URL = st.secrets["database"]["url"]
+except Exception:
+    # Fallback per evitare crash se non configurato (opzionale, utile per debug)
+    st.error("❌ Errore: 'database.url' non trovato nei secrets (.streamlit/secrets.toml).")
+    st.stop()
 
-# Creiamo la cartella 'data' se non esiste
-os.makedirs(DB_DIR, exist_ok=True)
-
-# 2. Configurazione URL Database (SQLite)
-DATABASE_URL = f"sqlite:///{DB_PATH}"
-
-# 3. Creazione Engine
-# check_same_thread=False è necessario per SQLite quando usato con Streamlit
+# 2. Configurazione Engine
+# Nota: PostgreSQL NON supporta 'check_same_thread', quindi lo togliamo.
+# Se usi Supabase Transaction Pooler (porta 6543), aggiungiamo 'pool_pre_ping' per stabilità.
 engine = create_engine(
-    DATABASE_URL, connect_args={"check_same_thread": False}
+    DATABASE_URL
 )
 
-# 4. Session Factory
-# Questa classe serve a creare nuove connessioni al DB quando servono
+# 3. Session Factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Crea le tabelle nel database basandosi sui modelli definiti in models.py.
 def init_db():
-    print(f"Initializing database at: {DB_PATH}")
+    """Crea le tabelle nel database remoto se non esistono."""
+    # SQLAlchemy controlla automaticamente se le tabelle esistono prima di crearle
     Base.metadata.create_all(bind=engine)
-    print("Database tables created successfully!")
-
+    print("✅ Database tables checked/created on Cloud!")
 
 def get_db():
     """
     Dependency injection per gestire la sessione del database.
-    Apre la sessione e garantisce che venga chiusa anche in caso di errori.
     """
     db = SessionLocal()
     try:
