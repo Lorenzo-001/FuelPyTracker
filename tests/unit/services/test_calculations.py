@@ -1,6 +1,6 @@
 from datetime import date
-from database.models import Refueling
-from services.calculations import calculate_stats
+from src.database.models import Refueling
+from src.services.calculations import calculate_stats
 
 def test_simple_consumption():
     """Scenario Standard: Due pieni completi consecutivi."""

@@ -10,9 +10,10 @@ def render():
     """Vista Dashboard: Analisi Dati e Trend (Refactored)."""
 
     # 1. Recupero Dati
+    user = st.session_state["user"]
     db = next(get_db())
-    records = crud.get_all_refuelings(db)
-    settings = crud.get_settings(db)
+    records = crud.get_all_refuelings(db, user.id)
+    settings = crud.get_settings(db, user.id)
     db.close()
 
     if not records:

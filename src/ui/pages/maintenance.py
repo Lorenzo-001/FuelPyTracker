@@ -6,14 +6,15 @@ from src.ui.components import grids, kpi, forms
 from src.services import maintenance_logic
 
 def render():
-    """Vista Principale: Registro Manutenzioni (Refactored)."""
+    """Vista Principale: Registro Manutenzioni (Refactored & Multi-Tenant)."""
     st.header("🔧 Registro Manutenzioni")
     
     # --- 1. Init Stato & DB ---
     _init_session_state()
-    
+    user = st.session_state["user"]
+
     db = next(get_db())
-    records = crud.get_all_maintenances(db)
+    records = crud.get_all_maintenances(db, user.id)
     
     # --- 2. Top Bar & Filtri Globali ---
     # Logica recupero anni
@@ -42,7 +43,7 @@ def render():
 
     # --- 3. Area Inserimento (Add Form) ---
     if st.session_state.show_add_form:
-        _render_add_form(db)
+        _render_add_form(db, user)
 
     st.write("") # Spacer
 
@@ -53,7 +54,7 @@ def render():
         _render_history_tab(recs_filtered, records) # Passiamo records originali per le categorie
 
     with tab_mgmt:
-        _render_management_tab(db, records) # Qui serve tutto lo storico per permettere modifiche su altri anni
+        _render_management_tab(db, user, records) # Qui serve tutto lo storico per permettere modifiche su altri anni
 
     db.close()
 
@@ -73,17 +74,20 @@ def _render_add_button():
         st.session_state.show_add_form = not st.session_state.show_add_form
         st.rerun()
 
-def _render_add_form(db):
+def _render_add_form(db, user):
     with st.container(border=True):
         st.markdown("##### ✨ Nuovo Intervento")
         with st.form("new_maint_form", clear_on_submit=True):
-            last_km = crud.get_max_km(db)
+            last_km = crud.get_max_km(db, user.id) # user.id
             # Form delegato a ui/forms.py
             data = forms.render_maintenance_inputs(date.today(), last_km, "Tagliando", 0.0, "")
             
             if st.form_submit_button("Salva Intervento", type="primary", width="stretch"):
                 if data['cost'] >= 0:
-                    crud.create_maintenance(db, data['date'], data['km'], data['type'], data['cost'], data['desc'])
+                    crud.create_maintenance(
+                        db, user.id,
+                        data['date'], data['km'], data['type'], data['cost'], data['desc']
+                    )
                     st.success("✅ Salvato!")
                     st.session_state.show_add_form = False
                     st.cache_data.clear()
@@ -112,7 +116,7 @@ def _render_history_tab(records_filtered, all_records):
     else:
         st.info("Nessun dato da visualizzare.")
 
-def _render_management_tab(db, all_records):
+def _render_management_tab(db, user, all_records):
     if not all_records:
         st.info("Nessun dato nel database."); return
 
@@ -147,11 +151,11 @@ def _render_management_tab(db, all_records):
         if target_rec:
             st.divider()
             if st.session_state.active_operation == "edit":
-                _handle_edit(db, target_rec)
+                _handle_edit(db, user.id, target_rec)
             elif st.session_state.active_operation == "delete":
-                _handle_delete(db, target_id, target_rec.expense_type)
+                _handle_delete(db, user.id, target_id, target_rec.expense_type)
 
-def _handle_edit(db, rec):
+def _handle_edit(db, user_id, rec):
     st.markdown(f"**Modifica:** {rec.date.strftime('%d/%m/%Y')}")
     with st.form("edit_maint_form"):
         # Reuse Form UI
@@ -163,7 +167,7 @@ def _handle_edit(db, rec):
                 "expense_type": d_edit['type'], "cost": d_edit['cost'], 
                 "description": d_edit['desc']
             }
-            crud.update_maintenance(db, rec.id, changes)
+            crud.update_maintenance(db, user_id, rec.id, changes)
             st.success("Aggiornato!")
             st.session_state.active_operation = None
             st.cache_data.clear()
@@ -172,11 +176,11 @@ def _handle_edit(db, rec):
     if st.button("Annulla", width="stretch"):
         st.session_state.active_operation = None; st.rerun()
 
-def _handle_delete(db, rec_id, rec_type):
+def _handle_delete(db, user_id, rec_id, rec_type):
     st.error(f"Eliminare {rec_type}?")
     c1, c2 = st.columns(2)
     if c1.button("Sì, Elimina", type="primary", width="stretch"):
-        crud.delete_maintenance(db, rec_id)
+        crud.delete_maintenance(db, user_id, rec_id)
         st.success("Eliminato.")
         st.session_state.active_operation = None
         st.cache_data.clear()

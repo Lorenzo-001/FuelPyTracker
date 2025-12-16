@@ -7,18 +7,22 @@ from src.services import importers
 def render():
     st.header("⚙️ Gestione Dati e Configurazioni")
     
+    # Recupero utente
+    user = st.session_state["user"]
+
     tab_config, tab_import = st.tabs(["🔧 Configurazioni", "📥 Import Massivo"])
 
     with tab_config:
-        _render_config_tab()
+        _render_config_tab(user)
 
     with tab_import:
-        _render_import_tab()
+        st.warning("🚧 Funzione Import Massivo in manutenzione per upgrade V2 (Multi-Tenant).")
+        # _render_import_tab(user) # Disabilitato temporaneamente
 
-def _render_config_tab():
-    """Gestisce i parametri globali dell'app."""
+def _render_config_tab(user):
+    """Gestisce i parametri globali dell'app per l'utente specifico."""
     db = next(get_db())
-    settings = crud.get_settings(db)
+    settings = crud.get_settings(db, user.id)
     
     st.subheader("Parametri Inserimento & Sicurezza")
     
@@ -61,12 +65,13 @@ def _render_config_tab():
         st.write("")
         
         if st.form_submit_button("💾 Salva Configurazioni", type="primary", width="stretch"):
-            crud.update_settings(db, new_range, new_max, new_alert_threshold)
+            crud.update_settings(db, user.id, new_range, new_max, new_alert_threshold)
             st.success("✅ Configurazioni aggiornate!")
     
     db.close()
 
-def _render_import_tab():
+# def _render_import_tab(user):
+	#TODO:(Codice disabilitato in attesa di refactoring Importers)
     st.subheader("Caricamento Storico Esterno")
 
     st.markdown("""

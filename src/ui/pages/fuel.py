@@ -11,15 +11,18 @@ def render():
     st.header("⛽ Gestione Rifornimenti")
     
     # --- 1. Init Stato & DB ---
+    # Get utente (Salvato in main.py dopo il login)
+    user = st.session_state["user"]
+
     if "active_operation" not in st.session_state:
         st.session_state.active_operation = None
     if "selected_record_id" not in st.session_state:
         st.session_state.selected_record_id = None
 
     db = next(get_db())
-    all_records = crud.get_all_refuelings(db)
-    last_record = crud.get_last_refueling(db)
-    settings = crud.get_settings(db)
+    all_records = crud.get_all_refuelings(db, user.id)
+    last_record = crud.get_last_refueling(db, user.id)
+    settings = crud.get_settings(db, user.id)
     
     # Setup Defaults
     last_km = last_record.total_km if last_record else 0
@@ -60,7 +63,7 @@ def render():
                 else:
                     try:
                         liters = new_data['cost'] / new_data['price']
-                        crud.create_refueling(db, new_data['date'], new_data['km'], new_data['price'], 
+                        crud.create_refueling(db, user.id, new_data['date'], new_data['km'], new_data['price'], 
                                             new_data['cost'], liters, new_data['full'], new_data['notes'])
                         st.success(f"✅ Salvato! ({liters:.2f} L)")
                         st.rerun()
@@ -78,7 +81,7 @@ def render():
 
     # TAB B: Modifica/Elimina
     with tab_manage:
-        _render_management_tab(db, all_records, years, def_idx, settings)
+        _render_management_tab(db, user, all_records, years, def_idx, settings)
     
     db.close()
 
@@ -106,7 +109,7 @@ def _render_history_tab(records, year):
         }
     )
 
-def _render_management_tab(db, all_records, years, def_idx, settings):
+def _render_management_tab(db, user, all_records, years, def_idx, settings):
     if not all_records:
         st.info("Nessun dato modificabile.")
         return
@@ -140,11 +143,11 @@ def _render_management_tab(db, all_records, years, def_idx, settings):
         if target_rec:
             st.divider()
             if st.session_state.active_operation == "edit":
-                _handle_edit_flow(db, target_rec, settings)
+                _handle_edit_flow(db, user.id, target_rec, settings) # Passa user.id
             elif st.session_state.active_operation == "delete":
-                _handle_delete_flow(db, target_id)
+                _handle_delete_flow(db, user.id, target_id)
 
-def _handle_edit_flow(db, rec, settings):
+def _handle_edit_flow(db, user_id, rec, settings):
     st.markdown(f"**Modifica Record:** {rec.date}")
     with st.form("fuel_form_edit"):
         min_pe, max_pe = max(0.0, rec.price_per_liter-0.5), rec.price_per_liter+0.5
@@ -163,17 +166,17 @@ def _handle_edit_flow(db, rec, settings):
                 "price_per_liter": edit_data['price'], "total_cost": edit_data['cost'], 
                 "liters": new_liters, "is_full_tank": edit_data['full'], "notes": edit_data['notes']
             }
-            crud.update_refueling(db, rec.id, changes)
+            crud.update_refueling(db, user_id, rec.id, changes)
             st.success("Record aggiornato!"); st.session_state.active_operation = None; st.rerun()
             
     if st.button("Annulla", width="stretch"):
         st.session_state.active_operation = None; st.rerun()
 
-def _handle_delete_flow(db, record_id):
+def _handle_delete_flow(db, user_id, record_id):
     st.error("Sei sicuro di voler eliminare definitivamente questo record?")
     cd1, cd2 = st.columns(2)
     if cd1.button("Sì, Elimina", type="primary", width="stretch"):
-        crud.delete_refueling(db, record_id)
+        crud.delete_refueling(db, user_id, record_id)
         st.success("Eliminato."); st.session_state.active_operation = None; st.rerun()
     if cd2.button("No, Annulla", width="stretch"):
         st.session_state.active_operation = None; st.rerun()
