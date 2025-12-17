@@ -15,7 +15,7 @@ def initialize_app():
     """Inizializzazione una-tantum (DB Cache)."""
     init_db()
 
-# --- CALLBACKS CORRETTE PER LA NAVIGAZIONE COORDINATA ---
+# --- CALLBACKS ---
 def update_nav_main():
     """
     Quando clicco sul menu Principale:
@@ -43,14 +43,44 @@ def main():
         initial_sidebar_state="expanded"
     )
     
-    # CSS HACK: Rende i bottoni "primary" rossi solo nella sidebar (Logout)
+    # CSS GLOBALE (Sidebar Logout Rosso + Stile Card Utente)
     st.markdown("""
         <style>
+            /* Bottone Logout Rosso */
             div[data-testid="stSidebar"] button[kind="primary"] {
                 background-color: #FF4B4B; border-color: #FF4B4B; color: white;
             }
             div[data-testid="stSidebar"] button[kind="primary"]:hover {
                 background-color: #D93636; border-color: #D93636;
+            }
+            
+            /* Stile Card Utente Sidebar */
+            .sidebar-user-card {
+                background-color: #262730; /* Darker background per card */
+                padding: 15px;
+                border-radius: 8px;
+                border: 1px solid #444;
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                margin-bottom: 20px;
+            }
+            .sidebar-user-avatar {
+                width: 40px; height: 40px;
+                background-color: #FF4B4B;
+                color: white;
+                border-radius: 6px; /* Quadrato stondato */
+                display: flex; justify-content: center; align-items: center;
+                font-size: 20px; font-weight: bold;
+            }
+            .sidebar-user-info {
+                display: flex; flex-direction: column;
+            }
+            .sidebar-user-name {
+                font-weight: bold; font-size: 0.95rem; color: white;
+            }
+            .sidebar-user-role {
+                font-size: 0.75rem; color: #aaa;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -87,19 +117,24 @@ def main():
     all_pages = {**pages_main, **pages_account}
 
     with st.sidebar:
-        # Header Utente
-        c1, c2 = st.columns([1, 4])
-        with c1: st.write("👤")
-        with c2: 
-            st.caption("Loggato come:")
-            st.markdown(f"**{current_user.email.split('@')[0]}**")
-        
-        st.divider()
+        # --- CARD UTENTE STYLIZZATA ---
+        # Estraiamo l'iniziale per l'avatar
+        user_email = current_user.email
+        initial = user_email[0].upper() if user_email else "?"
+        short_email = user_email.split('@')[0]
+
+        st.markdown(f"""
+            <div class="sidebar-user-card">
+                <div class="sidebar-user-avatar">{initial}</div>
+                <div class="sidebar-user-info">
+                    <span class="sidebar-user-name">{short_email}</span>
+                    <span class="sidebar-user-role">Utente Standard</span>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
         
         # --- BLOCCO NAVIGAZIONE PRINCIPALE ---
         st.title("Navigazione")
-        
-        # Calcoliamo l'indice
         idx_main = list(pages_main.keys()).index(st.session_state.current_page) if st.session_state.current_page in pages_main else None
         
         st.radio(

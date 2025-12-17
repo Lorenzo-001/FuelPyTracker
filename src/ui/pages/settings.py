@@ -16,8 +16,7 @@ def render():
         _render_config_tab(user)
 
     with tab_import:
-        st.warning("🚧 Funzione Import Massivo in manutenzione per upgrade V2 (Multi-Tenant).")
-        # _render_import_tab(user) # Disabilitato temporaneamente
+        _render_import_tab(user)
 
 def _render_config_tab(user):
     """Gestisce i parametri globali dell'app per l'utente specifico."""
@@ -70,8 +69,7 @@ def _render_config_tab(user):
     
     db.close()
 
-# def _render_import_tab(user):
-	#TODO:(Codice disabilitato in attesa di refactoring Importers)
+def _render_import_tab(user):
     st.subheader("Caricamento Storico Esterno")
 
     st.markdown("""
@@ -95,7 +93,8 @@ def _render_config_tab(user):
         # Per semplicità qui ricarichiamo se 'import_df' è None
         if st.session_state.import_df is None:
             db = next(get_db())
-            raw_df, error_msg = importers.parse_upload_file(db, uploaded)
+            # Passiamo user.id al parser
+            raw_df, error_msg = importers.parse_upload_file(db, user.id, uploaded)
             db.close()
             
             if error_msg:
@@ -120,7 +119,8 @@ def _render_config_tab(user):
         # Pulsante Rivalida
         if st.button("🔄 Rivalida Dati Modificati", type="secondary", width="stretch"):
             db = next(get_db())
-            st.session_state.import_df = importers.revalidate_dataframe(db, st.session_state.import_df)
+            # Passiamo user.id al validatore
+            st.session_state.import_df = importers.revalidate_dataframe(db, user.id, st.session_state.import_df)
             db.close()
             st.rerun()
 
@@ -164,7 +164,7 @@ def _render_config_tab(user):
                 total = len(st.session_state.import_df)
                 
                 for i, row in st.session_state.import_df.iterrows():
-                    importers.save_single_row(db, row)
+                    importers.save_single_row(db, user.id, row)
                     count += 1
                     bar.progress((i + 1) / total)
                 

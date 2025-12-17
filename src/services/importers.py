@@ -1,11 +1,12 @@
 import pandas as pd
 from datetime import datetime, date
 from sqlalchemy.orm import Session
-from database import crud
+from src.database import crud
 
-def parse_upload_file(db: Session, uploaded_file) -> tuple[pd.DataFrame, str]:
+def parse_upload_file(db: Session, user_id: str, uploaded_file) -> tuple[pd.DataFrame, str]:
     """
     Legge il file raw (CSV/Excel) e lo converte in DataFrame iniziale.
+    Richiede user_id per la validazione contestuale.
     """
     # 1. Lettura Fisica del File
     try:
@@ -38,24 +39,25 @@ def parse_upload_file(db: Session, uploaded_file) -> tuple[pd.DataFrame, str]:
     })
 
     # 5. Prima validazione massiva
-    return revalidate_dataframe(db, df), None
+    return revalidate_dataframe(db, user_id, df), None
 
-def revalidate_dataframe(db: Session, df: pd.DataFrame) -> pd.DataFrame:
+def revalidate_dataframe(db: Session, user_id: str, df: pd.DataFrame) -> pd.DataFrame:
     """
     Prende un DataFrame (anche sporco o modificato dall'utente) e ricalcola Stato e Note.
     Ricalcola SEMPRE i Litri per mantenere coerenza matematica (L = C / P).
     Rimuove le righe 'Fantasma' (aggiunte per sbaglio con valori nulli).
     """
-    # Recupero contesto dal DB
-    last_record = crud.get_last_refueling(db)
-    settings = crud.get_settings(db)
+    # Recupero contesto dal DB (Filtrato per Utente)
+    last_record = crud.get_last_refueling(db, user_id)
+    settings = crud.get_settings(db, user_id)
     
     # Valori di riferimento
     last_db_km = last_record.total_km if last_record else 0
     last_db_date = last_record.date if last_record else date(2000, 1, 1)
     last_db_price = last_record.price_per_liter if last_record else 0.0
     
-    existing_dates = set(r.date for r in crud.get_all_refuelings(db))
+    # Controlliamo i duplicati SOLO tra i record dell'utente
+    existing_dates = set(r.date for r in crud.get_all_refuelings(db, user_id))
     
     processed_rows = []
     file_dates = set()
@@ -195,14 +197,15 @@ def revalidate_dataframe(db: Session, df: pd.DataFrame) -> pd.DataFrame:
 
     return pd.DataFrame(processed_rows)
 
-def save_single_row(db: Session, row):
-    """Salva una riga nel DB. Presuppone che i dati siano già validati."""
+def save_single_row(db: Session, user_id: str, row):
+    """Salva una riga nel DB associandola all'utente."""
     if row['Stato'] == "Errore":
         return
 
     try:
         crud.create_refueling(
-            db, 
+            db,
+            user_id,
             pd.to_datetime(row['Data']).date(), 
             int(row['Km']), 
             float(row['Prezzo']), 
