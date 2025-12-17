@@ -50,3 +50,43 @@ def get_current_user():
     if session:
         return session.user
     return None
+
+def update_user_password_secure(email, old_password, new_password):
+    """
+    Aggiorna la password verificando prima che la vecchia sia corretta.
+    Gestisce l'errore di password identica traducendolo.
+    """
+    # 1. Verifica Vecchia Password (tentativo di login)
+    try:
+        supabase.auth.sign_in_with_password({
+            "email": email, 
+            "password": old_password
+        })
+    except Exception:
+        return False, "La password attuale inserita non è corretta."
+
+    # 2. Tentativo Aggiornamento Password
+    try:
+        attributes = {"password": new_password}
+        supabase.auth.update_user(attributes)
+        return True, "Password aggiornata con successo!"
+        
+    except Exception as e:
+        err_msg = str(e)
+        # 3. Traduzione Errore Specifico Supabase
+        if "New password should be different from the old password" in err_msg:
+            return False, "Errore: La nuova password deve essere diversa dalla precedente."
+        return False, f"Errore imprevisto: {err_msg}"
+    
+def update_user_email(new_email):
+    """
+    Richiede il cambio email. 
+    Nota: Supabase invierà una mail di conferma al nuovo indirizzo (e spesso anche al vecchio).
+    L'aggiornamento effettivo avviene solo dopo il click sul link.
+    """
+    try:
+        attributes = {"email": new_email}
+        supabase.auth.update_user(attributes)
+        return True, "Richiesta inviata! Controlla la tua posta (sia vecchia che nuova) per confermare il cambio."
+    except Exception as e:
+        return False, str(e)

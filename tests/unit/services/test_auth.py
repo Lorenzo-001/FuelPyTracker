@@ -6,11 +6,9 @@ import random
 from unittest.mock import MagicMock
 
 # --- 1. CONFIGURAZIONE PATH DINAMICA ---
-# Calcoliamo la root del progetto partendo da dove si trova questo file.
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_dir, "../../../"))
 
-# Aggiungiamo la root al System Path
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
@@ -39,16 +37,18 @@ mock_st.cache_resource = pass_through_decorator
 sys.modules["streamlit"] = mock_st
 
 # --- 4. IMPORT DEL SERVIZIO ---
-from src.services.auth import sign_in, sign_up, sign_out, get_current_user
+from src.services.auth import (
+    sign_in, sign_up, sign_out, get_current_user, 
+    update_user_password_secure, update_user_email
+)
 
 def run_cli_test():
     print(f"\n🧪  AVVIO UNIT TEST: AUTH SERVICE")
     print("--------------------------------------------------")
     
-    # MODIFICA: Generiamo una email realistica e univoca
-    # Usa un timestamp + numero random per evitare "User already registered"
+    # FIX: Usiamo @example.com per evitare che Supabase invii mail reali e vada in errore
     random_id = int(time.time()) + random.randint(1, 1000)
-    test_email = f"fuel.tester.{random_id}@gmail.com"
+    test_email = f"fuel.tester.{random_id}@example.com"
     test_password = "PasswordSicura123!" 
 
     print(f"📧 Email generata per il test: {test_email}")
@@ -57,16 +57,14 @@ def run_cli_test():
     print(f"\n1. [Sign Up] Tentativo registrazione...")
     try:
         res = sign_up(test_email, test_password)
-        # Controllo robusto della risposta
         user_created = getattr(res, 'user', None) or (res if hasattr(res, 'id') else None)
         
         if user_created: 
             print(f"   ✅ Registrazione OK. ID: {user_created.id}")
         else:
-            print("   ⚠️  Warning: Utente creato ma oggetto vuoto (Controlla 'Confirm Email' su Supabase).")
+            print("   ⚠️  Warning: Utente creato ma oggetto vuoto.")
     except Exception as e:
         print(f"   ❌ Errore Registrazione: {e}")
-        # Se fallisce la registrazione, proviamo comunque il login (magari esisteva già)
 
     # TEST B: LOGIN
     print(f"\n2. [Sign In] Tentativo Login...")
@@ -79,7 +77,6 @@ def run_cli_test():
             return
     except Exception as e:
         print(f"   ❌ Errore Login Exception: {e}")
-        print("      (Controlla che l'utente esista e la password sia corretta)")
         return 
 
     # TEST C: SESSIONE
@@ -92,6 +89,37 @@ def run_cli_test():
             print(f"   ❌ Nessuna sessione trovata.")
     except Exception as e:
         print(f"   ❌ Errore check sessione: {e}")
+
+    # TEST EXTRA: CAMBIO PASSWORD
+    print(f"\n3b. [Security] Test Cambio Password...")
+    new_password = "NuovaPasswordSicura456!"
+    
+    # Tentativo 1: Vecchia password errata (Deve fallire)
+    res_fail, msg_fail = update_user_password_secure(test_email, "PasswordSbagliata", new_password)
+    if not res_fail:
+        print("   ✅ Blocco sicurezza OK: Cambio rifiutato con vecchia password errata.")
+    else:
+        print("   ❌ ERRORE: Password cambiata senza verifica della vecchia!")
+
+    # Tentativo 2: Vecchia password corretta (Deve riuscire)
+    res_ok, msg_ok = update_user_password_secure(test_email, test_password, new_password)
+    if res_ok:
+        print(f"   ✅ Cambio Password richiesto con successo: {msg_ok}")
+        
+        # VERIFICA REALE: Logout e Login con la NUOVA password
+        print("      🔄 Verifica accesso con NUOVA password...")
+        sign_out()
+        try:
+            res_new_login = sign_in(test_email, new_password)
+            if res_new_login.user:
+                print("      ✅ Login con NUOVA password riuscito!")
+            else:
+                print("      ❌ Login con nuova password fallito.")
+        except Exception as e:
+             print(f"      ❌ Eccezione login nuova pass: {e}")
+             return
+    else:
+        print(f"   ❌ Errore cambio password: {msg_ok}")
 
     # TEST D: LOGOUT
     print(f"\n4. [Sign Out] Logout...")
