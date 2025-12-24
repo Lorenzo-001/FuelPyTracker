@@ -2,8 +2,8 @@ import streamlit as st
 import pandas as pd
 from src.database.core import get_db
 from src.database import crud
-from src.services.calculations import calculate_stats, check_partial_accumulation
-from src.services import analysis
+from src.services.business.calculations import calculate_stats, check_partial_accumulation
+from src.services.business.analysis import *
 from src.ui.components import kpi, charts
 
 def render():
@@ -78,7 +78,7 @@ def render():
         with st.expander("⚙️ Filtra Periodo", expanded=False):
             range_price = st.selectbox("Periodo:", time_opts, index=1, key="p_filter", label_visibility="collapsed")
 
-        df_p = analysis.filter_data_by_date(df, range_price)
+        df_p = filter_data_by_date(df, range_price)
         if not df_p.empty:
             st.plotly_chart(charts.build_price_trend_chart(df_p), width="stretch")
         else:
@@ -91,7 +91,7 @@ def render():
             range_eff = st.selectbox("Periodo:", time_opts, index=3, key="e_filter", label_visibility="collapsed")
         
         # Filtriamo prima i nulli, poi le date
-        df_e = analysis.filter_data_by_date(df.dropna(subset=["Efficienza"]), range_eff)
+        df_e = filter_data_by_date(df.dropna(subset=["Efficienza"]), range_eff)
         if not df_e.empty:
             st.plotly_chart(charts.build_efficiency_chart(df_e), width="stretch")
         else:
@@ -103,7 +103,7 @@ def render():
         with st.expander("⚙️ Filtra", expanded=False):
             range_cost = st.selectbox("Periodo:", time_opts, index=4, key="c_filter", label_visibility="collapsed")
 
-        df_c = analysis.filter_data_by_date(df, range_cost)
+        df_c = filter_data_by_date(df, range_cost)
         if not df_c.empty:
             st.plotly_chart(charts.build_spending_bar_chart(df_c), width="stretch")
         else:

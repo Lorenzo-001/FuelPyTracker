@@ -1,5 +1,5 @@
 import streamlit as st
-from src.services.auth import supabase
+from src.services.auth.auth_service import supabase
 
 def upload_avatar(user_id, file):
     """

@@ -37,10 +37,7 @@ mock_st.cache_resource = pass_through_decorator
 sys.modules["streamlit"] = mock_st
 
 # --- 4. IMPORT DEL SERVIZIO ---
-from src.services.auth import (
-    sign_in, sign_up, sign_out, get_current_user, 
-    update_user_password_secure, update_user_email
-)
+from src.services.auth.auth_service import *
 
 def run_cli_test():
     print(f"\n🧪  AVVIO UNIT TEST: AUTH SERVICE")

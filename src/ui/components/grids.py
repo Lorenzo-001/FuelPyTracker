@@ -1,5 +1,5 @@
 import pandas as pd
-from services.calculations import calculate_stats
+from services.business.calculations import calculate_stats
 
 # ==========================================
 # SEZIONE: RIFORNIMENTI (Fuel Grid)

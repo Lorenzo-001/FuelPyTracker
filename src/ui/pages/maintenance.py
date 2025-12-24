@@ -3,7 +3,7 @@ from datetime import date
 from src.database.core import get_db
 from src.database import crud
 from src.ui.components import grids, kpi, forms
-from src.services import maintenance_logic
+from src.services.business import maintenance_logic
 
 def render():
     """Vista Principale: Registro Manutenzioni (Refactored & Multi-Tenant)."""

@@ -1,5 +1,5 @@
 from datetime import date
-from services.calculations import calculate_stats
+from services.business.calculations import calculate_stats
 
 def calculate_year_kpis(records, year):
     """Calcola i KPI aggregati per un anno specifico."""
