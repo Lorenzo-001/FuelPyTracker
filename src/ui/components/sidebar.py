@@ -47,7 +47,7 @@ def render_sidebar(current_user, pages_main, pages_account):
         st.divider()
         
         # Logout
-        if st.button("Esci (Logout)", type="primary", use_container_width=True):
+        if st.button("Esci (Logout)", type="primary", width='stretch'):
             sign_out()
             for key in list(st.session_state.keys()):
                 del st.session_state[key]

@@ -1,0 +1,1 @@
+from .pdf_generator import generate_maintenance_report

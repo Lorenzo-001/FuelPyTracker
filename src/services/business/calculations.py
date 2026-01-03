@@ -1,5 +1,5 @@
 from typing import List
-from database.models import Refueling
+from src.database.models import Refueling
 
 # ==========================================
 # SEZIONE: LOGICA CALCOLO STATISTICHE (Full-to-Full)

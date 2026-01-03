@@ -1,8 +1,14 @@
 import streamlit as st
 import pandas as pd
+import re
+from datetime import datetime
 from src.database.core import get_db
 from src.database import crud
-from src.services.data import importers
+from src.services.data.exporters import reports, templates
+# Importiamo i nuovi moduli refattorizzati
+from src.services.data.importers import manager
+from src.ui.components import data_staging, export_dialog
+from src.services.data import exporters
 
 def render():
     st.header("⚙️ Gestione Dati e Configurazioni")
@@ -10,13 +16,70 @@ def render():
     # Recupero utente
     user = st.session_state["user"]
 
-    tab_config, tab_import = st.tabs(["🔧 Configurazioni", "📥 Import Massivo"])
-
+    tab_config, tab_export, tab_import, tab_pdf = st.tabs(["🔧 Configurazioni", "📤 Esportazione Dati", "📥 Importazione Dati", "📄 Libretto Service"])
+    
     with tab_config:
         _render_config_tab(user)
 
+    with tab_export:
+        _render_export_tab(user)
+        
     with tab_import:
         _render_import_tab(user)
+        
+    with tab_pdf:    
+        _render_pdf_tab(user)
+
+def _render_export_tab(user):
+    
+    st.markdown("""
+    In questa sezione puoi scaricare una copia completa dei tuoi dati.
+    
+    **Cosa contiene il file Excel:**
+    * **Foglio 'Rifornimenti':** Tutto lo storico dei pieni, inclusi costi, litri e note.
+    * **Foglio 'Manutenzione':** La lista degli interventi effettuati sul veicolo.
+    
+    **A cosa serve:**
+    * 💾 **Backup:** Conserva una copia sicura dei tuoi dati offline.
+    * ✏️ **Modifica Massiva:** Puoi modificare questo file e ricaricarlo nella tab "Importazione Dati" per aggiornare velocemente molti record (es. correggere prezzi vecchi).
+    """)
+    
+    st.divider()
+
+    db = next(get_db())
+    
+    # Calcolo statistiche rapide per l'anteprima
+    n_fuels = len(crud.get_all_refuelings(db, user.id))
+    n_maints = len(crud.get_all_maintenances(db, user.id))
+    
+    col1, col2 = st.columns(2)
+    col1.metric("Rifornimenti da esportare", n_fuels)
+    col2.metric("Interventi da esportare", n_maints)
+    
+    st.divider()
+    
+    if st.button("📦 Genera File Excel", type="primary"):
+        try:
+            # Generazione in RAM
+            excel_data = reports.generate_excel_report(db, user.id)
+            
+            # Nome file con data odierna
+            filename = f"fuelpytracker_backup_{datetime.now().strftime('%Y%m%d')}.xlsx"
+            
+            # Bottone di download effettivo (appare dopo la generazione)
+            st.download_button(
+                label="📥 Clicca qui per scaricare",
+                data=excel_data,
+                file_name=filename,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="dl_excel_btn"
+            )
+            st.success("File generato con successo! Clicca sopra per scaricare.")
+            
+        except Exception as e:
+            st.error(f"Errore durante la generazione: {e}")
+    
+    db.close()
 
 def _render_config_tab(user):
     """Gestisce i parametri globali dell'app per l'utente specifico."""
@@ -63,115 +126,142 @@ def _render_config_tab(user):
         
         st.write("")
         
-        if st.form_submit_button("💾 Salva Configurazioni", type="primary", width="stretch"):
+        if st.form_submit_button("💾 Salva Configurazioni", type="primary", width='stretch'):
             crud.update_settings(db, user.id, new_range, new_max, new_alert_threshold)
             st.success("✅ Configurazioni aggiornate!")
     
     db.close()
 
 def _render_import_tab(user):
-    st.subheader("Caricamento Storico Esterno")
+    st.subheader("Caricamento Dati (Multi-Scheda)")
 
     st.markdown("""
     > **Workflow Importazione Sicura:**
-    > 1. **Carica** il file Excel.
-    > 2. **Correggi o Elimina** eventuali errori segnalati direttamente nella tabella.
-    > 3. Premi **'🔄 Rivalida Dati'** per aggiornare lo stato e rimuovere righe vuote.
-    > 4. Quando non ci sono errori bloccanti, il pulsante **Conferma** si attiverà, permettendo l'importazione.
+    > 1. **Scarica il Modello** (opzionale) o usa un tuo file Excel.
+    > 2. **Carica** il file qui sotto.
+    > 3. **Correggi** eventuali errori segnalati nella tabella di anteprima.
+    > 4. Premi **Conferma** per salvare i dati nel database.
     """)
 
-    uploaded = st.file_uploader("Trascina qui il file", type=["csv", "xlsx"])
+    # --- Expander Guida + Download ---
+    with st.expander("❓ Non hai un file? Scarica il modello e leggi la guida"):
+        
+        st.markdown("##### 1. Istruzioni Compilazione")
+        st.info("""
+        * **Rifornimenti:** Compila il foglio 'Rifornimenti'.
+        * **Date:** Usa il formato `GG/MM/AAAA` (es. 25/12/2023).
+        * **Numeri:** Usa il punto o la virgola per i decimali (es. 1.859 o 1,859).
+        * **Pieno:** Scrivi `Sì`, `True` o `1` se hai fatto il pieno.
+        * **Importante:** Non modificare i nomi delle colonne della prima riga.
+        """)
     
-    # Inizializzazione Stato Sessione
-    if "import_df" not in st.session_state:
-        st.session_state.import_df = None
+        st.markdown("##### 2. Scarica Template")
+        st.write("File Excel vuoto con le intestazioni corrette.")
+        empty_template = templates.generate_empty_template()
+        st.download_button(
+            label="📥 Scarica Modello .xlsx",
+            data=empty_template,
+            file_name="FuelPyTracker_Template.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
 
-    # Logica di Caricamento Iniziale
+    # --- GESTIONE RESET UPLOADER ---
+    # Usiamo un contatore nella sessione per creare una chiave dinamica.
+    # Quando incrementiamo il contatore, Streamlit resetta il widget file_uploader.
+    if "uploader_key" not in st.session_state:
+        st.session_state["uploader_key"] = 0
+
+    uploaded = st.file_uploader(
+        "Trascina qui il file (CSV o Excel)", 
+        type=["csv", "xlsx"],
+        key=f"uploader_{st.session_state['uploader_key']}" # Chiave dinamica
+    )
+    
+    # Stato per i risultati multipli
+    if "import_results" not in st.session_state:
+        st.session_state.import_results = {}
+
     if uploaded:
-        # Se cambia il file caricato o non c'è ancora un df, processiamo
-        # Nota: usiamo un trucco per capire se il file è cambiato -> resettiamo se necessario
-        # Per semplicità qui ricarichiamo se 'import_df' è None
-        if st.session_state.import_df is None:
+        # Se i risultati sono vuoti (primo caricamento), processiamo usando il nuovo Manager
+        if not st.session_state.import_results:
             db = next(get_db())
-            # Passiamo user.id al parser
-            raw_df, error_msg = importers.parse_upload_file(db, user.id, uploaded)
+            # USIAMO IL NUOVO MANAGER
+            results = manager.parse_upload_file(db, user.id, uploaded)
             db.close()
             
-            if error_msg:
-                st.error(f"❌ Errore fatale: {error_msg}")
+            # Check errore globale (es. file corrotto o nessun foglio valido)
+            if 'global_error' in results:
+                st.error(f"❌ {results['global_error']}")
             else:
-                st.session_state.import_df = raw_df
+                st.session_state.import_results = results
+    else:
+        # Reset implicito (se clicchi la X del widget)
+        st.session_state.import_results = {}
 
-    # Se c'è un DataFrame in memoria
-    if st.session_state.import_df is not None:
-        df = st.session_state.import_df
-        
-        # Conteggio Errori
-        n_err = len(df[df['Stato'] == 'Errore'])
-        n_warn = len(df[df['Stato'] == 'Warning'])
-        
-        # Dashboard Stato
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Righe Totali", len(df))
-        c2.metric("Errori Bloccanti", n_err, delta_color="inverse")
-        c3.metric("Avvisi", n_warn, delta_color="normal")
+    # --- RENDER RISULTATI (Dinamico tramite componente esterno) ---
+    results = st.session_state.import_results
+    
+    if results:
+        # 1. Sezione Rifornimenti
+        if 'fuel' in results:
+            with st.expander("⛽ Rifornimenti Trovati", expanded=True):
+                df_fuel, err_fuel = results['fuel']
+                data_staging.render_staging_table(user.id, df_fuel, err_fuel, "fuel")
 
-        # Pulsante Rivalida
-        if st.button("🔄 Rivalida Dati Modificati", type="secondary", width="stretch"):
-            db = next(get_db())
-            # Passiamo user.id al validatore
-            st.session_state.import_df = importers.revalidate_dataframe(db, user.id, st.session_state.import_df)
-            db.close()
+        # 2. Sezione Manutenzione
+        if 'maintenance' in results:
+            with st.expander("🔧 Manutenzioni Trovate", expanded=True):
+                df_maint, err_maint = results['maintenance']
+                data_staging.render_staging_table(user.id, df_maint, err_maint, "maintenance")
+        
+        st.divider()
+        
+        # --- PULSANTE RESET LOGICA ---
+        if st.button("🔄 Pulisci tutto e carica altro file", type="secondary"):
+            # 1. Puliamo i risultati
+            st.session_state.import_results = {}
+            # 2. Incrementiamo la chiave per forzare la distruzione del widget uploader
+            st.session_state["uploader_key"] += 1
+            # 3. Ricarichiamo la pagina
             st.rerun()
 
-        # Tabella Editabile con DYNAMIC (Permette Delete)
-        edited_df = st.data_editor(
-            st.session_state.import_df,
-            num_rows="dynamic", # Permette di CANCELLARE righe
-            width="stretch",
-            height=400,
-            column_config={
-                "Stato": st.column_config.TextColumn(
-                    "Stato", 
-                    width="small",
-                    help="OK = Pronto | Warning = Attenzione | Errore = Bloccante",
-                    validate="^(OK|Warning)$"
-                ),
-                "Note": st.column_config.TextColumn("Problemi Rilevati", width="large", disabled=True),
-                "Data": st.column_config.DateColumn("Data", format="DD/MM/YYYY"),
-                "Km": st.column_config.NumberColumn("Km", min_value=0, format="%d"),
-                "Prezzo": st.column_config.NumberColumn("Prezzo", min_value=0.0, format="%.3f"),
-                "Costo": st.column_config.NumberColumn("Costo", min_value=0.0, format="%.2f"),
-                "Litri": st.column_config.NumberColumn("Litri (Auto)", disabled=True, format="%.2f")
-            },
-            key="editor_import_key"
-        )
-        
-        if not edited_df.equals(st.session_state.import_df):
-            st.session_state.import_df = edited_df
+def _render_pdf_tab(user):
+    st.subheader("Libretto Manutenzione Digitale")
+    
+    st.info(
+        "Genera un documento PDF ufficiale con lo storico delle manutenzioni. "
+        "Puoi scegliere se generare l'intero storico o solo un anno specifico."
+    )
+    
+    # 1. Recupero Anni Disponibili dal DB
+    db = next(get_db())
+    all_maints = crud.get_all_maintenances(db, user.id)
+    db.close()
+    
+    available_years = sorted(list(set(m.date.year for m in all_maints)), reverse=True)
+    
+    # Se non ci sono dati, aggiungiamo l'anno corrente come fallback
+    if not available_years:
+        available_years = [datetime.now().year]
 
-        st.divider()
+    st.divider()
 
-        # Pulsante Conferma
-        btn_disabled = n_err > 0
-        btn_label = f"🚫 Correggi {n_err} errori per proseguire" if btn_disabled else "🚀 Conferma e Scrivi nel Database"
+    # 2. Layout Controlli (Filtro + Bottone)
+    c1, c2 = st.columns([1, 2])
+    
+    with c1:
+        # Selectbox con opzione "Tutti" e anni disponibili
+        options = ["Tutti gli anni"] + available_years
+        selected_option = st.selectbox("Seleziona Periodo", options)
         
-        if st.button(btn_label, type="primary", disabled=btn_disabled, use_container_width=True):
-            db = next(get_db())
-            bar = st.progress(0)
-            try:
-                count = 0
-                total = len(st.session_state.import_df)
-                
-                for i, row in st.session_state.import_df.iterrows():
-                    importers.save_single_row(db, user.id, row)
-                    count += 1
-                    bar.progress((i + 1) / total)
-                
-                st.success(f"✅ Importazione completata! Inseriti {count} record.")
-                st.session_state.import_df = None # Reset
-                st.cache_data.clear()
-            except Exception as e:
-                st.error(f"Errore critico salvataggio: {e}")
-            finally:
-                db.close()
+        # Determiniamo il valore da passare (None o int)
+        year_filter = None if selected_option == "Tutti gli anni" else selected_option
+
+    with c2:
+        st.write("") # Spacer per allineare il bottone in basso
+        st.write("") 
+        
+        # Il bottone ora apre il Dialog gestito dal nuovo componente
+        if st.button("🖨️ Configura e Genera PDF", type="primary"):
+            export_dialog.render(user, year_filter)

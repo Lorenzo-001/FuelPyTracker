@@ -147,7 +147,7 @@ def render():
             with st.form("change_email_form"):
                 new_email = st.text_input("Nuovo Indirizzo Email")
                 
-                if st.form_submit_button("Invia Conferma Cambio Email", type="secondary", use_container_width=True):
+                if st.form_submit_button("Invia Conferma Cambio Email", type="secondary", width='stretch'):
                     if not new_email or "@" not in new_email:
                         st.error("Inserisci un'email valida.")
                     elif new_email == user.email:
@@ -172,7 +172,7 @@ def render():
                 new_pass = st.text_input("Nuova Password", type="password")
                 confirm_pass = st.text_input("Conferma Nuova Password", type="password")
                 
-                if st.form_submit_button("Aggiorna Password", type="primary", use_container_width=True):
+                if st.form_submit_button("Aggiorna Password", type="primary", width='stretch'):
                     if not old_pass:
                         st.error("Inserisci la password attuale.")
                     elif new_pass != confirm_pass:

@@ -2,7 +2,7 @@ from typing import List, Optional
 from datetime import date
 from sqlalchemy import func, desc, and_
 from sqlalchemy.orm import Session
-from database.models import Refueling, Maintenance, AppSettings
+from src.database.models import Refueling, Maintenance, AppSettings
 
 # ==========================================
 # SEZIONE: GESTIONE RIFORNIMENTI (Refueling)

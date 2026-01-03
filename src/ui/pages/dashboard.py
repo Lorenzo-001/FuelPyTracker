@@ -36,7 +36,8 @@ def render():
     df = pd.DataFrame(chart_data)
 
     # 3. Header e Info
-    st.title("📊 Dashboard")
+    st.header("📊 Dashboard")
+    
     with st.expander("ℹ️ Guida Rapida e Funzionalità", expanded=False):
         st.markdown("""
         **Benvenuto in FuelPyTracker!** Ecco come ottenere il massimo dalla tua app:
@@ -88,7 +89,7 @@ def render():
     with st.container(border=True):
         st.subheader("🚗 Efficienza (Km/L)")
         with st.expander("⚙️ Opzioni", expanded=False):
-            range_eff = st.selectbox("Periodo:", time_opts, index=3, key="e_filter", label_visibility="collapsed")
+            range_eff = st.selectbox("Periodo:", time_opts, index=4, key="e_filter", label_visibility="collapsed")
         
         # Filtriamo prima i nulli, poi le date
         df_e = filter_data_by_date(df.dropna(subset=["Efficienza"]), range_eff)

@@ -15,7 +15,7 @@ def render_reset_page():
                 new_p = st.text_input("Nuova Password", type="password", placeholder="Minimo 6 caratteri")
                 conf_p = st.text_input("Conferma Password", type="password", placeholder="Ripeti password")
                 
-                if st.form_submit_button("Salva e Accedi", type="primary", use_container_width=True):
+                if st.form_submit_button("Salva e Accedi", type="primary", width='stretch'):
                     if new_p != conf_p:
                         st.error("Le password non coincidono.")
                     elif len(new_p) < 6:

@@ -8,3 +8,5 @@ openpyxl
 psycopg2-binary
 supabase
 gotrue
+xlsxwriter
+fpdf2

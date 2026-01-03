@@ -1,7 +1,7 @@
 import streamlit as st
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from database.models import Base
+from src.database.models import Base
 
 # 1. Recupero URL Database
 # Proviamo a prenderlo dai secrets di Streamlit (funziona sia in locale che in cloud)

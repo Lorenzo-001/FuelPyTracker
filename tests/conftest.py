@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 # Permette ai test di importare i moduli come 'database' invece di 'src.database'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
-from database.models import Base
+from src.database.models import Base
 
 # DB in memoria per isolamento totale e velocità
 TEST_DATABASE_URL = "sqlite:///:memory:"

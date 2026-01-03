@@ -9,7 +9,7 @@ def render_reset_modal():
     st.write("Inserisci la tua email. Ti invieremo un link per reimpostare la password.")
     email_reset = st.text_input("La tua email", key="reset_email_input")
     
-    if st.button("Invia Link di Recupero", type="primary", use_container_width=True):
+    if st.button("Invia Link di Recupero", type="primary", width='stretch'):
         if not email_reset:
             st.warning("Inserisci un indirizzo email valido.")
         else:
@@ -70,7 +70,7 @@ def render_login_interface():
                 email = st.text_input("Email", placeholder="nome@esempio.com")
                 password = st.text_input("Password", type="password", placeholder="••••••")
                 
-                submit = st.form_submit_button("Entra", use_container_width=True, type="primary")
+                submit = st.form_submit_button("Entra", width='stretch', type="primary")
                 
                 if submit:
                     if not email or not password:
@@ -87,7 +87,7 @@ def render_login_interface():
 
             # --- LINK DISCRETO PER PASSWORD DIMENTICATA ---
             # Un bottone 'tertiary' o 'secondary' sembra un link testuale
-            if st.button("Password dimenticata?", type="tertiary", use_container_width=True):
+            if st.button("Password dimenticata?", type="tertiary", width='stretch'):
                     render_reset_modal()
 
         # --- TAB REGISTRAZIONE ---
@@ -98,7 +98,7 @@ def render_login_interface():
                 new_pass = st.text_input("Password (min 6 car.)", type="password")
                 confirm_pass = st.text_input("Conferma Password", type="password")
                 
-                btn_register = st.form_submit_button("Crea Account", use_container_width=True)
+                btn_register = st.form_submit_button("Crea Account", width='stretch')
                 
                 if btn_register:
                     if new_pass != confirm_pass:
