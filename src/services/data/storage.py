@@ -1,47 +1,66 @@
+import time
+
 import streamlit as st
+
 from src.services.auth.auth_service import supabase
 
-def upload_avatar(user_id, file):
+# =============================================================================
+# GESTIONE STORAGE UTENTE (AVATAR)
+# =============================================================================
+
+def upload_avatar(user_id: str, file) -> str | None:
     """
-    Carica l'avatar nel bucket 'avatars' sovrascrivendo il precedente.
-    Ritorna l'URL pubblico dell'immagine.
+    Carica o sovrascrive l'avatar dell'utente nel bucket 'avatars'.
+    
+    Args:
+        user_id (str): UUID dell'utente autenticato.
+        file: Oggetto UploadedFile di Streamlit (bytes).
+
+    Returns:
+        str | None: URL pubblico con timestamp per cache-busting, o None in caso di errore.
     """
     try:
-        # Nome file univoco per utente (sovrascrive il vecchio se esiste)
+        # 1. Definizione Percorso
+        # Nome file statico per utente per facilitare sovrascrittura
         file_path = f"{user_id}/avatar.png"
         
-        # 1. Upload del file (convertito in bytes)
+        # 2. Upload su Supabase Storage
         file_bytes = file.getvalue()
         
-        # Upsert=True permette di sovrascrivere
+        # 'upsert': 'true' forza la sovrascrittura del file esistente
         supabase.storage.from_("avatars").upload(
             file_path, 
             file_bytes, 
             file_options={"content-type": "image/png", "upsert": "true"}
         )
         
-        # 2. Ottieni URL Pubblico
-        # Nota: Serve che il bucket sia "Public" su Supabase
+        # 3. Recupero URL Pubblico
+        # Prerequisito: Il bucket 'avatars' deve essere impostato come "Public" su Supabase
         public_url = supabase.storage.from_("avatars").get_public_url(file_path)
         
-        # Trucco cache-busting: aggiungiamo un timestamp finto all'URL per forzare l'aggiornamento grafico
-        import time
+        # 4. Cache Busting
+        # Aggiungiamo un query param dinamico per forzare il browser a ricaricare l'immagine
         return f"{public_url}?t={int(time.time())}"
 
     except Exception as e:
-        print(f"Errore upload: {e}")
+        print(f"[Storage Error] Upload fallito: {e}")
         return None
 
-def get_avatar_url(user_id):
-    """Controlla se esiste un avatar e ritorna l'URL, altrimenti None."""
+
+def get_avatar_url(user_id: str) -> str | None:
+    """
+    Recupera l'URL dell'avatar utente se esistente.
+    
+    Nota: Supabase get_public_url non verifica l'esistenza fisica del file,
+    restituisce solo la stringa formattata.
+    """
     try:
         file_path = f"{user_id}/avatar.png"
-        # Proviamo a listare i file nella cartella dell'utente
-        # Se la cartella/file non esiste, questo check è un modo indiretto
-        # Nota: Il get_public_url ritorna sempre una stringa, anche se il file non esiste.
-        # Per semplicità, qui assumiamo che se l'upload è stato fatto, l'URL è valido.
         
+        # 1. Generazione URL
+        # Assumiamo che se l'utente ha fatto l'upload, il path sia valido.
         url = supabase.storage.from_("avatars").get_public_url(file_path)
         return url
-    except:
+    except Exception:
+        # Fallback silenzioso in caso di errori di connessione o config
         return None

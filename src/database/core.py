@@ -1,39 +1,66 @@
 import streamlit as st
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
 from src.database.models import Base
 
-# 1. Recupero URL Database
-# Proviamo a prenderlo dai secrets di Streamlit (funziona sia in locale che in cloud)
+# =============================================================================
+# CONFIGURAZIONE & CONNESSIONE DATABASE
+# =============================================================================
+
+# 1. Recupero URL di Connessione
+# Tentativo di recupero dai secrets di Streamlit.
+# Questo approccio garantisce sicurezza separando le credenziali dal codice.
 try:
     DATABASE_URL = st.secrets["database"]["url"]
 except Exception:
-    # Fallback per evitare crash se non configurato (opzionale, utile per debug)
-    st.error("❌ Errore: 'database.url' non trovato nei secrets (.streamlit/secrets.toml).")
+    # Gestione fallback per evitare crash immediati in fase di sviluppo/debug locale
+    st.error("❌ Errore critico: 'database.url' non trovato in .streamlit/secrets.toml.")
     st.stop()
 
-# 2. Configurazione Engine
-# Nota: PostgreSQL NON supporta 'check_same_thread', quindi lo togliamo.
-# Se usi Supabase Transaction Pooler (porta 6543), aggiungiamo 'pool_pre_ping' per stabilità.
+# 2. Inizializzazione Engine SQLAlchemy
+# Configurazione specifica per PostgreSQL.
 engine = create_engine(
     DATABASE_URL
 )
 
 # 3. Session Factory
+# Configurazione della fabbrica di sessioni:
+# - autocommit=False: Per gestire esplicitamente le transazioni.
+# - autoflush=False: Per evitare scritture parziali prima del commit esplicito.
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+
+# =============================================================================
+# FUNZIONI DI UTILITÀ
+# =============================================================================
+
 def init_db():
-    """Crea le tabelle nel database remoto se non esistono."""
-    # SQLAlchemy controlla automaticamente se le tabelle esistono prima di crearle
+    """
+    Inizializza lo schema del database creando le tabelle definite nei modelli.
+    
+    Operazioni:
+        - Verifica l'esistenza delle tabelle tramite i metadati di SQLAlchemy.
+        - Crea le tabelle mancanti (operazione idempotente).
+    """
     Base.metadata.create_all(bind=engine)
     print("✅ Database tables checked/created on Cloud!")
 
+
 def get_db():
     """
-    Dependency injection per gestire la sessione del database.
+    Generatore per la Dependency Injection della sessione database.
+    
+    Gestisce il ciclo di vita della connessione (apertura e chiusura sicura)
+    utilizzando il pattern 'yield' per l'uso nei contesti 'with' o nelle dipendenze.
+    
+    Yields:
+        Session: Un'istanza attiva di SessionLocal.
     """
     db = SessionLocal()
     try:
         yield db
     finally:
+        # Garantisce la chiusura della connessione anche in caso di eccezioni
         db.close()
