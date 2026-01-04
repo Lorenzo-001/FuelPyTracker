@@ -10,3 +10,8 @@ supabase
 gotrue
 xlsxwriter
 fpdf2
+# --- Modulo OCR Smart ---
+pytesseract
+opencv-python-headless
+Pillow
+numpy<2.0

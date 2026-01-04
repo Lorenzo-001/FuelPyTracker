@@ -2,7 +2,7 @@ import streamlit as st
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-
+from sqlalchemy.pool import NullPool
 from src.database.models import Base
 
 # =============================================================================
@@ -22,7 +22,9 @@ except Exception:
 # 2. Inizializzazione Engine SQLAlchemy
 # Configurazione specifica per PostgreSQL.
 engine = create_engine(
-    DATABASE_URL
+    DATABASE_URL, 
+    pool_pre_ping=True,
+    poolclass=NullPool
 )
 
 # 3. Session Factory
@@ -30,7 +32,6 @@ engine = create_engine(
 # - autocommit=False: Per gestire esplicitamente le transazioni.
 # - autoflush=False: Per evitare scritture parziali prima del commit esplicito.
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 
 # =============================================================================
 # FUNZIONI DI UTILITÀ
@@ -45,7 +46,6 @@ def init_db():
         - Crea le tabelle mancanti (operazione idempotente).
     """
     Base.metadata.create_all(bind=engine)
-    print("✅ Database tables checked/created on Cloud!")
 
 
 def get_db():

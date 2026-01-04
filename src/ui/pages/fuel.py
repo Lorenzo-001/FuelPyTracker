@@ -5,6 +5,7 @@ from src.database.core import get_db
 from src.database import crud
 from src.ui.components import grids, kpi, forms
 from src.services.business import fuel_logic
+from src.services.ocr import process_receipt_image
 
 def render():
     """Vista Principale: Gestione Rifornimenti (Refactored)."""
@@ -48,27 +49,62 @@ def render():
     min_p, max_p = max(0.0, last_price - range_val), last_price + range_val
 
     with st.expander("➕ Registra Nuovo Rifornimento", expanded=False):
+        
+        # === A. LOGICA SMART SCAN (OCR MODAL) ===
+        # Inizializziamo la "bozza" OCR se non esiste
+        if "ocr_draft" not in st.session_state:
+            st.session_state.ocr_draft = {}
+
+        # Bottone Grande invece di Expander annidato
+        st.markdown("##### 📸 Vuoi velocizzare l'inserimento?")
+        if st.button("🚀 SCANSIONA SCONTRINO CON AI", type="primary", use_container_width=True):
+            _open_ocr_dialog()
+
+        # === B. CALCOLO DEFAULTS ===
+        # Se abbiamo dati in bozza (da OCR), usiamo quelli. Altrimenti storici.
+        draft = st.session_state.ocr_draft
+        
+        # Priorità: OCR Draft -> Storico/Default
+        def_date = draft.get("date", date.today())
+        def_price = draft.get("price", last_price)
+        def_cost = draft.get("cost", 0.0)
+        
+        # I KM di default sono None (vuoto) per forzare l'inserimento,
+        # ma passiamo last_km come informazione per il tooltip.
+        def_km = None 
+
         st.caption(f"Range suggerito: {min_p:.3f} - {max_p:.3f} €/L")
-        with st.form("fuel_form_add", clear_on_submit=True):
-            # Form delegato al componente UI
+        
+        with st.form("fuel_form_add", clear_on_submit=False):
+            # Form delegato al componente UI, passando i defaults dinamici e l'ultimo KM noto per tooltip
             new_data = forms.render_refueling_inputs(
-                date.today(), last_km, last_price, 0.0, True, "", 
-                min_p, max_p, settings.max_total_cost
+                def_date, def_km, def_price, def_cost, True, "", 
+                min_p, max_p, settings.max_total_cost,
+                last_km_known=last_km # Passiamo il dato per il tooltip
             )
             
             if st.form_submit_button("Salva", type="primary", width="stretch"):
-                is_valid, err_msg = fuel_logic.validate_refueling(new_data, last_km)
-                if not is_valid:
-                    st.error(err_msg)
+                # Validazione KM: deve essere > 0 e >= last_km
+                if new_data['km'] == 0:
+                    st.error("⛔ Inserisci il valore dell'Odometro!")
                 else:
-                    try:
-                        liters = new_data['cost'] / new_data['price']
-                        crud.create_refueling(db, user.id, new_data['date'], new_data['km'], new_data['price'], 
-                                            new_data['cost'], liters, new_data['full'], new_data['notes'])
-                        st.success(f"✅ Salvato! ({liters:.2f} L)")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Errore DB: {e}")
+                    is_valid, err_msg = fuel_logic.validate_refueling(new_data, all_records)
+                    if not is_valid:
+                        st.error(err_msg)
+                    else:
+                        try:
+                            liters = new_data['cost'] / new_data['price']
+                            crud.create_refueling(db, user.id, new_data['date'], new_data['km'], new_data['price'], 
+                                                new_data['cost'], liters, new_data['full'], new_data['notes'])
+                            
+                            st.success(f"✅ Salvato! ({liters:.2f} L)")
+                            
+                            # PULIZIA: Reset della bozza OCR dopo salvataggio
+                            st.session_state.ocr_draft = {}
+                            
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Errore DB: {e}")
 
     st.write("") 
 
@@ -86,6 +122,45 @@ def render():
     db.close()
 
 # --- Helper Functions Locali (per pulizia render principale) ---
+
+@st.dialog("📸 Scansione Smart Scontrino")
+def _open_ocr_dialog():
+    """
+    Gestisce l'UI per lo Smart Scan all'interno di un MODAL POP-UP.
+    """
+    st.info("Carica una foto dello scontrino. L'Intelligenza Artificiale compilerà i campi per te.")
+    st.info("💡 CONSIGLIO: Assicurati che la foto sia **ben illuminata** e **a fuoco**. Se l'immagine è sfuocata o buia, l'AI potrebbe leggere numeri errati.")
+
+    c_cam, c_upl = st.tabs(["📷 Fotocamera", "📂 Carica File"])
+    img_buffer = None
+    
+    with c_cam:
+        cam_pic = st.camera_input("Scatta foto")
+        if cam_pic: img_buffer = cam_pic
+    
+    with c_upl:
+        upl_pic = st.file_uploader("Carica immagine", type=['png', 'jpg', 'jpeg'], key="ocr_upl")
+        if upl_pic: img_buffer = upl_pic
+
+    if img_buffer:
+        if st.button("✨ Analizza Ora", type="primary", use_container_width=True):
+            with st.spinner("Analisi AI in corso..."):
+                # Chiamata al servizio
+                data = process_receipt_image(img_buffer)
+                
+                if data.total_cost > 0:
+                    # Salviamo i risultati nello stato per precompilare il form
+                    st.session_state.ocr_draft = {
+                        "date": data.date if data.date else date.today(),
+                        "price": data.price_per_liter,
+                        "cost": data.total_cost
+                    }
+                    st.success("Dati estratti con successo!")
+                    st.rerun() # Chiude il modale e aggiorna la pagina sotto
+                else:
+                    st.error("Non sono riuscito a leggere i dati. Riprova con una foto più nitida.")
+                    if data.raw_text:
+                         st.caption(f"Dettaglio errore: {data.raw_text}")
 
 def _render_history_tab(records, year):
     if not records:
@@ -153,9 +228,11 @@ def _handle_edit_flow(db, user_id, rec, settings):
         min_pe, max_pe = max(0.0, rec.price_per_liter-0.5), rec.price_per_liter+0.5
         
         # Riutilizzo componente UI form
+        # NOTA: Qui in edit passiamo il KM reale perché stiamo modificando un dato esistente
         edit_data = forms.render_refueling_inputs(
             rec.date, rec.total_km, rec.price_per_liter, rec.total_cost, 
-            rec.is_full_tank, rec.notes, min_pe, max_pe, settings.max_total_cost
+            rec.is_full_tank, rec.notes, min_pe, max_pe, settings.max_total_cost,
+            last_km_known=rec.total_km # In edit il tooltip mostra il km attuale del record
         )
         
         if st.form_submit_button("Aggiorna", type="primary", width="stretch"):

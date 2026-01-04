@@ -1,5 +1,5 @@
 from datetime import date
-from services.business.calculations import calculate_stats
+from src.services.business.calculations import calculate_stats
 
 def calculate_year_kpis(records, year):
     """Calcola i KPI aggregati per un anno specifico."""
@@ -31,16 +31,62 @@ def calculate_year_kpis(records, year):
         "view_records": view_records
     }
 
-def validate_refueling(data, last_km):
+def validate_refueling(new_data, all_records):
     """
-    Valida i dati di input.
+    Valida i dati assicurando la coerenza cronologica dei chilometri.
+    Controlla che i Km inseriti siano coerenti con i record immediatamente precedenti e successivi.
+    
+    Args:
+        new_data (dict): I dati del form.
+        all_records (list): La lista completa di tutti i rifornimenti esistenti.
+        
     Return: (bool, str) -> (is_valid, error_message)
     """
-    # Logica originale preservata: se data >= oggi e km < ultimo km noto -> errore
-    if data['date'] >= date.today() and data['km'] < last_km:
-        return False, f"⛔ Errore Km: impossibile inserire {data['km']} se ultimo era {last_km}."
+    input_km = new_data['km']
+    input_date = new_data['date']
+
+    # 1. Controlli Base
+    if new_data['price'] <= 0 or new_data['cost'] <= 0:
+        return False, "Prezzo e Costo devono essere maggiori di zero."
     
-    if data['price'] <= 0 or data['cost'] <= 0:
-        return False, "Valori non validi (Prezzo o Costo <= 0)."
-        
+    if input_km <= 0:
+        return False, "I chilometri devono essere maggiori di zero."
+
+    # Se non ci sono altri record, va bene tutto (purché > 0)
+    if not all_records:
+        return True, ""
+
+    # 2. Ordiniamo i record per data per trovare i "vicini"
+    sorted_records = sorted(all_records, key=lambda r: r.date)
+
+    prev_record = None
+    next_record = None
+
+    # Troviamo il record immediatamente prima e quello immediatamente dopo
+    for record in sorted_records:
+        if record.date <= input_date:
+            prev_record = record # Continuiamo ad aggiornare finché siamo nel passato/presente
+        else:
+            next_record = record
+            break # Appena troviamo una data futura, quello è il "next" e ci fermiamo
+
+    # 3. Controllo Coerenza col Passato (Prev <= Input)
+    if prev_record:
+        # Se la data è uguale, permettiamo inserimento solo se i km sono >= (es. due rifornimenti stesso giorno)
+        if input_km < prev_record.total_km:
+            return False, (
+                f"⛔ Errore Cronologico: Hai inserito {input_km} Km in data {input_date.strftime('%d/%m/%Y')}, "
+                f"ma esiste già un record precedente ({prev_record.date.strftime('%d/%m/%Y')}) "
+                f"con {prev_record.total_km} Km. Impossibile scendere di chilometri."
+            )
+
+    # 4. Controllo Coerenza col Futuro (Input <= Next)
+    if next_record:
+        if input_km > next_record.total_km:
+            return False, (
+                f"⛔ Errore Storico: Hai inserito {input_km} Km nel {input_date.strftime('%Y')}, "
+                f"ma esiste un record successivo ({next_record.date.strftime('%d/%m/%Y')}) "
+                f"che riporta solo {next_record.total_km} Km. Non puoi avere più km nel passato che nel futuro."
+            )
+
     return True, ""

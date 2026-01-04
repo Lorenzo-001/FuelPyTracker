@@ -148,10 +148,10 @@ def _render_import_tab(user):
         
         st.markdown("##### 1. Istruzioni Compilazione")
         st.info("""
-        * **Rifornimenti:** Compila il foglio 'Rifornimenti'.
+        * **Rifornimenti:** Compila il foglio 'Rifornimenti' e/o il foglio 'Manutenzione'.
         * **Date:** Usa il formato `GG/MM/AAAA` (es. 25/12/2023).
         * **Numeri:** Usa il punto o la virgola per i decimali (es. 1.859 o 1,859).
-        * **Pieno:** Scrivi `Sì`, `True` o `1` se hai fatto il pieno.
+        * **Pieno:** Scrivi `Sì` se hai fatto il pieno.
         * **Importante:** Non modificare i nomi delle colonne della prima riga.
         """)
     

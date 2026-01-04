@@ -1,3 +1,4 @@
+import streamlit as st # <--- Nuovo Import per Cache
 from typing import List, Optional
 from datetime import date
 from sqlalchemy import func, desc, and_
@@ -7,6 +8,32 @@ from src.database.models import Refueling, Maintenance, AppSettings
 # ==========================================
 # SEZIONE: GESTIONE RIFORNIMENTI (Refueling)
 # ==========================================
+
+# NOTE SU CACHE: 
+# Usiamo ttl=300 (5 minuti) per le query frequenti.
+# Usiamo _db con underscore per evitare che Streamlit provi a hashare la sessione DB.
+
+@st.cache_data(ttl=300, show_spinner=False)
+def get_all_refuelings(_db: Session, user_id: str) -> List[Refueling]:
+    """Restituisce storico filtrato per utente (Cachato)."""
+    return _db.query(Refueling).filter(Refueling.user_id == user_id).order_by(Refueling.date.desc()).all()
+
+@st.cache_data(ttl=300, show_spinner=False)
+def get_last_refueling(_db: Session, user_id: str) -> Optional[Refueling]:
+    """Recupera l'ultimo inserimento dell'utente (Cachato)."""
+    return _db.query(Refueling).filter(Refueling.user_id == user_id).order_by(desc(Refueling.date)).first()
+
+@st.cache_data(ttl=300, show_spinner=False)
+def get_max_km(_db: Session, user_id: str) -> int:
+    """Max KM dell'utente (Cachato)."""
+    max_km = _db.query(func.max(Refueling.total_km)).filter(Refueling.user_id == user_id).scalar()
+    return max_km if max_km is not None else 0
+
+def get_neighbors(db: Session, user_id: str, target_date: date) -> dict:
+    """Trova record adiacenti solo tra quelli dell'utente. (No Cache - usato in validazione puntuale)"""
+    prev_rec = db.query(Refueling).filter(and_(Refueling.user_id == user_id, Refueling.date < target_date)).order_by(desc(Refueling.date)).first()
+    next_rec = db.query(Refueling).filter(and_(Refueling.user_id == user_id, Refueling.date > target_date)).order_by(Refueling.date.asc()).first()
+    return {"prev": prev_rec, "next": next_rec}
 
 def create_refueling(
     db: Session, 
@@ -37,27 +64,11 @@ def create_refueling(
     
     # 2. Refresh per ottenere ID generato
     db.refresh(new_refueling)
+    
+    # 3. Pulizia Cache (Fondamentale per vedere il nuovo dato)
+    st.cache_data.clear()
+    
     return new_refueling
-
-def get_all_refuelings(db: Session, user_id: str) -> List[Refueling]:
-    """Restituisce storico filtrato per utente."""
-    return db.query(Refueling).filter(Refueling.user_id == user_id).order_by(Refueling.date.desc()).all()
-
-def get_last_refueling(db: Session, user_id: str) -> Optional[Refueling]:
-    """Recupera l'ultimo inserimento dell'utente."""
-    return db.query(Refueling).filter(Refueling.user_id == user_id).order_by(desc(Refueling.date)).first()
-
-def get_max_km(db: Session, user_id: str) -> int:
-    """Max KM dell'utente."""
-    max_km = db.query(func.max(Refueling.total_km)).filter(Refueling.user_id == user_id).scalar()
-    return max_km if max_km is not None else 0
-
-def get_neighbors(db: Session, user_id: str, target_date: date) -> dict:
-    """Trova record adiacenti solo tra quelli dell'utente."""
-    # Nota: Aggiungiamo il filtro user_id a entrambe le query
-    prev_rec = db.query(Refueling).filter(and_(Refueling.user_id == user_id, Refueling.date < target_date)).order_by(desc(Refueling.date)).first()
-    next_rec = db.query(Refueling).filter(and_(Refueling.user_id == user_id, Refueling.date > target_date)).order_by(Refueling.date.asc()).first()
-    return {"prev": prev_rec, "next": next_rec}
 
 def update_refueling(db: Session, user_id: str, record_id: int, new_data: dict):
     """Aggiorna un record solo se appartiene all'utente (Sicurezza)."""
@@ -67,6 +78,10 @@ def update_refueling(db: Session, user_id: str, record_id: int, new_data: dict):
             setattr(record, key, value)
         db.commit()
         db.refresh(record)
+        
+        # Pulizia Cache
+        st.cache_data.clear()
+        
         return record
     return None
 
@@ -76,12 +91,21 @@ def delete_refueling(db: Session, user_id: str, record_id: int) -> bool:
     if record:
         db.delete(record)
         db.commit()
+        
+        # Pulizia Cache
+        st.cache_data.clear()
+        
         return True
     return False
 
 # ==========================================
 # SEZIONE: GESTIONE MANUTENZIONE (Maintenance)
 # ==========================================
+
+@st.cache_data(ttl=300, show_spinner=False)
+def get_all_maintenances(_db: Session, user_id: str) -> List[Maintenance]:
+    """Recupera storico manutenzioni (Cachato)."""
+    return _db.query(Maintenance).filter(Maintenance.user_id == user_id).order_by(Maintenance.date.desc()).all()
 
 def create_maintenance(
     db: Session,
@@ -105,16 +129,20 @@ def create_maintenance(
     db.add(new_maintenance)
     db.commit()
     db.refresh(new_maintenance)
+    
+    # Pulizia Cache
+    st.cache_data.clear()
+    
     return new_maintenance
-
-def get_all_maintenances(db: Session, user_id: str) -> List[Maintenance]:
-    return db.query(Maintenance).filter(Maintenance.user_id == user_id).order_by(Maintenance.date.desc()).all()
 
 def delete_maintenance(db: Session, user_id: str, record_id: int) -> bool:
     record = db.query(Maintenance).filter(and_(Maintenance.id == record_id, Maintenance.user_id == user_id)).first()
     if record:
         db.delete(record)
         db.commit()
+        
+        # Pulizia Cache
+        st.cache_data.clear()
         return True
     return False
 
@@ -125,6 +153,9 @@ def update_maintenance(db: Session, user_id: str, record_id: int, new_data: dict
             setattr(record, key, value)
         db.commit()
         db.refresh(record)
+        
+        # Pulizia Cache
+        st.cache_data.clear()
         return True
     return False
 
@@ -132,22 +163,33 @@ def update_maintenance(db: Session, user_id: str, record_id: int, new_data: dict
 # SEZIONE: SETTINGS
 # ==========================================
 
-def get_settings(db: Session, user_id: str) -> AppSettings:
-    """Recupera le impostazioni dell'utente. Se non esistono, crea riga per user_id."""
-    settings = db.query(AppSettings).filter(AppSettings.user_id == user_id).first()
+@st.cache_data(ttl=300, show_spinner=False)
+def get_settings(_db: Session, user_id: str) -> AppSettings:
+    """Recupera le impostazioni dell'utente (Cachato)."""
+    settings = _db.query(AppSettings).filter(AppSettings.user_id == user_id).first()
     if not settings:
         settings = AppSettings(user_id=user_id)
-        db.add(settings)
-        db.commit()
-        db.refresh(settings)
+        _db.add(settings)
+        _db.commit()
+        _db.refresh(settings)
     return settings
 
 def update_settings(db: Session, user_id: str, fluctuation: float, max_cost: float, alert_threshold: float):
     """Aggiorna configurazioni dell'utente specifico."""
-    settings = get_settings(db, user_id)
+    # Nota: qui usiamo get_settings normale perché stiamo per modificare
+    # Non usiamo la versione cached interna, ma facciamo una query diretta o riusiamo la logica
+    settings = db.query(AppSettings).filter(AppSettings.user_id == user_id).first()
+    if not settings:
+        settings = AppSettings(user_id=user_id)
+        db.add(settings)
+    
     settings.price_fluctuation_cents = fluctuation
     settings.max_total_cost = max_cost
     settings.max_accumulated_partial_cost = alert_threshold
     db.commit()
     db.refresh(settings)
+    
+    # Pulizia Cache
+    st.cache_data.clear()
+    
     return settings
