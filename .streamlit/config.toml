@@ -4,9 +4,4 @@ enableCORS = false
 enableXsrfProtection = false
 
 [client]
-toolbarMode = "minimal"          # Nasconde il menu hamburger (mostra solo settings essenziali)
 showErrorDetails = false         # In produzione nasconde i traceback brutti
-
-[browser]
-gatherUsageStats = false         # Privacy: Disabilita telemetria Streamlit
-serverAddress = "localhost"

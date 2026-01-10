@@ -17,26 +17,23 @@ def initialize_app():
     """Inizializzazione DB e Risorse."""
     init_db()
 
-def main():
-    # 2. Configurazione Pagina
-    st.set_page_config(page_title="FuelPyTracker", page_icon="⛽", layout="wide", initial_sidebar_state="expanded")
-    
-    # 3. Iniezione Stili e JS Bridge
+def main():    
+    # 1. Iniezione Stili e JS Bridge
     inject_js_bridge()
     apply_custom_css()
     
-    # 4. Init Applicazione
+    # 2. Init Applicazione
     initialize_app()
 
-    # 5. Gestione Routing Auth (Magic Link)
+    # 3. Gestione Routing Auth (Magic Link)
     handle_auth_redirects()
 
-    # 6. Modalità Reset Password (Bloccante)
+    # 4. Modalità Reset Password (Bloccante)
     if st.session_state.get("reset_password_mode", False):
         render_reset_page()
         return
 
-    # 7. Security Gate
+    # 5. Security Gate
     current_user = st.session_state.get("user") or get_current_user()
     
     if not current_user:
@@ -46,7 +43,7 @@ def main():
     # Persistenza utente
     st.session_state['user'] = current_user
 
-    # 8. Mappa Pagine
+    # 6. Mappa Pagine
     if "current_page" not in st.session_state:
         st.session_state.current_page = "Dashboard"
 
@@ -59,10 +56,10 @@ def main():
     pages_account = { "Profilo": profile.render }
     all_pages = {**pages_main, **pages_account}
 
-    # 9. Render Sidebar e Navigazione
+    # 7. Render Sidebar e Navigazione
     render_sidebar(current_user, pages_main, pages_account)
 
-    # 10. Render Pagina Corrente
+    # 8. Render Pagina Corrente
     if st.session_state.current_page in all_pages:
         all_pages[st.session_state.current_page]()
     else:

@@ -24,14 +24,22 @@ def render():
     records_asc = sorted(records, key=lambda x: x.date)
     chart_data = []
     
+    # Calcolo medie per il Trip Calculator
+    valid_efficiency_values = []
+    
     for r in records_asc:
         stats = calculate_stats(r, records)
+        eff = stats["km_per_liter"]
+        
+        if eff:
+            valid_efficiency_values.append(eff)
+            
         chart_data.append({
             "Data": pd.to_datetime(r.date),
             "Prezzo": r.price_per_liter,
             "Costo": r.total_cost,
             "Litri": r.liters,
-            "Efficienza": stats["km_per_liter"] if stats["km_per_liter"] else None
+            "Efficienza": eff
         })
     df = pd.DataFrame(chart_data)
 
@@ -59,12 +67,25 @@ def render():
         "Prezzo": f"{last_record['Prezzo']:.3f} €",
         "Litri": f"{last_record['Litri']:.2f} L"
     })
-
-    # Alert Parziali (Delegato a service)
-    partial_status = check_partial_accumulation(records)
-    if partial_status["accumulated_cost"] > settings.max_accumulated_partial_cost:
-        st.warning(f"⚠️ Accumulo parziali: {partial_status['accumulated_cost']:.2f} €. Consigliato fare il pieno!")
-
+    
+    # === TRIP CALCULATOR ===
+    st.write("")
+    # Calcoliamo i dati base per il calcolatore
+    avg_kml = sum(valid_efficiency_values) / len(valid_efficiency_values) if valid_efficiency_values else 0
+    last_price = last_record['Prezzo']
+    
+    col_trip, col_alert = st.columns([1, 2], vertical_alignment="center")
+    
+    with col_trip:
+        if st.button("🧮 Calcola Costo Viaggio", use_container_width=True):
+             _render_trip_calculator_dialog(avg_kml, last_price)
+             
+    with col_alert:
+        # Alert Parziali (Delegato a service)
+        partial_status = check_partial_accumulation(records)
+        if partial_status["accumulated_cost"] > settings.max_accumulated_partial_cost:
+            st.warning(f"⚠️ Accumulo parziali: {partial_status['accumulated_cost']:.2f} €. Consigliato fare il pieno!")
+    
     st.divider()
 
     # ==========================================
@@ -109,3 +130,38 @@ def render():
             st.plotly_chart(charts.build_spending_bar_chart(df_c), width="stretch")
         else:
             st.warning("Nessuna spesa registrata.")
+
+
+# --- HELPER: Dialog Trip Calculator ---
+@st.dialog("🧮 Trip Calculator")
+def _render_trip_calculator_dialog(avg_kml, last_price):
+    """
+    Mostra un modale per calcolare il costo stimato di un viaggio
+    basandosi sulla media storica dell'utente.
+    """
+    st.write("Stima il costo del tuo prossimo viaggio basandoti sui tuoi consumi storici.")
+    
+    # Input Utente
+    trip_km = st.number_input("Quanto è lungo il viaggio? (Km)", min_value=1, value=100, step=10)
+    
+    # Parametri Modificabili (con default intelligenti)
+    with st.expander("🔧 Parametri di Calcolo", expanded=False):
+        c1, c2 = st.columns(2)
+        calc_kml = c1.number_input("Media Km/L", value=float(f"{avg_kml:.2f}"), min_value=1.0, step=0.5, format="%.2f")
+        calc_price = c2.number_input("Prezzo €/L", value=float(f"{last_price:.3f}"), min_value=0.5, step=0.01, format="%.3f")
+        st.caption("Default: La tua media storica e l'ultimo prezzo pagato.")
+
+    if st.button("Calcola Costo", type="primary", use_container_width=True):
+        # Formula: (Km / (Km/L)) * Prezzo
+        liters_needed = trip_km / calc_kml
+        estimated_cost = liters_needed * calc_price
+        
+        st.divider()
+        
+        # Risultato in evidenza
+        st.success(f"💶 Costo Stimato: **{estimated_cost:.2f} €**")
+        
+        # Dettagli calcolo
+        c_res1, c_res2 = st.columns(2)
+        c_res1.metric("Carburante Richiesto", f"{liters_needed:.1f} L")
+        c_res2.metric("Costo al Km", f"{(estimated_cost/trip_km):.3f} €/km")
