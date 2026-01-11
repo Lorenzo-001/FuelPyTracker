@@ -1,0 +1,9 @@
+.git
+.venv
+venv
+__pycache__
+.env
+.streamlit/secrets.toml
+Dockerfile
+docker-compose.yml
+README.md

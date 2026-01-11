@@ -1,0 +1,11 @@
+services:
+  fuel-tracker:
+    build: .
+    container_name: FuelPyTracker
+    ports:
+      - "8501:8501"
+    volumes:
+      # TRUCCO: Montiamo il tuo file secrets locale dentro al container al volo.
+      # Il container vedrà il file come se fosse suo, ma il file resta sul tuo PC.
+      - ./.streamlit/secrets.toml:/app/.streamlit/secrets.toml
+    restart: unless-stopped
