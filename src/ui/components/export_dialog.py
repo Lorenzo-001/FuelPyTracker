@@ -94,7 +94,7 @@ def render(user, year_filter):
         st.write("")
         st.markdown("---")
         
-        submitted = st.form_submit_button("📄 Genera e Scarica PDF", type="primary", use_container_width=True)
+        submitted = st.form_submit_button("📄 Genera e Scarica PDF", type="primary", width='stretch')
     
     # ------------------------------------------------------------------
     # 3. GESTIONE SUBMIT E VALIDAZIONE
@@ -147,7 +147,7 @@ def _generate_and_download(user, owner, plate, model, year_filter):
                 file_name=fname,
                 mime="application/pdf",
                 type="secondary",
-                use_container_width=True
+                width='stretch'
             )
             
     except Exception as e:

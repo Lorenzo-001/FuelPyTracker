@@ -77,7 +77,7 @@ def render():
     col_trip, col_alert = st.columns([1, 2], vertical_alignment="center")
     
     with col_trip:
-        if st.button("🧮 Calcola Costo Viaggio", use_container_width=True):
+        if st.button("🧮 Calcola Costo Viaggio", width='stretch'):
              _render_trip_calculator_dialog(avg_kml, last_price)
              
     with col_alert:
@@ -151,7 +151,7 @@ def _render_trip_calculator_dialog(avg_kml, last_price):
         calc_price = c2.number_input("Prezzo €/L", value=float(f"{last_price:.3f}"), min_value=0.5, step=0.01, format="%.3f")
         st.caption("Default: La tua media storica e l'ultimo prezzo pagato.")
 
-    if st.button("Calcola Costo", type="primary", use_container_width=True):
+    if st.button("Calcola Costo", type="primary", width='stretch'):
         # Formula: (Km / (Km/L)) * Prezzo
         liters_needed = trip_km / calc_kml
         estimated_cost = liters_needed * calc_price

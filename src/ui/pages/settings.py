@@ -163,7 +163,7 @@ def _render_import_tab(user):
             data=empty_template,
             file_name="FuelPyTracker_Template.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
+            width='stretch'
         )
 
     # --- GESTIONE RESET UPLOADER ---

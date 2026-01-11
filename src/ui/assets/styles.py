@@ -132,3 +132,182 @@ def apply_custom_css():
             .stApp { background-color: #0e1117; }
         </style>
     """, unsafe_allow_html=True)
+
+import streamlit as st
+
+def apply_login_css():
+    """
+    Applica lo stile CSS avanzato per la pagina di login (Mobile-First).
+    """
+    st.markdown("""
+        <style>
+            /* 1. Nascondi Header e Footer di Streamlit */
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            
+            /* 2. Reset dei margini del contenitore principale */
+            .block-container {
+                margin-top: 0rem !important;    /* Spazio minimo in alto */
+                padding-bottom: 0rem !important;
+                padding-left: 1rem !important;
+                padding-right: 1rem !important;
+                max-width: 100%;
+            }
+            
+            /* 3. Comportamento Mobile Specifico (< 600px) */
+            @media only screen and (max-width: 600px) {
+                .block-container {
+                    margin-top: 10rem !important;
+                    /* opzionale: spazio interno per non “attaccare” il bordo */
+                    padding: 1rem;
+                    margin: 1rem;
+                }
+
+                div[data-testid="stVerticalBlock"] {
+                    gap: 0.5rem !important; 
+                }
+
+                button[data-testid="stBaseButton-secondary"] {
+                    font-size: 0.8rem !important;
+                    padding: 0px 10px !important;
+                    min-height: 40px !important;
+                }
+            }
+
+            /* 4. Comportamento Desktop (Centrato) */
+            @media only screen and (min-width: 601px) {
+                div[data-testid="stVerticalBlock"] {
+                    max-width: 620px;
+                    margin: 0 auto;
+                    gap: 0.8rem !important;
+                    padding-left: 1rem !important;
+                    padding-right: 1rem !important;
+                }
+            }
+
+            /* 5. Stile link "Password dimenticata" */
+            button[kind="tertiary"] {
+                color: #78909c !important;
+                text-decoration: underline;
+                font-size: 0.75rem !important;
+                border: none !important;
+                background: transparent !important;
+                padding: 0 !important;
+                margin-top: -5px !important;
+                justify-content: center !important;
+                height: auto !important;
+            }
+            button[kind="tertiary"]:hover {
+                color: #4a6fa5 !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+def render_login_header():
+    """Renderizza l'header HTML della pagina di login."""
+    st.markdown("""
+        <div style="text-align: center; margin-bottom: 10px;">
+            <h2 style="margin: 0; padding: 0; font-size: 1.8rem;">⛽ FuelPyTracker</h2>
+            <p style="margin: 0; padding: 0; color: #888; font-size: 0.85rem;">Il tuo diario di bordo digitale</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+def apply_sidebar_css():
+    """
+    Carica CSS personalizzato per migliorare l'estetica della sidebar.
+    Nasconde i radio button standard e li trasforma in pulsanti menu.
+    """
+    st.markdown("""
+        <style>
+        /* Stile per i Radio Button trasformati in Menu */
+        div.row-widget.stRadio > div {
+            flex-direction: column;
+            gap: 10px;
+        }
+        div.row-widget.stRadio > div[role="radiogroup"] > label {
+            background-color: transparent;
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        div.row-widget.stRadio > div[role="radiogroup"] > label:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        /* Nasconde il pallino del radio button */
+        div.row-widget.stRadio div[role="radiogroup"] > label > div:first-child {
+            display: none;
+        }
+        
+        /* --- NUOVO Stile Profilo Utente (Row Layout) --- */
+        .profile-container {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 25px;
+            margin-top: 10px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .profile-avatar {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, #00C6FF, #0072FF); /* Gradiente Blu Tech */
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 1.1rem;
+            margin-right: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .profile-info {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .profile-name {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #FFF;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .profile-role {
+            font-size: 0.7rem;
+            color: #AAA;
+            margin-top: 2px;
+        }
+
+        /* --- Headers Sezioni --- */
+        .nav-header {
+            font-size: 1.05rem;
+            font-style: oblique;
+            font-weight: 700;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 15px;
+            margin-bottom: 8px;
+        }
+        
+        .version-footer {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 10px;
+            font-family: monospace;
+        }
+        </style>
+    """, unsafe_allow_html=True)

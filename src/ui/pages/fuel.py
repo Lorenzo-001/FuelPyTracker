@@ -57,7 +57,7 @@ def render():
 
         # Bottone Grande invece di Expander annidato
         st.markdown("##### 📸 Vuoi velocizzare l'inserimento?")
-        if st.button("🚀 SCANSIONA SCONTRINO CON AI", type="primary", use_container_width=True):
+        if st.button("🚀 SCANSIONA SCONTRINO CON AI", type="primary", width='stretch'):
             _open_ocr_dialog()
 
         # === B. CALCOLO DEFAULTS ===
@@ -143,7 +143,7 @@ def _open_ocr_dialog():
         if upl_pic: img_buffer = upl_pic
 
     if img_buffer:
-        if st.button("✨ Analizza Ora", type="primary", use_container_width=True):
+        if st.button("✨ Analizza Ora", type="primary", width='stretch'):
             with st.spinner("Analisi AI in corso..."):
                 # Chiamata al servizio
                 data = process_receipt_image(img_buffer)
