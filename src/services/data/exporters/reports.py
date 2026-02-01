@@ -48,7 +48,9 @@ def generate_excel_report(db: Session, user_id: str) -> bytes:
             "Km": m.total_km,
             "Tipo": m.expense_type,
             "Costo": m.cost,
-            "Descrizione": m.description
+            "Descrizione": m.description,
+            "Scadenza Km": m.expiry_km,
+            "Scadenza Data": m.expiry_date
         })
 
     # 4. Creazione e Ordinamento DataFrame

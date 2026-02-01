@@ -39,7 +39,6 @@ def build_fuel_dataframe(records: list) -> pd.DataFrame:
         
     return pd.DataFrame(data_list)
 
-
 # ==========================================
 # SEZIONE: MANUTENZIONE (Maintenance Grid)
 # ==========================================
@@ -64,6 +63,13 @@ def build_maintenance_dataframe(records: list) -> pd.DataFrame:
     for r in records:
         icon = ICONS_MAP.get(r.expense_type, "⚙️")
         
+        # Formattazione Scadenze
+        scadenza_str = "-"
+        if r.expiry_km:
+            scadenza_str = f"A {r.expiry_km:,} Km"
+        elif r.expiry_date:
+            scadenza_str = f"Il {r.expiry_date.strftime('%d/%m/%Y')}"
+
         data_list.append({
             "ID": r.id,
             "Data": r.date,

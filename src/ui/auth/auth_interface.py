@@ -25,83 +25,109 @@ def render_reset_modal():
             except Exception as e:
                 st.error(f"Errore: {e}")
 
+# --- CALLBACKS (Business Logic) ---
+# Queste funzioni vengono eseguite PRIMA del rendering della UI,
+# garantendo che lo stato (st.session_state.user) sia aggiornato
+# quando main.py riparte.
+
+def login_callback():
+    """Gestisce l'azione di login triggerata dal form."""
+    email = st.session_state.get("login_email", "")
+    password = st.session_state.get("login_pass", "")
+    
+    if not email or not password:
+        st.session_state.auth_error = "Dati mancanti."
+        return
+
+    try:
+        res = sign_in(email, password)
+        if res.user:
+            st.session_state.user = res.user
+            st.session_state.auth_error = None
+            # Il rerun è implicito dopo la callback
+    except Exception:
+        st.session_state.auth_error = "Credenziali non valide."
+
+def register_callback():
+    """Gestisce l'azione di registrazione triggerata dal form."""
+    new_email = st.session_state.get("reg_email", "")
+    new_pass = st.session_state.get("reg_pass", "")
+    confirm_pass = st.session_state.get("reg_pass_conf", "")
+
+    if new_pass != confirm_pass:
+        st.session_state.auth_error = "Le password non coincidono."
+        return
+    
+    try:
+        res = sign_up(new_email, new_pass)
+        if res.user:
+            st.session_state.user = res.user
+            st.session_state.auth_error = None
+    except Exception as e:
+        msg = str(e)
+        if "User already registered" in msg:
+            st.session_state.auth_error = "Email già registrata."
+        else:
+            st.session_state.auth_error = f"Errore registrazione: {msg}"
+
 # --- COMPONENTI INTERNI ---
 
 def _render_login_form():
-    """Gestisce il form di login."""
+    """Renderizza il form di accesso."""
     with st.form("login_form", border=False):
-        email = st.text_input("Email", placeholder="nome@esempio.com")
-        password = st.text_input("Password", type="password", placeholder="••••••")
+        # Keys necessarie per il binding con le callback
+        st.text_input("Email", key="login_email", placeholder="nome@esempio.com")
+        st.text_input("Password", type="password", key="login_pass", placeholder="••••••")
         
-        # Spacer
         st.markdown('<div style="height: 5px;"></div>', unsafe_allow_html=True)
         
-        submit = st.form_submit_button("Entra", width='stretch', type="primary")
-        
-        if submit:
-            if not email or not password:
-                st.warning("Dati mancanti.")
-            else:
-                try:
-                    res = sign_in(email, password)
-                    if res.user:
-                        st.success("Accesso effettuato!")
-                        time.sleep(0.5)
-                        st.rerun()
-                except Exception:
-                    st.error("Credenziali non valide.")
+        # Gestione Errori Feedback
+        if st.session_state.get("auth_error"):
+            st.error(st.session_state.auth_error)
+            st.session_state.auth_error = None # Reset dopo visualizzazione
+
+        # Submit con Callback
+        st.form_submit_button(
+            "Entra", 
+            width='stretch', 
+            type="primary",
+            on_click=login_callback # Hook logica
+        )
 
 def _render_register_form():
-    """Gestisce il form di registrazione."""
+    """Renderizza il form di registrazione."""
     with st.form("register_form", border=False):
-        new_email = st.text_input("Email")
-        new_pass = st.text_input("Password (min 6)")
-        confirm_pass = st.text_input("Conferma Password", type="password")
+        st.text_input("Email", key="reg_email")
+        st.text_input("Password (min 6)", key="reg_pass", type="password")
+        st.text_input("Conferma Password", key="reg_pass_conf", type="password")
         
         st.markdown('<div style="height: 5px;"></div>', unsafe_allow_html=True)
-        
-        btn_register = st.form_submit_button("Crea Account", width='stretch')
-        
-        if btn_register:
-            if new_pass != confirm_pass:
-                st.error("Le password non coincidono.")
-            elif len(new_pass) < 6:
-                st.error("Minimo 6 caratteri.")
-            else:
-                try:
-                    res = sign_up(new_email, new_pass)
-                    if res.user:
-                        st.success("Registrato! Accesso...")
-                        time.sleep(1)
-                        st.rerun()
-                except AuthApiError as api_err:
-                    if "User already registered" in str(api_err):
-                        st.error("Email già presente.")
-                    else:
-                        st.error(f"Errore: {api_err}")
-                except Exception as e:
-                    st.error(f"Errore: {e}")
 
-# --- INTERFACCIA PRINCIPALE ---
+        if st.session_state.get("auth_error"):
+             st.error(st.session_state.auth_error)
+             st.session_state.auth_error = None
+
+        st.form_submit_button(
+            "Crea Account", 
+            width='stretch',
+            on_click=register_callback # Hook logica
+        )
+
+# --- INTERFACCIA PUBBLICA ---
 
 def render_login_interface():
-    """
-    Interfaccia di Login Mobile-First ultra compatta.
-    """
-    # 1. Applica CSS
+    """Renderizza l'intera pagina di autenticazione (Login/Register)."""
     apply_login_css()
-    
-    # 2. Renderizza Header
     render_login_header()
-
-    # 3. Tabs per Login/Registrazione
+    
     tab_login, tab_register = st.tabs(["🔐 Accedi", "📝 Registrati"])
-
+    
     with tab_login:
         _render_login_form()
-        # Link Password Dimenticata
-        if st.button("Password dimenticata?", type="tertiary", width='stretch'):
-            render_reset_modal()
+        # Pulsante esterno al form per evitare submit accidentali
+        if st.button("Password dimenticata?", key="forgot_pass_btn", type="tertiary"):
+             st.session_state.reset_password_mode = True # Flag per switch pagina
+             st.rerun()
 
     with tab_register:
         _render_register_form()

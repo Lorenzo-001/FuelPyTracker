@@ -32,6 +32,8 @@ class Maintenance(Base):
     expense_type = Column(String, nullable=False)
     cost = Column(Float, nullable=False)
     description = Column(Text, nullable=True)
+    expiry_km = Column(Integer, nullable=True)
+    expiry_date = Column(Date, nullable=True)
 
     def __repr__(self):
         return f"<Maintenance(id={self.id}, user={self.user_id}, type={self.expense_type})>"

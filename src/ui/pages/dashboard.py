@@ -6,6 +6,7 @@ from src.services.business.calculations import calculate_stats, check_partial_ac
 from src.services.business.analysis import *
 from src.ui.components import kpi, charts
 
+@st.fragment
 def render():
     """Vista Dashboard: Analisi Dati e Trend (Refactored)."""
 
@@ -24,7 +25,7 @@ def render():
     records_asc = sorted(records, key=lambda x: x.date)
     chart_data = []
     
-    # Calcolo medie per il Trip Calculator
+    # Calcolo medie (necessarie ora per il Tab Funzionalità)
     valid_efficiency_values = []
     
     for r in records_asc:
@@ -43,22 +44,36 @@ def render():
         })
     df = pd.DataFrame(chart_data)
 
-    # 3. Header e Info
+    # Preparazione dati variabili per KPI e Calcolatore
+    last_record = df.iloc[-1]
+    avg_kml = sum(valid_efficiency_values) / len(valid_efficiency_values) if valid_efficiency_values else 0
+    last_price = last_record['Prezzo']
+
+    # 3. Header e Info (Con TAB)
     st.header("📊 Dashboard")
     
     with st.expander("ℹ️ Guida Rapida e Funzionalità", expanded=False):
-        st.markdown("""
-        **Benvenuto in FuelPyTracker!** Ecco come ottenere il massimo dalla tua app:
+        # Creazione dei Tab
+        tab_guide, tab_tools = st.tabs(["📖 Guida Rapida", "🛠️ Funzionalità"])
         
-        * **⛽ Rifornimenti:** Registra ogni sosta alla pompa. Per calcolare i consumi reali (**Km/L**), è fondamentale segnare correttamente quando fai il **Pieno**.
-        * **🔧 Manutenzione:** Tieni traccia di Tagliandi, Gomme e Scadenze (Bollo/Revisione).
-        * **⚙️ Configurazione:** Dalle Impostazioni puoi importare il tuo storico Excel e tarare gli avvisi di spesa.
-        
-        *I grafici qui sotto si aggiorneranno automaticamente in base ai tuoi inserimenti.*
-        """)
+        with tab_guide:
+            st.markdown("""
+            **Benvenuto in FuelPyTracker!** Ecco come ottenere il massimo dalla tua app:
+            
+            * **⛽ Rifornimenti:** Registra ogni sosta alla pompa. Per calcolare i consumi reali (**Km/L**), è fondamentale segnare correttamente quando fai il **Pieno**.
+            * **🔧 Manutenzione:** Tieni traccia di Tagliandi, Gomme e Scadenze (Bollo/Revisione).
+            * **⚙️ Configurazione:** Dalle Impostazioni puoi importare il tuo storico Excel e tarare gli avvisi di spesa.
+            
+            *I grafici qui sotto si aggiorneranno automaticamente in base ai tuoi inserimenti.*
+            """)
+            
+        with tab_tools:
+            st.write("Strumenti utili per la pianificazione.")
+            # Il pulsante è stato spostato qui
+            if st.button("🧮 Calcola Costo Viaggio", width='stretch'):
+                 _render_trip_calculator_dialog(avg_kml, last_price)
 
     # 4. KPI Ultimo Rifornimento (Delegato a component)
-    last_record = df.iloc[-1]
     st.subheader("⛽ Ultimo Rifornimento")
     
     kpi.render_dashboard_last_record({
@@ -68,23 +83,11 @@ def render():
         "Litri": f"{last_record['Litri']:.2f} L"
     })
     
-    # === TRIP CALCULATOR ===
+    # === ALERT PARZIALI (Senza più il pulsante accanto) ===
     st.write("")
-    # Calcoliamo i dati base per il calcolatore
-    avg_kml = sum(valid_efficiency_values) / len(valid_efficiency_values) if valid_efficiency_values else 0
-    last_price = last_record['Prezzo']
-    
-    col_trip, col_alert = st.columns([1, 2], vertical_alignment="center")
-    
-    with col_trip:
-        if st.button("🧮 Calcola Costo Viaggio", width='stretch'):
-             _render_trip_calculator_dialog(avg_kml, last_price)
-             
-    with col_alert:
-        # Alert Parziali (Delegato a service)
-        partial_status = check_partial_accumulation(records)
-        if partial_status["accumulated_cost"] > settings.max_accumulated_partial_cost:
-            st.warning(f"⚠️ Accumulo parziali: {partial_status['accumulated_cost']:.2f} €. Consigliato fare il pieno!")
+    partial_status = check_partial_accumulation(records)
+    if partial_status["accumulated_cost"] > settings.max_accumulated_partial_cost:
+        st.warning(f"⚠️ Accumulo parziali: {partial_status['accumulated_cost']:.2f} €. Consigliato fare il pieno!")
     
     st.divider()
 

@@ -13,6 +13,13 @@ from .models import ReceiptData
 _api_key = st.secrets.get("openai", {}).get("api_key")
 client = OpenAI(api_key=_api_key) if _api_key else None
 
+def is_openai_enabled() -> bool:
+    """
+    Restituisce True se OpenAI è configurato correttamente e pronto all'uso.
+    Utile per nascondere/mostrare componenti UI condizionali.
+    """
+    return client is not None
+
 def analyze_receipt(file_buffer) -> ReceiptData:
     """
     Invia l'immagine dello scontrino a OpenAI GPT-4o e restituisce dati strutturati.

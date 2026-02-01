@@ -114,7 +114,9 @@ def create_maintenance(
     total_km: int,
     expense_type: str,
     cost: float,
-    description: Optional[str] = None
+    description: Optional[str] = None,
+    expiry_km: Optional[int] = None,
+    expiry_date: Optional[date] = None
 ) -> Maintenance:
     """Crea e persiste un nuovo record di manutenzione."""
     new_maintenance = Maintenance(
@@ -123,7 +125,9 @@ def create_maintenance(
         total_km=total_km,
         expense_type=expense_type,
         cost=cost,
-        description=description
+        description=description,
+        expiry_km=expiry_km,
+        expiry_date=expiry_date
     )
 
     db.add(new_maintenance)

@@ -219,9 +219,8 @@ def generate_maintenance_report(
     pdf.ln(15)
 
     # 5. Costruzione Tabella Interventi
-    # Definizione larghezze colonne e intestazioni
-    cols_w = [25, 25, 40, 70, 30]
-    headers = ["DATA", "KM", "TIPO INTERVENTO", "DESCRIZIONE / NOTE", "COSTO (EUR)"]
+    cols_w = [22, 22, 35, 30, 56, 25] 
+    headers = ["DATA", "KM", "TIPO", "SCADENZA", "DESCRIZIONE", "COSTO"]
     
     # Rendering Header Tabella
     pdf.set_font('Helvetica', 'B', 8)
@@ -230,7 +229,7 @@ def generate_maintenance_report(
     pdf.set_line_width(0.3)
     
     for i, h in enumerate(headers):
-        align = 'R' if i == 4 else 'C' if i < 2 else 'L'
+        align = 'R' if i == 5 else 'C' if i < 2 else 'L'
         pdf.cell(cols_w[i], 8, h, 1, 0, align, True)
     pdf.ln()
 
@@ -252,12 +251,19 @@ def generate_maintenance_report(
         date_str = m.date.strftime("%d/%m/%Y")
         km_str = str(m.total_km)
         
+        # Logica stringa scadenza
+        scad_str = "-"
+        if m.expiry_km:
+            scad_str = f"{m.expiry_km} km"
+        elif m.expiry_date:
+            scad_str = m.expiry_date.strftime("%d/%m/%y")
+        
         # Truncate stringhe lunghe per layout fisso
         note = safe_text(m.description or "")
-        if len(note) > 45: note = note[:42] + "..."
+        if len(note) > 35: note = note[:32] + "..."
         
         tipo = safe_text(m.expense_type)
-        if len(tipo) > 22: tipo = tipo[:20] + ".."
+        if len(tipo) > 20: tipo = tipo[:18] + ".."
 
         cost_str = f"{m.cost:.2f}".replace('.', ',')
 
@@ -271,8 +277,11 @@ def generate_maintenance_report(
         pdf.cell(cols_w[2], 7, tipo, 'LRB', 0, 'L', fill)
         pdf.set_font('Helvetica', '', 8)
         
-        pdf.cell(cols_w[3], 7, note, 'LRB', 0, 'L', fill)
-        pdf.cell(cols_w[4], 7, cost_str, 'LRB', 0, 'R', fill)
+        # Cella Scadenza
+        pdf.cell(cols_w[3], 7, scad_str, 'LRB', 0, 'C', fill)
+
+        pdf.cell(cols_w[4], 7, note, 'LRB', 0, 'L', fill)
+        pdf.cell(cols_w[5], 7, cost_str, 'LRB', 0, 'R', fill)
         
         pdf.ln()
         fill = not fill # Toggle colore riga
@@ -280,7 +289,9 @@ def generate_maintenance_report(
     # 6. Rendering Totale Finale
     if maintenances:
         pdf.set_font('Helvetica', 'B', 8)
-        pdf.cell(sum(cols_w[:-1]), 7, "TOTALE PERIODO", 1, 0, 'R')
+        # Somma larghezze tutte colonne tranne l'ultima
+        total_width_labels = sum(cols_w[:-1])
+        pdf.cell(total_width_labels, 7, "TOTALE PERIODO", 1, 0, 'R')
         pdf.cell(cols_w[-1], 7, f"{total_spent:,.2f}".replace('.', ','), 1, 0, 'R', True)
 
     return bytes(pdf.output())

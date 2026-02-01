@@ -16,7 +16,16 @@ try:
     DATABASE_URL = st.secrets["database"]["url"]
 except Exception:
     # Gestione fallback per evitare crash immediati in fase di sviluppo/debug locale
-    st.error("❌ Errore critico: 'database.url' non trovato in .streamlit/secrets.toml.")
+    st.error(
+        """
+        ❌ **Errore Critico: Configurazione Database Mancante**
+        
+        Impossibile recuperare `database.url`. Verifica che:
+        1. Il file `.streamlit/secrets.toml` esista nella root del progetto.
+        2. Contenga la sezione `[database]` con la proprietà `url`.
+        3. Se stai usando Docker, assicurati di aver montato correttamente il file.
+        """
+    )
     st.stop()
 
 # 2. Inizializzazione Engine SQLAlchemy

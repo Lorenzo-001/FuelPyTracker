@@ -3,6 +3,7 @@ import time
 from src.services.auth.auth_service import update_user_password_secure, update_user_email
 from src.services.data.storage import upload_avatar, get_avatar_url
 
+@st.fragment
 def render():
     st.header("👤 Profilo Utente")
 

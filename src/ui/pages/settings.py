@@ -10,6 +10,7 @@ from src.services.data.importers import manager
 from src.ui.components import data_staging, export_dialog
 from src.services.data import exporters
 
+@st.fragment
 def render():
     st.header("⚙️ Gestione Dati e Configurazioni")
     

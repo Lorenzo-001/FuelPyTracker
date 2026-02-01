@@ -6,7 +6,9 @@ from src.database import crud
 from src.ui.components import grids, kpi, forms
 from src.services.business import fuel_logic
 from src.services.ocr import process_receipt_image
+from src.services.ocr.engine import is_openai_enabled
 
+@st.fragment
 def render():
     """Vista Principale: Gestione Rifornimenti (Refactored)."""
     st.header("⛽ Gestione Rifornimenti")
@@ -57,8 +59,14 @@ def render():
 
         # Bottone Grande invece di Expander annidato
         st.markdown("##### 📸 Vuoi velocizzare l'inserimento?")
-        if st.button("🚀 SCANSIONA SCONTRINO CON AI", type="primary", width='stretch'):
-            _open_ocr_dialog()
+        if is_openai_enabled():
+            # CASO POSITIVO: Mostra il bottone normale
+            if st.button("🚀 SCANSIONA SCONTRINO CON AI", type="primary", use_container_width=True):
+                _open_ocr_dialog()
+        else:
+            # CASO NEGATIVO: Mostra bottone disabilitato o avviso
+            st.button("🚀 SCANSIONA SCONTRINO (Non disponibile)", disabled=True, use_container_width=True, help="Funzionalità disabilitata: API Key OpenAI mancante.")
+            st.caption("⚠️ Configura la chiave OpenAI nei settings per abilitare l'AI.")
 
         # === B. CALCOLO DEFAULTS ===
         # Se abbiamo dati in bozza (da OCR), usiamo quelli. Altrimenti storici.
