@@ -3,7 +3,7 @@ import streamlit as st
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
-from src.database.models import Base
+from src.database.models import Base, Refueling, Maintenance, AppSettings, Reminder, ReminderHistory
 
 # =============================================================================
 # CONFIGURAZIONE & CONNESSIONE DATABASE

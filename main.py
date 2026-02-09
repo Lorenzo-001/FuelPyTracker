@@ -1,15 +1,21 @@
 import sys
 import os
 import streamlit as st
-sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
+
+from src.ui.components.dashboard import dashboard
+from src.ui.components.fuel import fuel
+from src.ui.components.maintenance import maintenance
+from src.ui.components.profile import profile
 from src.database.core import init_db
-from src.ui.pages import dashboard, fuel, maintenance, settings, profile
-from src.ui.auth.auth_interface import render_login_interface
+from src.ui.components.settings import settings
+from src.auth.auth_interface import render_login_interface
 from src.services.auth.auth_service import get_current_user
-from src.ui.assets.styles import inject_js_bridge, apply_custom_css
+from src.assets.styles import inject_js_bridge, apply_custom_css
 from src.services.auth.router import handle_auth_redirects
 from src.ui.components.sidebar import render_sidebar
-from src.ui.auth.reset_page import render_reset_page
+from src.auth.reset_page import render_reset_page
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 
 # --- 1. CONFIGURAZIONE INIZIALE ASSOLUTA ---
 st.set_page_config(

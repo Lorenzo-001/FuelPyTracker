@@ -3,25 +3,38 @@ import pandas as pd
 from src.database.core import get_db
 from src.database import crud
 from src.services.business.calculations import calculate_stats, check_partial_accumulation
-from src.services.business.analysis import *
-from src.ui.components import kpi, charts
+from src.services.business.analysis import filter_data_by_date
+from src.services.business import gamification
+from src.ui.components.dashboard import kpi, charts
+from src.ui.components import startup_alerts
 
 @st.fragment
 def render():
-    """Vista Dashboard: Analisi Dati e Trend (Refactored)."""
+    """Vista Dashboard: Analisi Dati, Salute Auto e Trend."""
 
-    # 1. Recupero Dati
+    # 1. Recupero Dati Essenziali
     user = st.session_state["user"]
+    
+    # --- STARTUP CHECK (Pop-up automatico one-shot) ---
+    startup_alerts.check_and_show_alerts(user.id)
+    
     db = next(get_db())
     records = crud.get_all_refuelings(db, user.id)
     settings = crud.get_settings(db, user.id)
+    
+    # Recupero ultimo KM noto per calcoli salute
+    last_km = max(r.total_km for r in records) if records else 0
+    
+    # --- CALCOLO HEALTH SCORE ---
+    health_score, health_issues = gamification.calculate_car_health_score(db, user.id, last_km)
+    
     db.close()
 
     if not records:
         st.info("👋 Benvenuto! Inizia aggiungendo il tuo primo rifornimento.")
         return
 
-    # 2. Preparazione DataFrame Base
+    # 2. Preparazione DataFrame Base (Rifornimenti)
     records_asc = sorted(records, key=lambda x: x.date)
     chart_data = []
     
@@ -44,7 +57,7 @@ def render():
         })
     df = pd.DataFrame(chart_data)
 
-    # Preparazione dati variabili per KPI e Calcolatore
+    # Dati per Calcolatori e KPI
     last_record = df.iloc[-1]
     avg_kml = sum(valid_efficiency_values) / len(valid_efficiency_values) if valid_efficiency_values else 0
     last_price = last_record['Prezzo']
@@ -52,8 +65,11 @@ def render():
     # 3. Header e Info (Con TAB)
     st.header("📊 Dashboard")
     
-    with st.expander("ℹ️ Guida Rapida e Funzionalità", expanded=False):
-        # Creazione dei Tab
+    # Visualizzazione Rapida Salute Auto (Badge)
+    health_color = "green" if health_score >= 80 else "orange" if health_score >= 50 else "red"
+    st.markdown(f"**Stato Salute Veicolo:** <span style='color:{health_color}; font-weight:bold; font-size:1.2em'>{health_score}%</span>", unsafe_allow_html=True)
+    
+    with st.expander("ℹ️ Strumenti e Guida", expanded=False):
         tab_guide, tab_tools = st.tabs(["📖 Guida Rapida", "🛠️ Funzionalità"])
         
         with tab_guide:
@@ -68,14 +84,17 @@ def render():
             """)
             
         with tab_tools:
-            st.write("Strumenti utili per la pianificazione.")
-            # Il pulsante è stato spostato qui
-            if st.button("🧮 Calcola Costo Viaggio", width='stretch'):
+            
+            # TOOL 1: Trip Calculator
+            if st.button("🧮 Calcola Viaggio", width='stretch'):
                  _render_trip_calculator_dialog(avg_kml, last_price)
+            
+            # TOOL 2: Dettaglio Salute (Nuovo)
+            if st.button("🩺 Check-Up Salute", width='stretch'):
+                _render_health_dialog(health_score, health_issues)
 
-    # 4. KPI Ultimo Rifornimento (Delegato a component)
+    # 4. KPI Ultimo Rifornimento
     st.subheader("⛽ Ultimo Rifornimento")
-    
     kpi.render_dashboard_last_record({
         "Data": last_record["Data"].strftime("%d/%m/%y"),
         "Spesa": f"{last_record['Costo']:.2f} €",
@@ -83,7 +102,7 @@ def render():
         "Litri": f"{last_record['Litri']:.2f} L"
     })
     
-    # === ALERT PARZIALI (Senza più il pulsante accanto) ===
+    # Alert Parziali
     st.write("")
     partial_status = check_partial_accumulation(records)
     if partial_status["accumulated_cost"] > settings.max_accumulated_partial_cost:
@@ -92,7 +111,7 @@ def render():
     st.divider()
 
     # ==========================================
-    # SEZIONE: GRAFICI (Delegati a charts.py e analysis.py)
+    # SEZIONE: GRAFICI ANALITICI
     # ==========================================
     
     time_opts = ["Ultimo Mese", "Ultimi 3 Mesi", "Ultimi 6 Mesi", "Anno Corrente (YTD)", "Ultimo Anno", "Tutto lo storico"]
@@ -135,7 +154,8 @@ def render():
             st.warning("Nessuna spesa registrata.")
 
 
-# --- HELPER: Dialog Trip Calculator ---
+# --- DIALOGS ---
+
 @st.dialog("🧮 Trip Calculator")
 def _render_trip_calculator_dialog(avg_kml, last_price):
     """
@@ -168,3 +188,39 @@ def _render_trip_calculator_dialog(avg_kml, last_price):
         c_res1, c_res2 = st.columns(2)
         c_res1.metric("Carburante Richiesto", f"{liters_needed:.1f} L")
         c_res2.metric("Costo al Km", f"{(estimated_cost/trip_km):.3f} €/km")
+        
+        
+@st.dialog("🩺 Check-Up Salute Auto")
+def _render_health_dialog(score, issues):
+    """Mostra i dettagli del punteggio e i problemi aperti."""
+    
+    # Colore dinamico
+    color = "green" if score >= 80 else "orange" if score >= 50 else "red"
+    
+    st.markdown(
+        f"""
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h1 style="color: {color}; margin:0;">{score}%</h1>
+            <span>Punteggio Salute</span>
+        </div>
+        """, 
+        unsafe_allow_html=True
+    )
+    
+    if score == 100:
+        st.balloons()
+        st.success("🌟 Complimenti! La tua auto è mantenuta perfettamente.")
+        st.caption("Continua a registrare regolarmente i controlli di routine per mantenere il punteggio.")
+    else:
+        st.warning(f"Ci sono **{len(issues)}** aspetti da curare:")
+        
+        for issue in issues:
+            st.error(f"🔴 {issue}", icon="🔧")
+            
+        st.divider()
+        st.markdown("**Come migliorare?**")
+        st.info("Vai alla sezione **Manutenzione** e risolvi le scadenze o registra i controlli di routine mancanti.")
+        
+        if st.button("Vai a Manutenzione", type="primary", use_container_width=True):
+            st.session_state.current_page = "Manutenzione"
+            st.rerun()

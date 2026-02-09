@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import date
 from src.database.core import get_db
 from src.database import crud
-from src.ui.components import grids, kpi, forms
+from src.ui.components.fuel import grids, kpi, forms
 from src.services.business import fuel_logic
 from src.services.ocr import process_receipt_image
 from src.services.ocr.engine import is_openai_enabled
@@ -61,11 +61,11 @@ def render():
         st.markdown("##### 📸 Vuoi velocizzare l'inserimento?")
         if is_openai_enabled():
             # CASO POSITIVO: Mostra il bottone normale
-            if st.button("🚀 SCANSIONA SCONTRINO CON AI", type="primary", use_container_width=True):
+            if st.button("🚀 SCANSIONA SCONTRINO CON AI", type="primary", width='stretch'):
                 _open_ocr_dialog()
         else:
             # CASO NEGATIVO: Mostra bottone disabilitato o avviso
-            st.button("🚀 SCANSIONA SCONTRINO (Non disponibile)", disabled=True, use_container_width=True, help="Funzionalità disabilitata: API Key OpenAI mancante.")
+            st.button("🚀 SCANSIONA SCONTRINO (Non disponibile)", disabled=True, width='stretch', help="Funzionalità disabilitata: API Key OpenAI mancante.")
             st.caption("⚠️ Configura la chiave OpenAI nei settings per abilitare l'AI.")
 
         # === B. CALCOLO DEFAULTS ===

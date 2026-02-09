@@ -2,7 +2,7 @@ import streamlit as st
 import time
 from src.services.auth.auth_service import sign_in, sign_up, send_password_reset_email
 from gotrue.errors import AuthApiError
-from src.ui.assets.styles import apply_login_css, render_login_header
+from src.assets.styles import apply_login_css, render_login_header
 
 # --- FUNZIONE MODALE PER IL RESET ---
 @st.dialog("Recupero Password")

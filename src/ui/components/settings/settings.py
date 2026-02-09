@@ -1,14 +1,11 @@
 import streamlit as st
-import pandas as pd
-import re
 from datetime import datetime
 from src.database.core import get_db
 from src.database import crud
 from src.services.data.exporters import reports, templates
 # Importiamo i nuovi moduli refattorizzati
 from src.services.data.importers import manager
-from src.ui.components import data_staging, export_dialog
-from src.services.data import exporters
+from src.ui.components.settings import export_dialog, data_staging
 
 @st.fragment
 def render():
@@ -82,23 +79,53 @@ def _render_export_tab(user):
     
     db.close()
 
+@st.dialog("Conferma Eliminazione")
+def show_delete_dialog(index, label_name):
+    st.write(f"Sei sicuro di voler rimuovere la categoria **{label_name}** dalla lista?")
+    st.warning("Ricordati di salvare le configurazioni dopo la conferma.")
+    
+    col1, col2 = st.columns(2)
+    if col1.button("Sì, elimina", type="primary", use_container_width=True):
+        st.session_state.settings_temp_labels.pop(index)
+        # Gestione reset indice se stiamo cancellando l'elemento in modifica
+        if st.session_state.settings_editing_idx == index:
+            st.session_state.settings_editing_idx = -1
+        elif st.session_state.settings_editing_idx > index:
+            st.session_state.settings_editing_idx -= 1
+        st.rerun()
+        
+    if col2.button("Annulla", use_container_width=True):
+        st.rerun()
+
 def _render_config_tab(user):
     """Gestisce i parametri globali dell'app per l'utente specifico."""
     db = next(get_db())
     settings = crud.get_settings(db, user.id)
     
+    # --- 1. GESTIONE STATO LOCALE (Labels) ---
+    if "settings_temp_labels" not in st.session_state:
+        st.session_state.settings_temp_labels = settings.reminder_types or [
+            "Controllo Livello Olio", "Pressione Pneumatici"
+        ]
+    
+    # Reset indici
+    if "settings_editing_idx" not in st.session_state:
+        st.session_state.settings_editing_idx = -1
+
     st.subheader("Parametri Inserimento & Sicurezza")
     
     st.markdown("""
     > **Guida alla Configurazione:**
-    > 1. **Range Prezzo:** Limiti dello slider in Rifornimenti.
-    > 2. **Tetto Spesa:** Limite massimo di sicurezza.
-    > 3. **Soglia Allerta:** Avviso per troppi parziali consecutivi.
+    > 1. **Range Prezzo:** Imposta la tolleranza dello slider per il prezzo carburante.
+    > 2. **Tetto Spesa:** Fissa un limite massimo di sicurezza per evitare errori di digitazione (es. 500€).
+    > 3. **Soglia Allerta:** Ricevi un avviso se accumuli troppi rifornimenti parziali consecutivi.
+    > 4. **Categorie Promemoria:** Definisci qui le voci che troverai nel menu a tendina "Categoria" quando crei un nuovo promemoria.
     """)
     
     st.write("") 
 
     with st.form("config_form"):
+        # --- SEZIONE 1: Limiti Numerici ---
         st.markdown("##### 🎚️ Limiti Inserimento")
         
         new_range = st.number_input(
@@ -115,9 +142,6 @@ def _render_config_tab(user):
             step=10.0, format="%.2f"
         )
         
-        st.divider()
-        st.markdown("##### 🚨 Logica Avvisi")
-        
         new_alert_threshold = st.number_input(
             "Soglia Allerta Parziali Cumulati (€)",
             min_value=20.0, max_value=500.0,
@@ -125,11 +149,87 @@ def _render_config_tab(user):
             step=10.0, format="%.2f"
         )
         
+        st.divider()
+        
+        # --- SEZIONE 2: Gestione Categorie Promemoria ---
+        st.markdown("##### 🏷️ Gestione Categorie")
+        st.caption("Aggiungi o rimuovi le categorie.")
+
+        # A. AREA AGGIUNTA
+        c_add_in, c_add_btn = st.columns([5, 1], vertical_alignment="bottom")
+        new_label_input = c_add_in.text_input("Nuova Categoria", placeholder="Es. Filtro Abitacolo", label_visibility="collapsed")
+        
+        # FIX 1: Messaggio se input vuoto
+        if c_add_btn.form_submit_button("➕", help="Aggiungi", type="secondary", use_container_width=True):
+            if new_label_input:
+                clean_val = new_label_input.strip()
+                if clean_val not in st.session_state.settings_temp_labels:
+                    st.session_state.settings_temp_labels.append(clean_val)
+                    st.rerun()
+                else:
+                    st.warning("Categoria già presente nella lista.")
+            else:
+                st.error("⚠️ Inserisci un nome per la categoria prima di aggiungere.")
+
+        st.write("") 
+
+        # B. LISTA CARD (Mobile Optimized)
+        if not st.session_state.settings_temp_labels:
+            st.info("Nessuna categoria.")
+        
+        for i, label in enumerate(st.session_state.settings_temp_labels):
+            is_editing = (st.session_state.settings_editing_idx == i)
+            
+            with st.container(border=True):
+                c_text, c_actions_block = st.columns([4, 1.2], vertical_alignment="center")
+                
+                # --- COLONNA 1: CONTENUTO ---
+                with c_text:
+                    if is_editing:
+                        edit_val = st.text_input(f"ed_{i}", value=label, label_visibility="collapsed")
+                    else:
+                        st.markdown(f"**{label}**")
+
+                # --- COLONNA 2: PULSANTI ---
+                with c_actions_block:
+                    b1, b2 = st.columns(2)
+                    
+                    if is_editing:
+                        if b1.form_submit_button("✅", key=f"s_{i}", use_container_width=True):
+                            if edit_val:
+                                st.session_state.settings_temp_labels[i] = edit_val.strip()
+                                st.session_state.settings_editing_idx = -1
+                                st.rerun()
+                        
+                        if b2.form_submit_button("❌", key=f"u_{i}", use_container_width=True):
+                            st.session_state.settings_editing_idx = -1
+                            st.rerun()
+                    else:
+                        if b1.form_submit_button("✏️", key=f"e_{i}", help="Modifica", use_container_width=True):
+                            st.session_state.settings_editing_idx = i
+                            st.rerun()
+                            
+                        # FIX 2: Apertura Dialog conferma eliminazione
+                        if b2.form_submit_button("🗑️", key=f"d_{i}", help="Elimina", use_container_width=True):
+                            show_delete_dialog(i, label)
+
+        st.write("")
         st.write("")
         
-        if st.form_submit_button("💾 Salva Configurazioni", type="primary", width='stretch'):
-            crud.update_settings(db, user.id, new_range, new_max, new_alert_threshold)
-            st.success("✅ Configurazioni aggiornate!")
+        # --- SALVATAGGIO FINALE ---
+        if st.form_submit_button("💾 Salva Configurazioni", type="primary", use_container_width=True):
+            crud.update_settings(
+                db, user.id, 
+                new_range, 
+                new_max, 
+                new_alert_threshold,
+                st.session_state.settings_temp_labels
+            )
+            del st.session_state["settings_temp_labels"]
+            del st.session_state["settings_editing_idx"]
+            
+            st.success("✅ Configurazioni salvate con successo!")
+            st.rerun()
     
     db.close()
 
