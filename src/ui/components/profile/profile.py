@@ -2,14 +2,16 @@ import streamlit as st
 import time
 from src.services.auth.auth_service import update_user_password_secure, update_user_email
 from src.services.data.storage import upload_avatar, get_avatar_url
-
-#TODO: Fix componenti UI refactoring
+from src.ui.components.profile.kpi import _inject_custom_css
 
 @st.fragment
 def render():
+    # 1. Inject Styles
+    _inject_custom_css()
+    
     st.header("👤 Profilo Utente")
 
-    # Inizializza il timestamp una volta sola
+    # 2. Setup Session & User Logic
     user = st.session_state["user"]
 
     if "avatar_version" not in st.session_state:
@@ -18,7 +20,6 @@ def render():
     # --- Gestione Date ---
     last_access_str = "N/A"
     created_at_str = "N/A"
-    
     try:
         if user.last_sign_in_at:
             dt_last = user.last_sign_in_at if hasattr(user.last_sign_in_at, 'strftime') else None
@@ -30,161 +31,119 @@ def render():
     except Exception:
         pass
 
-    # --- SEZIONE 1: Dati Anagrafici + Foto ---
-    if st.checkbox("📋 Dati Anagrafici", value=True):
-        with st.container(border=True):
-            
-            # Recupero URL Avatar
-            avatar_url = get_avatar_url(user.id)
+    # --- Avatar URL Logic ---
+    avatar_url = get_avatar_url(user.id)
+    if avatar_url:
+        # Aggiunge timestamp per cache busting
+        avatar_url = f"{avatar_url}?v={st.session_state['avatar_version']}"
+    else:
+        # Immagine di fallback se non esiste avatar
+        avatar_url = "https://ui-avatars.com/api/?name=User&background=random&size=256"
 
-            if avatar_url:
-                # Usa la versione memorizzata nello stato, così rimane fissa
-                # finché non carichi una nuova foto
-                avatar_url = f"{avatar_url}?v={st.session_state['avatar_version']}"
-
-            # Layout a due colonne: Avatar (SX) - Dati (DX)
-            col_img, col_data = st.columns([1, 4], vertical_alignment="center", gap="large")  
-
-            with col_img:
-                # CSS dinamico per background
-                bg_image_style = f"background-image: url('{avatar_url}'); background-size: cover; background-position: center;" if avatar_url else ""
-                icon_html = "" if avatar_url else '<span style="font-size: 60px;">👤</span>'
-                
-                # Avatar Quadrato Geometrico (SOLO VISUALIZZAZIONE)
-                st.markdown(
-                    f"""
-                    <div style="
-                        display: flex; 
-                        justify-content: center; 
-                        align-items: center; 
-                        background-color: #e0e0e0; 
-                        border-radius: 12px;
-                        width: 140px; 
-                        height: 140px; 
-                        border: 2px solid #ccc;
-                        {bg_image_style}
-                    ">
-                        {icon_html}
-                    </div>
-                    """, 
-                    unsafe_allow_html=True
-                )
-
-            with col_data:
-                # word-wrap: break-word -> Fondamentale per ID e Email lunghi su mobile
-                st.markdown(f"""
-                <div style="
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: center;
-                    height: 100%;
-                    width: 100%;
-                    word-wrap: break-word; 
-                    overflow-wrap: break-word;
-                ">
-                    <h3 style="
-                        margin: 10px 10px 10px 20px; 
-                        padding: 6px 14px; 
-                        font-size: 1.2rem; 
-                        font-weight: 600;
-                        font-style: italic;
-                        color: #f1c40f;
-                        background: linear-gradient(135deg, #2c2c2c, #1a1a1a);
-                        border-radius: 12px;
-                        display: inline-block;
-                        word-break: break-all; 
-                        line-height: 1.2;
-                        box-shadow: 0 0 10px rgba(241, 196, 15, 0.4);
-                    ">
-                        ⭐ {user.email}
-                    </h3>
-                    <ul style="list-style-type: none; padding: 0; margin: 0; line-height: 1.8;">
-                        <li><strong>ID Utente:</strong> <code style="padding: 2px 5px; border-radius: 4px;">{user.id}</code></li>
-                        <li><strong>Iscritto dal:</strong> <code style="padding: 2px 5px; border-radius: 4px;">{created_at_str}</code></li>
-                        <li><strong>Ultimo accesso:</strong> <code style="padding: 2px 5px; border-radius: 4px;">{last_access_str}</code></li>
-                    </ul>
-                </div>
-                """, unsafe_allow_html=True)
-
-            # --- UPLOAD SPOSTATO QUI SOTTO ---
-            st.divider()
-            # Usiamo un expander per nascondere il box ingombrante di default
-            with st.expander("📷 Modifica Foto Profilo", expanded=False):
-                # 1. Inizializziamo una key nel session state se non esiste
-                if "uploader_key" not in st.session_state:
-                    st.session_state["uploader_key"] = 0
-
-                # 2. Assegniamo la key dinamica al widget
-                uploaded_file = st.file_uploader(
-                    "Carica una nuova immagine", 
-                    type=['png', 'jpg', 'jpeg'],
-                    key=f"avatar_uploader_{st.session_state['uploader_key']}"
-                )
-                
-                if uploaded_file is not None:
-                    with st.spinner("Caricamento in corso..."):
-                        new_url = upload_avatar(user.id, uploaded_file)
-                        
-                        if new_url:
-                            st.success("✅ Avatar aggiornato con successo!")
-                            time.sleep(1) 
-                            
-                            # 3. Incrementiamo la key per "pulire" il widget al prossimo riavvio
-                            st.session_state["uploader_key"] += 1
-
-                            # Solo adesso cambiamo l'URL per forzare il browser a scaricare la nuova immagine
-                            st.session_state["avatar_version"] = int(time.time())
-                            
-                            # 4. Ricarichiamo la pagina
-                            st.rerun()
-                        else:
-                            st.error("Errore durante l'upload.")
-
-    st.write("")
+    # =========================================================================
+    # UI SECTION: Hero Card (HTML/CSS Custom Component)
+    # =========================================================================
     
-    # --- SEZIONE 2: Cambio Email ---
-    if st.checkbox("📧 Modifica Email", value=False):
-        with st.container(border=True):
-            st.info("⚠️ Attenzione: Modificando l'email, dovrai confermare il nuovo indirizzo tramite il link che ti verrà inviato.")
-            
-            with st.form("change_email_form"):
-                new_email = st.text_input("Nuovo Indirizzo Email")
+    # Costruiamo l'HTML iniettando le variabili Python
+    # Nota: La classe 'user-email-title' ora gestisce la grandezza del font
+    html_card = f"""
+    <div class="profile-card">
+        <div class="avatar-container">
+            <img src="{avatar_url}" class="avatar-img" alt="Avatar">
+        </div>
+        <div class="user-info">
+            <h4 class="user-email-title">{user.email}</h4>
+            <div class="stats-container">
+                <span class="stat-badge">🆔 {user.id}</span>
+                <span class="stat-badge">📅 Iscritto: {created_at_str}</span>
+                <span class="stat-badge">🕒 Ultimo: {last_access_str}</span>
+            </div>
+        </div>
+    </div>
+    """
+    st.markdown(html_card, unsafe_allow_html=True)
+
+    # =========================================================================
+    # UI SECTION: Operations (Tabs)
+    # =========================================================================
+    
+    tab_photo, tab_email, tab_security = st.tabs(["📷 Foto", "📧 Email", "🔐 Sicurezza"])
+
+    # --- TAB 1: Upload Foto ---
+    with tab_photo:
+        st.caption("Aggiorna la tua immagine di profilo.")
+        
+        if "uploader_key" not in st.session_state:
+            st.session_state["uploader_key"] = 0
+
+        # File Uploader
+        uploaded_file = st.file_uploader(
+            "Scegli file", 
+            type=['png', 'jpg', 'jpeg'],
+            label_visibility="collapsed", 
+            key=f"avatar_uploader_{st.session_state['uploader_key']}"
+        )
+        
+        if uploaded_file is not None:
+            with st.spinner("Caricamento in corso..."):
+                new_url = upload_avatar(user.id, uploaded_file)
                 
-                if st.form_submit_button("Invia Conferma Cambio Email", type="secondary", width='stretch'):
-                    if not new_email or "@" not in new_email:
-                        st.error("Inserisci un'email valida.")
-                    elif new_email == user.email:
-                        st.warning("La nuova email è uguale a quella attuale.")
-                    else:
-                        success, msg = update_user_email(new_email)
-                        if success:
-                            st.success(msg)
-                        else:
-                            st.error(f"Errore: {msg}")
+                if new_url:
+                    st.toast("✅ Avatar aggiornato con successo!", icon="🎉")
+                    time.sleep(1)
+                    st.session_state["uploader_key"] += 1
+                    st.session_state["avatar_version"] = int(time.time())
+                    st.rerun()
+                else:
+                    st.error("Errore durante l'upload.")
 
-    st.write("")
-
-    # --- SEZIONE 3: Sicurezza Password ---
-    if st.checkbox("🔐 Sicurezza (Cambio Password)", value=False):
-        with st.container(border=True):
-            st.info("Per sicurezza, è necessario inserire la password attuale.")
+    # --- TAB 2: Modifica Email ---
+    with tab_email:
+        st.info("Riceverai una mail di conferma al nuovo indirizzo.")
+        
+        with st.form("change_email_form", border=False):
+            col_mail_1, col_mail_2 = st.columns([3, 1], vertical_alignment="bottom")
+            with col_mail_1:
+                new_email = st.text_input("Nuovo Indirizzo Email", placeholder="nuova@email.com")
+            with col_mail_2:
+                btn_email = st.form_submit_button("Invia", type="primary", use_container_width=True)
             
-            with st.form("change_pass_form_secure"):
-                old_pass = st.text_input("Password Attuale", type="password")
-                st.divider()
+            if btn_email:
+                if not new_email or "@" not in new_email:
+                    st.error("Inserisci un'email valida.")
+                elif new_email == user.email:
+                    st.warning("Email identica all'attuale.")
+                else:
+                    success, msg = update_user_email(new_email)
+                    if success:
+                        st.success(msg)
+                    else:
+                        st.error(f"Errore: {msg}")
+
+    # --- TAB 3: Sicurezza (Password) ---
+    with tab_security:
+        st.caption("È richiesta la password attuale per confermare le modifiche.")
+        
+        with st.form("change_pass_form_secure", border=True):
+            old_pass = st.text_input("Password Attuale", type="password")
+            st.divider()
+            
+            c1, c2 = st.columns(2)
+            with c1:
                 new_pass = st.text_input("Nuova Password", type="password")
-                confirm_pass = st.text_input("Conferma Nuova Password", type="password")
-                
-                if st.form_submit_button("Aggiorna Password", type="primary", width='stretch'):
-                    if not old_pass:
-                        st.error("Inserisci la password attuale.")
-                    elif new_pass != confirm_pass:
-                        st.error("Le nuove password non coincidono.")
-                    elif len(new_pass) < 6:
-                        st.error("La nuova password deve essere di almeno 6 caratteri.")
+            with c2:
+                confirm_pass = st.text_input("Conferma Password", type="password")
+            
+            if st.form_submit_button("Aggiorna Password", type="primary", use_container_width=True):
+                if not old_pass:
+                    st.error("Inserisci la password attuale.")
+                elif new_pass != confirm_pass:
+                    st.error("Le nuove password non coincidono.")
+                elif len(new_pass) < 6:
+                    st.error("Password troppo corta (min 6 car).")
+                else:
+                    success, msg = update_user_password_secure(user.email, old_pass, new_pass)
+                    if success:
+                        st.success(msg)
                     else:
-                        success, msg = update_user_password_secure(user.email, old_pass, new_pass)
-                        if success:
-                            st.success(msg)
-                        else:
-                            st.error(msg)
+                        st.error(msg)
