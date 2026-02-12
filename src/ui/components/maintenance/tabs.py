@@ -49,7 +49,7 @@ def render_management_tab(db, user, all_records):
         st.session_state.active_operation = "edit"
         st.session_state.selected_record_id = target_id
         st.rerun()
-    if c2.button("🗑️ Elimina", type="primary", width="stretch"):
+    if c2.button("❌ Elimina", type="primary", width="stretch"):
         st.session_state.active_operation = "delete"
         st.session_state.selected_record_id = target_id
         st.rerun()
@@ -194,7 +194,7 @@ def _render_reminder_card(db, user, reminder, current_km):
                         st.rerun()
 
             # Action 3: Elimina
-            if st.button("🗑️ Elimina Reminder", key=f"del_{reminder.id}", type="primary", use_container_width=True):
+            if st.button("❌ Elimina Reminder", key=f"del_{reminder.id}", type="primary", use_container_width=True):
                 crud.delete_reminder(db, reminder.id)
                 st.rerun()
 

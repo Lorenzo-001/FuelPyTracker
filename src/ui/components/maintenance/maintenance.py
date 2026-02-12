@@ -51,21 +51,29 @@ def render():
     # --- 4. TABS ---
     tab_hist, tab_mgmt, tab_deadlines, tab_reminders = st.tabs(["📋 Storico", "🛠️ Gestione", "🔮 Scadenze", "⏰ Promemoria"])
 
+    with tab_hist:
+        tabs.render_history_tab(recs_filtered, records)
+
+    with tab_mgmt:
+        tabs.render_management_tab(db, user, records)
+
     with tab_deadlines:
+        st.info(
+            "**Manutenzione Predittiva:** Qui trovi le scadenze fiscali (Bollo/Revisione) e meccaniche "
+            "basate sulle stime di utilizzo. Il sistema prevede le date future analizzando i tuoi rifornimenti."
+        )
         if refuelings and records:
             daily_rate = calculate_daily_usage_rate(refuelings)
             last_km = max(r.total_km for r in refuelings) if refuelings else 0
             cards.render_predictive_section(db, user, records, last_km, daily_rate)
         else:
             st.info("Inserisci almeno 2 rifornimenti e una manutenzione con scadenza per vedere le previsioni.")
-
-    with tab_hist:
-        tabs.render_history_tab(recs_filtered, records)
-
-    with tab_mgmt:
-        tabs.render_management_tab(db, user, records)
         
     with tab_reminders:
+        st.info(
+            "**Routine & Controlli:** Qui gestisci le attività periodiche manuali (es. olio, gomme). "
+            "Il sistema calcola la 'salute' della tua auto in base a quanto sei puntuale con questi controlli."
+        )
         reminders_ui.render_tab(db, user, last_km)
 
     db.close()
@@ -74,6 +82,7 @@ def _init_session_state():
     if "show_add_form" not in st.session_state: st.session_state.show_add_form = False
     if "active_operation" not in st.session_state: st.session_state.active_operation = None
     if "selected_record_id" not in st.session_state: st.session_state.selected_record_id = None
+    if "trip_calc_key" not in st.session_state: st.session_state.trip_calc_key = 0
 
 def _render_add_button():
     lbl = "Chiudi" if st.session_state.show_add_form else "➕ Nuovo"

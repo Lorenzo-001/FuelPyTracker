@@ -85,7 +85,7 @@ def _render_reminders_grid(db, user, reminders, current_km):
                     if st.button("✏️ Modifica", key=f"edit_btn_{rem.id}", use_container_width=True):
                         _render_edit_dialog(db, user, rem)
                     
-                    if st.button("🗑️ Elimina", key=f"del_btn_{rem.id}", type="primary", use_container_width=True):
+                    if st.button("✖️ Elimina", key=f"del_btn_{rem.id}", type="primary", use_container_width=True):
                         _render_delete_confirm_dialog(db, user, rem)
 
                 # --- 2. INFO DATE/KM (Inserimento e Scadenza) ---
@@ -163,7 +163,7 @@ def _render_reminders_grid(db, user, reminders, current_km):
 
 # --- DIALOGHI ---
 
-@st.dialog("🗑️ Conferma Eliminazione")
+@st.dialog("❌ Conferma Eliminazione")
 def _render_delete_confirm_dialog(db, user, rem):
     st.warning(f"Sei sicuro di voler eliminare il promemoria **{rem.title}**?")
     st.caption("Questa azione è irreversibile e rimuoverà il promemoria dalla lista attiva.")

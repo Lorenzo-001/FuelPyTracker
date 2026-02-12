@@ -215,7 +215,7 @@ def _render_management_tab(db, user, all_records, years, def_idx, settings):
         st.session_state.active_operation = "edit"
         st.session_state.selected_record_id = target_id
         st.rerun()
-    if c2.button("🗑️ Elimina", type="primary", width="stretch"):
+    if c2.button("❌ Elimina", type="primary", width="stretch"):
         st.session_state.active_operation = "delete"
         st.session_state.selected_record_id = target_id
         st.rerun()
@@ -232,27 +232,38 @@ def _render_management_tab(db, user, all_records, years, def_idx, settings):
 
 def _handle_edit_flow(db, user_id, rec, settings):
     st.markdown(f"**Modifica Record:** {rec.date}")
+    
     with st.form("fuel_form_edit"):
+        # Calcolo range dinamico per lo slider del prezzo
         min_pe, max_pe = max(0.0, rec.price_per_liter-0.5), rec.price_per_liter+0.5
         
+        # Se il record esistente ha un costo superiore al limite impostato nei settings,
+        # il max_value del form deve essere il maggiore tra il limite configurato e il valore attuale.
+        safe_max_cost = max(float(settings.max_total_cost), float(rec.total_cost))
+        
         # Riutilizzo componente UI form
-        # NOTA: Qui in edit passiamo il KM reale perché stiamo modificando un dato esistente
         edit_data = forms.render_refueling_inputs(
             rec.date, rec.total_km, rec.price_per_liter, rec.total_cost, 
-            rec.is_full_tank, rec.notes, min_pe, max_pe, settings.max_total_cost,
-            last_km_known=rec.total_km # In edit il tooltip mostra il km attuale del record
+            rec.is_full_tank, rec.notes, 
+            min_pe, max_pe, 
+            safe_max_cost,
+            last_km_known=rec.total_km 
         )
         
         if st.form_submit_button("Aggiorna", type="primary", width="stretch"):
             # Nota: In edit non controlliamo "last_km" stretto come in insert per flessibilità
             new_liters = edit_data['cost'] / edit_data['price'] if edit_data['price'] > 0 else 0
+            
             changes = {
                 "date": edit_data['date'], "total_km": edit_data['km'], 
                 "price_per_liter": edit_data['price'], "total_cost": edit_data['cost'], 
                 "liters": new_liters, "is_full_tank": edit_data['full'], "notes": edit_data['notes']
             }
+            
             crud.update_refueling(db, user_id, rec.id, changes)
-            st.success("Record aggiornato!"); st.session_state.active_operation = None; st.rerun()
+            st.success("Record aggiornato!")
+            st.session_state.active_operation = None
+            st.rerun()
             
     if st.button("Annulla", width="stretch"):
         st.session_state.active_operation = None; st.rerun()

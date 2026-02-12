@@ -85,7 +85,7 @@ def render_resolve_dialog(db, user, origin_record):
             st.cache_data.clear()
             st.rerun()
 
-@st.dialog("🗑️ Rimuovi Scadenza")
+@st.dialog("❌ Rimuovi Scadenza")
 def render_remove_deadline_dialog(db, user, origin_record):
     """SCENARIO B: Rimuove solo la scadenza futura."""
     st.warning(f"Vuoi rimuovere il promemoria per **{origin_record.expense_type}**?")

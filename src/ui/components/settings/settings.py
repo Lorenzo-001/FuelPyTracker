@@ -210,7 +210,7 @@ def _render_config_tab(user):
                             st.rerun()
                             
                         # FIX 2: Apertura Dialog conferma eliminazione
-                        if b2.form_submit_button("🗑️", key=f"d_{i}", help="Elimina", use_container_width=True):
+                        if b2.form_submit_button("❌", key=f"d_{i}", help="Elimina", use_container_width=True):
                             show_delete_dialog(i, label)
 
         st.write("")

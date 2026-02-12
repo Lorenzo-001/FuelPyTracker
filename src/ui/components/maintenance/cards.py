@@ -105,9 +105,9 @@ def render_predictive_section(db, user, records, last_known_km, daily_rate):
                 st.write("")
                 
                 # Bottoni Azione
-                c_done, c_trash = st.columns([4, 1])
+                c_done, c_trash = st.columns([2, 2])
                 if c_done.button("✅", key=f"btn_done_{item.id}", help="Registra esecuzione", width='stretch'):
                     dialogs.render_resolve_dialog(db, user, item)
                 
-                if c_trash.button("🗑️", key=f"btn_del_{item.id}", help="Rimuovi solo scadenza", type="tertiary", width='stretch'):
+                if c_trash.button("❌", key=f"btn_del_{item.id}", help="Rimuovi solo scadenza", width='stretch'):
                     dialogs.render_remove_deadline_dialog(db, user, item)

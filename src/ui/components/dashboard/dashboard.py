@@ -87,8 +87,8 @@ def render():
             
             # TOOL 1: Trip Calculator
             if st.button("🧮 Calcola Viaggio", width='stretch'):
-                 _render_trip_calculator_dialog(avg_kml, last_price)
-            
+                st.session_state.trip_calc_key += 1
+                _render_trip_calculator_dialog(avg_kml, last_price, st.session_state.trip_calc_key)            
             # TOOL 2: Dettaglio Salute (Nuovo)
             if st.button("🩺 Check-Up Salute", width='stretch'):
                 _render_health_dialog(health_score, health_issues)
@@ -157,24 +157,36 @@ def render():
 # --- DIALOGS ---
 
 @st.dialog("🧮 Trip Calculator")
-def _render_trip_calculator_dialog(avg_kml, last_price):
+def _render_trip_calculator_dialog(avg_kml, last_price, key_suffix):
     """
-    Mostra un modale per calcolare il costo stimato di un viaggio
-    basandosi sulla media storica dell'utente.
+    Mostra un modale per calcolare il costo stimato.
+    Usa key_suffix per forzare il reset dei widget ad ogni apertura.
     """
     st.write("Stima il costo del tuo prossimo viaggio basandoti sui tuoi consumi storici.")
     
-    # Input Utente
-    trip_km = st.number_input("Quanto è lungo il viaggio? (Km)", min_value=1, value=100, step=10)
+    # Input Utente (Key dinamica)
+    trip_km = st.number_input(
+        "Quanto è lungo il viaggio? (Km)", 
+        min_value=1, value=100, step=10, 
+        key=f"trip_km_{key_suffix}"
+    )
     
-    # Parametri Modificabili (con default intelligenti)
+    # Parametri Modificabili
     with st.expander("🔧 Parametri di Calcolo", expanded=False):
         c1, c2 = st.columns(2)
-        calc_kml = c1.number_input("Media Km/L", value=float(f"{avg_kml:.2f}"), min_value=1.0, step=0.5, format="%.2f")
-        calc_price = c2.number_input("Prezzo €/L", value=float(f"{last_price:.3f}"), min_value=0.5, step=0.01, format="%.3f")
+        calc_kml = c1.number_input(
+            "Media Km/L", 
+            value=float(f"{avg_kml:.2f}"), min_value=1.0, step=0.5, format="%.2f",
+            key=f"trip_kml_{key_suffix}"
+        )
+        calc_price = c2.number_input(
+            "Prezzo €/L", 
+            value=float(f"{last_price:.3f}"), min_value=0.5, step=0.01, format="%.3f",
+            key=f"trip_price_{key_suffix}"
+        )
         st.caption("Default: La tua media storica e l'ultimo prezzo pagato.")
 
-    if st.button("Calcola Costo", type="primary", width='stretch'):
+    if st.button("Calcola Costo", type="primary", width='stretch', key=f"trip_btn_{key_suffix}"):
         # Formula: (Km / (Km/L)) * Prezzo
         liters_needed = trip_km / calc_kml
         estimated_cost = liters_needed * calc_price
