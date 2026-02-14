@@ -1,6 +1,7 @@
 import streamlit as st
 import time
 from src.services.auth.auth_service import sign_in, sign_up, send_password_reset_email
+from src.auth.session_handler import save_session # [NEW]
 from gotrue.errors import AuthApiError
 from src.assets.styles import apply_login_css, render_login_header
 
@@ -43,6 +44,7 @@ def login_callback():
         res = sign_in(email, password)
         if res.user:
             st.session_state.user = res.user
+            save_session(res.session) # [NEW] Salva token nei cookie
             st.session_state.auth_error = None
             # Il rerun è implicito dopo la callback
     except Exception:
@@ -76,8 +78,8 @@ def _render_login_form():
     """Renderizza il form di accesso."""
     with st.form("login_form", border=False):
         # Keys necessarie per il binding con le callback
-        st.text_input("Email", key="login_email", placeholder="nome@esempio.com")
-        st.text_input("Password", type="password", key="login_pass", placeholder="••••••")
+        st.text_input("Email", key="login_email", placeholder="nome@esempio.com", autocomplete="username")
+        st.text_input("Password", type="password", key="login_pass", placeholder="••••••", autocomplete="current-password")
         
         st.markdown('<div style="height: 5px;"></div>', unsafe_allow_html=True)
         
@@ -97,9 +99,9 @@ def _render_login_form():
 def _render_register_form():
     """Renderizza il form di registrazione."""
     with st.form("register_form", border=False):
-        st.text_input("Email", key="reg_email")
-        st.text_input("Password (min 6)", key="reg_pass", type="password")
-        st.text_input("Conferma Password", key="reg_pass_conf", type="password")
+        st.text_input("Email", key="reg_email", autocomplete="username")
+        st.text_input("Password (min 6)", key="reg_pass", type="password", autocomplete="new-password")
+        st.text_input("Conferma Password", key="reg_pass_conf", type="password", autocomplete="new-password")
         
         st.markdown('<div style="height: 5px;"></div>', unsafe_allow_html=True)
 

@@ -1,23 +1,29 @@
 import streamlit as st
 from supabase import create_client, Client
 
-# 1. Inizializzazione Client Supabase
-# Legge URL e KEY direttamente dai secrets di Streamlit
-# Usa @st.cache_resource per non riconnettersi a ogni click
-@st.cache_resource
-def get_supabase_client() -> Client:
-    url = st.secrets["supabase"]["url"]
-    key = st.secrets["supabase"]["key"]
-    return create_client(url, key)
-
-supabase = get_supabase_client()
+# 1. Inizializzazione Client Supabase (SESSION ISOLATED)
+def get_client() -> Client:
+    """
+    Recupera o crea il client Supabase per la sessione corrente.
+    Assicura che ogni utente abbia la propria istanza isolata.
+    """
+    if "supabase_client" not in st.session_state:
+        try:
+            url = st.secrets["supabase"]["url"]
+            key = st.secrets["supabase"]["key"]
+            st.session_state.supabase_client = create_client(url, key)
+        except Exception as e:
+            st.error(f"Errore configurazione Supabase: {e}")
+            return None
+            
+    return st.session_state.supabase_client
 
 # 2. Funzioni di Autenticazione
 
 def sign_in(email, password):
     """Esegue il Login. Ritorna l'oggetto sessione o lancia errore."""
     try:
-        response = supabase.auth.sign_in_with_password({
+        response = get_client().auth.sign_in_with_password({
             "email": email, 
             "password": password
         })
@@ -29,7 +35,7 @@ def sign_in(email, password):
 def sign_up(email, password):
     """Registra un nuovo utente."""
     try:
-        response = supabase.auth.sign_up({
+        response = get_client().auth.sign_up({
             "email": email, 
             "password": password
         })
@@ -39,14 +45,17 @@ def sign_up(email, password):
 
 def sign_out():
     """Effettua il Logout."""
-    supabase.auth.sign_out()
+    get_client().auth.sign_out()
 
 def get_current_user():
     """
     Recupera l'utente dalla sessione attiva.
     Utile per verificare se il token è ancora valido.
     """
-    session = supabase.auth.get_session()
+    client = get_client()
+    if not client: return None
+    
+    session = client.auth.get_session()
     if session:
         return session.user
     return None
@@ -76,7 +85,7 @@ def update_user_password_secure(email, old_password, new_password):
     # Usiamo il client PRINCIPALE (che ha la sessione attiva) per fare l'update.
     try:
         attributes = {"password": new_password}
-        supabase.auth.update_user(attributes)
+        get_client().auth.update_user(attributes)
         return True, "Password aggiornata con successo!"
         
     except Exception as e:
@@ -94,7 +103,7 @@ def update_user_email(new_email):
     """
     try:
         attributes = {"email": new_email}
-        supabase.auth.update_user(attributes)
+        get_client().auth.update_user(attributes)
         return True, "Richiesta inviata! Controlla la tua posta (sia vecchia che nuova) per confermare il cambio."
     except Exception as e:
         return False, str(e)
@@ -106,7 +115,7 @@ def send_password_reset_email(email):
         # Se non c'è nel TOML, usa localhost come fallback di default.
         redirect_url = st.secrets["supabase"].get("redirect_url", "http://localhost:8501")
         
-        supabase.auth.reset_password_email(email, options={
+        get_client().auth.reset_password_email(email, options={
             "redirect_to": redirect_url
         })
         return True, "Email di recupero inviata! Controlla la tua casella di posta."
@@ -119,7 +128,7 @@ def exchange_code_for_session(auth_code):
     Questo logga automaticamente l'utente.
     """
     try:
-        res = supabase.auth.exchange_code_for_session({"auth_code": auth_code})
+        res = get_client().auth.exchange_code_for_session({"auth_code": auth_code})
         return True, res.user
     except Exception as e:
         return False, str(e)
@@ -131,7 +140,7 @@ def update_password_head(new_password):
     """
     try:
         attributes = {"password": new_password}
-        supabase.auth.update_user(attributes)
+        get_client().auth.update_user(attributes)
         return True, "Password impostata con successo!"
     except Exception as e:
         err_msg = str(e)
@@ -147,7 +156,7 @@ def set_session_from_url(access_token, refresh_token):
     """
     try:
         # Imposta manualmente la sessione nel client Supabase
-        res = supabase.auth.set_session(access_token, refresh_token)
+        res = get_client().auth.set_session(access_token, refresh_token)
         return True, res.user
     except Exception as e:
         return False, str(e)

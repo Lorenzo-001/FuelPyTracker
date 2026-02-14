@@ -10,6 +10,7 @@ from src.database.core import init_db
 from src.ui.components.settings import settings
 from src.auth.auth_interface import render_login_interface
 from src.services.auth.auth_service import get_current_user
+from src.auth.session_handler import init_session # [NEW]
 from src.assets.styles import inject_js_bridge, apply_custom_css
 from src.services.auth.router import handle_auth_redirects
 from src.ui.components.sidebar import render_sidebar
@@ -37,6 +38,9 @@ def main():
     inject_js_bridge()          # Helper JS per UX
     
     # --- 3. GESTIONE STATO UTENTE (Headless) ---
+    # Tenta il ripristino della sessione da cookie se necessario
+    init_session()
+
     # Recuperiamo l'utente PRIMA di disegnare qualsiasi cosa
     if "user" not in st.session_state:
         st.session_state.user = get_current_user()

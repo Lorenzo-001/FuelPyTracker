@@ -2,7 +2,7 @@ import time
 
 import streamlit as st
 
-from src.services.auth.auth_service import supabase
+from src.services.auth.auth_service import get_client # [UPDATED]
 
 # =============================================================================
 # GESTIONE STORAGE UTENTE (AVATAR)
@@ -28,7 +28,7 @@ def upload_avatar(user_id: str, file) -> str | None:
         file_bytes = file.getvalue()
         
         # 'upsert': 'true' forza la sovrascrittura del file esistente
-        supabase.storage.from_("avatars").upload(
+        get_client().storage.from_("avatars").upload(
             file_path, 
             file_bytes, 
             file_options={"content-type": "image/png", "upsert": "true"}
@@ -36,7 +36,7 @@ def upload_avatar(user_id: str, file) -> str | None:
         
         # 3. Recupero URL Pubblico
         # Prerequisito: Il bucket 'avatars' deve essere impostato come "Public" su Supabase
-        public_url = supabase.storage.from_("avatars").get_public_url(file_path)
+        public_url = get_client().storage.from_("avatars").get_public_url(file_path)
         
         # 4. Cache Busting
         # Aggiungiamo un query param dinamico per forzare il browser a ricaricare l'immagine
@@ -59,7 +59,7 @@ def get_avatar_url(user_id: str) -> str | None:
         
         # 1. Generazione URL
         # Assumiamo che se l'utente ha fatto l'upload, il path sia valido.
-        url = supabase.storage.from_("avatars").get_public_url(file_path)
+        url = get_client().storage.from_("avatars").get_public_url(file_path)
         return url
     except Exception:
         # Fallback silenzioso in caso di errori di connessione o config

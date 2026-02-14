@@ -11,7 +11,65 @@
 
 Il progetto non si limita all'archiviazione: è un motore di analisi che calcola consumi reali, monitora l'inflazione dei carburanti e abilita la manutenzione predittiva. Rappresenta un caso di studio completo di ingegneria del software, coprendo l'intero ciclo: dalla progettazione dei dati con **SQLAlchemy** al deployment su infrastruttura **Serverless**.
 
+
+🚀 Quick Start
+--------------
+
+### Prerequisites
+
+*   Python 3.11+
+*   PostgreSQL database (Supabase recommended)
+
+### Installation
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/your-username/FuelPyTracker.git
+    cd FuelPyTracker
+    ```
+
+2.  **Create and activate a virtual environment:**
+    ```bash
+    python -m venv venv
+    # Windows
+    .\venv\Scripts\activate
+    # Unix/macOS
+    source venv/bin/activate
+    ```
+
+3.  **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+4.  **Configuration:**
+    Copy the example secrets file and configure your database credentials.
+    ```bash
+    cp .streamlit/secrets.toml.example .streamlit/secrets.toml
+    ```
+    Edit `.streamlit/secrets.toml` with your Supabase credentials.
+
+### Run Locally
+
+```bash
+streamlit run main.py
+```
+
+### Docker
+
+```bash
+docker-compose up --build
+```
+
+### Data Seeding (Optional)
+
+To generate test data for development:
+```bash
+python -m src.scripts.seed_data
+```
+
 💡 Project Philosophy & Vision
+
 ------------------------------
 
 Molti strumenti di gestione auto sono frammentari o "black-box". FuelPyTracker colma il divario tra sovranità dei dati e potenza di calcolo.

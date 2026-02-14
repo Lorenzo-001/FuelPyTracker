@@ -3,6 +3,7 @@ import os
 from datetime import date
 from sqlalchemy import or_
 from src.services.auth.auth_service import sign_out
+from src.auth.session_handler import clear_session
 from src.assets.styles import apply_sidebar_css
 from src.database.core import get_db
 from src.database import crud
@@ -132,9 +133,7 @@ def render_sidebar(current_user, pages_main, pages_account):
         
         # Logout
         if st.button("Esci (Logout)", type="primary", width='stretch'): # width='stretch' deprecated
-            sign_out()
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
+            clear_session()
             st.rerun()
 
         st.divider()
