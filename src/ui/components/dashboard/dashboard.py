@@ -124,7 +124,7 @@ def render():
 
         df_p = filter_data_by_date(df, range_price)
         if not df_p.empty:
-            st.plotly_chart(charts.build_price_trend_chart(df_p), width="stretch")
+            st.plotly_chart(charts.build_price_trend_chart(df_p), use_container_width=True, config={'displayModeBar': False, 'scrollZoom': False})
         else:
             st.warning("Nessun dato nel periodo.")
 
@@ -137,7 +137,7 @@ def render():
         # Filtriamo prima i nulli, poi le date
         df_e = filter_data_by_date(df.dropna(subset=["Efficienza"]), range_eff)
         if not df_e.empty:
-            st.plotly_chart(charts.build_efficiency_chart(df_e), width="stretch")
+            st.plotly_chart(charts.build_efficiency_chart(df_e), use_container_width=True, config={'displayModeBar': False, 'scrollZoom': False})
         else:
             st.warning("Dati insufficienti per calcolare l'efficienza.")
 
@@ -149,7 +149,7 @@ def render():
 
         df_c = filter_data_by_date(df, range_cost)
         if not df_c.empty:
-            st.plotly_chart(charts.build_spending_bar_chart(df_c), width="stretch")
+            st.plotly_chart(charts.build_spending_bar_chart(df_c), use_container_width=True, config={'displayModeBar': False, 'scrollZoom': False})
         else:
             st.warning("Nessuna spesa registrata.")
 

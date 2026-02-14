@@ -23,7 +23,8 @@ def build_price_trend_chart(df: pd.DataFrame) -> go.Figure:
         margin=dict(l=10, r=10, t=10, b=10), 
         yaxis_title="€ / Litro",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        hovermode="x"
+        hovermode="x",
+        dragmode=False
     )
     return fig
 
@@ -41,7 +42,8 @@ def build_efficiency_chart(df: pd.DataFrame) -> go.Figure:
         margin=dict(l=10, r=10, t=10, b=10), 
         yaxis_title="Km / Litro",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        hovermode="x"
+        hovermode="x",
+        dragmode=False
     )
     return fig
 
@@ -61,6 +63,7 @@ def build_spending_bar_chart(df: pd.DataFrame) -> go.Figure:
         height=300, 
         margin=dict(l=10, r=10, t=10, b=10), 
         yaxis_title="Totale €", 
-        xaxis_title=""
+        xaxis_title="",
+        dragmode=False
     )
     return fig

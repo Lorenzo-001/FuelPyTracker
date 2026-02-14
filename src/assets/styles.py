@@ -122,6 +122,23 @@ def apply_custom_css():
     """Applica gli stili CSS globali dell'applicazione."""
     st.markdown("""
         <style>
+            /* --- OTTIMIZZAZIONE SPAZIATURA (Mobile Friendly) --- */
+            .block-container {
+                padding-top: 0.5rem !important;    /* Riduce drasticamente lo spazio in alto */
+                padding-bottom: 5rem !important; /* Spazio in basso per scroll */
+                margin-top: 0rem !important;     /* Rimuove margini extra */
+            }
+
+            /* Header più compatto */
+            header[data-testid="stHeader"] {
+                z-index: 1 !important;
+                background-color: transparent !important;
+            }
+
+            /* Nasconde menu hamburger e footer se desiderato (opzionale per app "nativa") */
+            /* #MainMenu {visibility: hidden;} */
+            /* footer {visibility: hidden;} */
+
             div[data-testid="stSidebar"] button[kind="primary"] { background-color: #FF4B4B; border-color: #FF4B4B; color: white; }
             div[data-testid="stSidebar"] button[kind="primary"]:hover { background-color: #D93636; border-color: #D93636; }
             .sidebar-user-card { background-color: #262730; padding: 15px; border-radius: 8px; border: 1px solid #444; display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
