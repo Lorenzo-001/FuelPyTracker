@@ -37,22 +37,31 @@ def _render_creation_form(db, user, current_km):
         st.success("Tutte le categorie configurate sono già attive! Vai in Impostazioni per aggiungerne altre.")
         return
 
+    # UI Dynamic Selection (Outside Form per permettere il Rerun)
+    c_head1, c_head2 = st.columns([2, 1])
+    c_head1.write("Configura la periodicità:")
+    trigger_type = c_head2.radio(
+        "Scadenza basata su:", 
+        ["Chilometri", "Tempo (Giorni)"], 
+        horizontal=True, 
+        label_visibility="collapsed",
+        key="new_rem_trigger_type"
+    )
+
     with st.form("new_reminder_form", clear_on_submit=True):
-        c1, c2 = st.columns([2, 1])
-        title = c1.selectbox("Categoria", available_opts)
+        title = st.selectbox("Categoria", available_opts)
         
-        # Trigger: Km o Giorni (Radio button per semplicità UX)
-        trigger_type = c2.radio("Scadenza basata su:", ["Chilometri", "Tempo (Giorni)"], horizontal=True)
-        
-        c3, c4 = st.columns(2)
         freq_km = None
         freq_days = None
         
+        # Render Condizionale
         if trigger_type == "Chilometri":
-            freq_km = c3.number_input("Ogni quanti Km?", min_value=100, step=500, value=10000)
-            st.caption(f"Prossimo: {current_km + freq_km} Km")
+            freq_km = st.number_input("Ogni quanti Km?", min_value=100, step=500, value=10000)
+            st.caption(f"ℹ️ Prossimo controllo stimato a: **{current_km + freq_km} Km**")
         else:
-            freq_days = c4.number_input("Ogni quanti Giorni?", min_value=1, step=30, value=30)
+            freq_days = st.number_input("Ogni quanti Giorni?", min_value=1, step=30, value=30)
+            target_date = date.today() + timedelta(days=freq_days)
+            st.caption(f"ℹ️ Prossimo controllo stimato il: **{target_date.strftime('%d/%m/%Y')}**")
             
         notes = st.text_area("Note fisse (es. 'Controllare a freddo')", height=68)
 
