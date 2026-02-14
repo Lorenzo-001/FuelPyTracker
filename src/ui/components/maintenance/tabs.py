@@ -126,7 +126,7 @@ def _render_reminder_tab(db, user, settings, active_reminders, current_km):
                 # target_date = c3.date_input("Scadenza Temporale", value=date.today() + timedelta(days=365))
                 target_months = c3.number_input("Scadenza Mesi", min_value=1, value=12)
 
-                if st.form_submit_button("Salva Promemoria", type="primary", use_container_width=True):
+                if st.form_submit_button("Salva Promemoria", type="primary", width='stretch'):
                     # Ipotetica chiamata al CRUD
                     crud.create_reminder(db, user.id, cat, target_km, target_months, start_km=current_km)
                     st.success(f"Promemoria per {cat} attivato!")
@@ -172,11 +172,11 @@ def _render_reminder_card(db, user, reminder, current_km):
         c_tit.markdown(f"**{reminder.category}**")
         
         # Action Menu (Popover)
-        with c_act.popover("⋮", use_container_width=True):
+        with c_act.popover("⋮", width='stretch'):
             st.markdown(f"**Gestione {reminder.category}**")
             
             # Action 1: Modifica (Placeholder)
-            if st.button("✏️ Modifica Parametri", key=f"edit_{reminder.id}", use_container_width=True):
+            if st.button("✏️ Modifica Parametri", key=f"edit_{reminder.id}", width='stretch'):
                 st.toast("Funzionalità modifica in arrivo")
             
             # Action 2: Archiviazione (DONE)
@@ -194,7 +194,7 @@ def _render_reminder_card(db, user, reminder, current_km):
                         st.rerun()
 
             # Action 3: Elimina
-            if st.button("❌ Elimina Reminder", key=f"del_{reminder.id}", type="primary", use_container_width=True):
+            if st.button("❌ Elimina Reminder", key=f"del_{reminder.id}", type="primary", width='stretch'):
                 crud.delete_reminder(db, reminder.id)
                 st.rerun()
 

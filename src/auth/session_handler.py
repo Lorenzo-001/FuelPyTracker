@@ -1,126 +1,116 @@
 import streamlit as st
-import extra_streamlit_components as stx
+# import extra_streamlit_components as stx # RIMOSSO: Non serve più per la scrittura/lettura
 from src.services.auth.auth_service import get_client
-import time
 
 # Costanti per i cookie
+COOKIE_MANAGER_KEY = "auth_cookie_manager"
 COOKIE_ACCESS_TOKEN = "sb_access_token"
 COOKIE_REFRESH_TOKEN = "sb_refresh_token"
 COOKIE_EXPIRY_DAYS = 30
 
-
-
-# 2. Manager Cookies con Key stabile
-# Non usiamo st.cache_resource perché genera CachedWidgetWarning con i widget custom.
-# Usiamo invece una key fissa per garantire che Streamlit non ricrei l'iframe a ogni run.
-def get_cookie_manager():
-    return stx.CookieManager(key="auth_cookie_manager")
-
 def init_session():
     """
     Tenta di ripristinare la sessione dai cookie.
-    Gestisce la race condition del caricamento cookie con un doppio passaggio soft.
+    Usa st.context.cookies (nativo) per la lettura sincrona e immediata.
     """
-    # 1. Se l'utente è già autenticato, usciamo subito
+    # 1. Se siamo già autenticati, usciamo subito
     if st.session_state.get("user") is not None:
         return
 
-    # 2. Inizializziamo il manager (che deve essere renderizzato per funzionare)
-    cookie_manager = get_cookie_manager()
-    cookies = cookie_manager.get_all()
+    # 2. Lettura Sincrona dei Cookie (Nativo Streamlit >= 1.39)
+    # st.context.cookies è un dizionario disponibile fin dall'avvio dello script.
+    # Non richiede rendering di componenti o iframe.
+    try:
+        cookies = st.context.cookies
+    except AttributeError:
+        # Fallback per versioni vecchie (non dovremmo essere qui se usiamo 1.51)
+        cookies = {}
 
-    # 3. Gestione Sincronizzazione Cookie (Race Condition Fix)
-    # Stx torna {} di default finché il frontend non risponde. 
-    # Dobbiamo distinguere tra "veramente vuoto" e "non ancora caricato".
-    
-    # Usiamo un flag in session_state per sapere se abbiamo già fatto un "wait cycle"
-    if "cookie_sync_attempted" not in st.session_state:
-        st.session_state.cookie_sync_attempted = False
-
-    # Se i cookie sono vuoti E non abbiamo ancora atteso la sincronizzazione...
-    if not cookies and not st.session_state.cookie_sync_attempted:
-        # Diamo tempo al componente di montarsi e rispondere
-        time.sleep(0.15) 
-        cookies = cookie_manager.get_all()
-        
-        # Se ancora vuoti, forziamo UN solo rerun per assicurarci che il frontend abbia processato
-        if not cookies:
-            st.session_state.cookie_sync_attempted = True # Marchiamo come tentato
-            st.rerun()
-            return
-
-    # Analisi Cookie (Sia che siano arrivati subito, sia dopo il sync)
+    # 3. Analisi e Ripristino
     access_token = cookies.get(COOKIE_ACCESS_TOKEN)
     refresh_token = cookies.get(COOKIE_REFRESH_TOKEN)
 
     if access_token and refresh_token:
         try:
             client = get_client()
-            # Ripristina sessione
-            # Nota: set_session valida anche il token. Se scaduto lancia eccezione.
+            # Ripristina sessione Supabase
+            # set_session valida automaticamente i token
             response = client.auth.set_session(access_token, refresh_token)
+            
             if response.user:
                 st.session_state.user = response.user
-                # Reset del flag per eventuali refresh futuri puliti
-                st.session_state.cookie_sync_attempted = False
+                # Opzionale: Se il token è stato rinfrescato, potremmo volerlo aggiornare nei cookie
+                # Ma richiederebbe stx che è lento. Per ora ci fidiamo del fatto che
+                # Supabase gestirà il prossimo refresh o che il cookie scadrà tra 30gg.
+                # Se servisse, si potrebbe chiamare save_session(response.session) qui,
+                # ma attenzione che save_session RICHIEDE il rendering del componente.
+                
+                # Rerun NON necessario se siamo all'inizio dello script, 
+                # ma utile per aggiornare la UI se siamo in un flusso intermedio.
+                # In main.py init_session è chiamato prima di tutto, quindi la UI
+                # si renderizzerà corretta subito dopo.
+                pass 
+
         except Exception as e:
-            # Token invalido o scaduto -> Pulizia
-            # Non chiamiamo clear_session() che fa rerun, ma puliamo e basta per mostrare il login
             print(f"Session restore failed: {e}")
+            # Token invalido -> Logout pulito
             st.session_state.user = None
+            # Non proviamo a cancellare i cookie qui per non invocare stx
+            # (che romperebbe il flusso sincrono). Se il login fallisce,
+            # l'utente vedrà la schermata di login e potrà ri-loggarsi,
+            # sovrascrivendo i cookie vecchi.
     else:
-        # Nessun cookie trovato (utente nuovo o sloggato) -> Login standard
+        # Nessun token trovato -> Restiamo sloggati
         pass
+
+    # Nota: NON inizializziamo get_cookie_manager() qui.
+    # Lo faremo solo se e quando dovremo scrivere (login) o cancellare (logout).
+    # Questo evita iframe inutili in tutte le pagine dove l'utente naviga solo.
+
+import streamlit.components.v1 as components
 
 def save_session(session):
     """
-    Salva i token della sessione nei cookie.
-    Da chiamare dopo un login avvenuto con successo.
+    Salva i token della sessione nei cookie usando JS Injection.
+    Questo metodo è sincrono rispetto al rendering HTML e più affidabile di stx.
+    Da chiamare PRIMA di un eventuale st.rerun().
     """
     if not session:
         return
 
-    cookie_manager = get_cookie_manager()
+    # Calcolo scadenza in secondi
+    max_age = COOKIE_EXPIRY_DAYS * 24 * 60 * 60
     
-    # Access Token
-    cookie_manager.set(
-        COOKIE_ACCESS_TOKEN, 
-        session.access_token, 
-        expires_at=datetime.now() + timedelta(days=COOKIE_EXPIRY_DAYS)
-    )
+    # Costruzione Script JS
+    # Nota: path=/ è fondamentale per rendere il cookie visibile in tutta l'app
+    js_script = f"""
+    <script>
+        document.cookie = "{COOKIE_ACCESS_TOKEN}={session.access_token}; path=/; max-age={max_age}; SameSite=Lax";
+        document.cookie = "{COOKIE_REFRESH_TOKEN}={session.refresh_token}; path=/; max-age={max_age}; SameSite=Lax";
+    </script>
+    """
     
-    # Refresh Token
-    if session.refresh_token:
-        cookie_manager.set(
-            COOKIE_REFRESH_TOKEN, 
-            session.refresh_token, 
-            expires_at=datetime.now() + timedelta(days=COOKIE_EXPIRY_DAYS)
-        )
+    # Iniezione invisibile
+    components.html(js_script, height=0, width=0)
 
 def clear_session():
     """
     Rimuove i cookie e i dati di sessione (Logout).
     """
-    cookie_manager = get_cookie_manager()
-    
-    # Rimuovi cookie
-    # Nota: stx.CookieManager delete a volte richiede il nome esatto
-    try:
-        cookie_manager.delete(COOKIE_ACCESS_TOKEN)
-        cookie_manager.delete(COOKIE_REFRESH_TOKEN)
-    except:
-        pass
+    # 1. Cancellazione Cookie via JS (Set max-age=0)
+    js_script = f"""
+    <script>
+        document.cookie = "{COOKIE_ACCESS_TOKEN}=; path=/; max-age=0";
+        document.cookie = "{COOKIE_REFRESH_TOKEN}=; path=/; max-age=0";
+    </script>
+    """
+    components.html(js_script, height=0, width=0)
         
-    # Logout da Supabase
+    # 2. Logout da Supabase
     try:
         get_client().auth.sign_out()
     except:
         pass
         
-    # Pulisci session state
+    # 3. Pulisci session state
     st.session_state.user = None
-    
-    # Rerun per aggiornare la UI
-    # st.rerun() # Lasciamo che sia il chiamante a decidere se fare rerun
-
-from datetime import datetime, timedelta

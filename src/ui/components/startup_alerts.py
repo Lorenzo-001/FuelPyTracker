@@ -11,7 +11,7 @@ def _show_alert_dialog(overdue_list):
         st.error(item, icon="🚨")
         
     st.write("")
-    if st.button("Ho capito, vado ai Promemoria", type="primary", use_container_width=True):
+    if st.button("Ho capito, vado ai Promemoria", type="primary", width='stretch'):
         st.session_state.current_page = "Manutenzione" # O la pagina dove sono i reminder
         st.rerun()
 
