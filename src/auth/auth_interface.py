@@ -43,11 +43,10 @@ def login_callback():
     try:
         res = sign_in(email, password)
         if res.user:
-            st.session_state.user = res.user
-            save_session(res.session) # [NEW] Salva token nei cookie
-            time.sleep(0.5) # [FIX] Attesa tecnica per permettere a JS di salvare i cookie prima del rerun
+            # MODIFICA: Rimosso st.session_state.user = res.user
+            # Segnaliamo solo che dobbiamo salvare la sessione
+            st.session_state.pending_session_save = res.session
             st.session_state.auth_error = None
-            # Il rerun è implicito dopo la callback
     except Exception:
         st.session_state.auth_error = "Credenziali non valide."
 
@@ -120,6 +119,16 @@ def _render_register_form():
 
 def render_login_interface():
     """Renderizza l'intera pagina di autenticazione (Login/Register)."""
+
+    # Intercetta il login e inietta JS prima di fermare Python
+    if "pending_session_save" in st.session_state:
+        session = st.session_state.pending_session_save
+        if session:
+            st.success("Accesso completato! Reindirizzamento...")
+            del st.session_state.pending_session_save
+            save_session(session)
+            st.stop() # Blocca Python, aspetta che JS ricarichi la pagina
+    
     apply_login_css()
     render_login_header()
     

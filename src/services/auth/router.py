@@ -56,6 +56,9 @@ def handle_auth_redirects():
 
     if success:
         st.toast("✅ Accesso recuperato! Caricamento...", icon="🔐")
+        # [FIX] Attesa tecnica per garantire che il JS dei cookie (se iniettato) venga eseguito
+        # Questo è fondamentale per Magic Link su mobile
+        time.sleep(1.0)
         st.query_params.clear()
         st.rerun()
     

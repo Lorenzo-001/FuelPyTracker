@@ -85,32 +85,37 @@ def save_session(session):
     # Nota: path=/ è fondamentale per rendere il cookie visibile in tutta l'app
     js_script = f"""
     <script>
-        document.cookie = "{COOKIE_ACCESS_TOKEN}={session.access_token}; path=/; max-age={max_age}; SameSite=Lax";
-        document.cookie = "{COOKIE_REFRESH_TOKEN}={session.refresh_token}; path=/; max-age={max_age}; SameSite=Lax";
+        document.cookie = "{COOKIE_ACCESS_TOKEN}={session.access_token}; path=/; max-age={max_age}; SameSite=Lax; Secure";
+        document.cookie = "{COOKIE_REFRESH_TOKEN}={session.refresh_token}; path=/; max-age={max_age}; SameSite=Lax; Secure";
+        
+        setTimeout(function() {{
+            window.parent.location.reload();
+        }}, 200);
     </script>
     """
-    
-    # Iniezione invisibile
     components.html(js_script, height=0, width=0)
 
 def clear_session():
     """
     Rimuove i cookie e i dati di sessione (Logout).
     """
-    # 1. Cancellazione Cookie via JS (Set max-age=0)
-    js_script = f"""
-    <script>
-        document.cookie = "{COOKIE_ACCESS_TOKEN}=; path=/; max-age=0";
-        document.cookie = "{COOKIE_REFRESH_TOKEN}=; path=/; max-age=0";
-    </script>
-    """
-    components.html(js_script, height=0, width=0)
-        
-    # 2. Logout da Supabase
+    st.session_state.user = None
+    
     try:
         get_client().auth.sign_out()
     except:
         pass
         
-    # 3. Pulisci session state
-    st.session_state.user = None
+    # MODIFICA: Aggiunto setTimeout per forzare il refresh dopo il logout
+    js_script = f"""
+    <script>
+        document.cookie = "{COOKIE_ACCESS_TOKEN}=; path=/; max-age=0; SameSite=Lax; Secure";
+        document.cookie = "{COOKIE_REFRESH_TOKEN}=; path=/; max-age=0; SameSite=Lax; Secure";
+        
+        setTimeout(function() {{
+            window.parent.location.reload();
+        }}, 200);
+    </script>
+    """
+    components.html(js_script, height=0, width=0)
+    st.stop() # Blocca Python per non renderizzare dati vecchi

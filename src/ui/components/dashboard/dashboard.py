@@ -14,6 +14,10 @@ def render():
 
     # 1. Recupero Dati Essenziali
     user = st.session_state["user"]
+
+    # Init Session State per Calcolatore Viaggio
+    if "trip_calc_key" not in st.session_state:
+        st.session_state.trip_calc_key = 0
     
     # --- STARTUP CHECK (Pop-up automatico one-shot) ---
     startup_alerts.check_and_show_alerts(user.id)
