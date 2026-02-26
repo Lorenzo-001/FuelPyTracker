@@ -9,8 +9,7 @@ from src.ui.components.profile import profile
 from src.database.core import init_db
 from src.ui.components.settings import settings
 from src.auth.auth_interface import render_login_interface
-from src.services.auth.auth_service import get_current_user
-from src.auth.session_handler import init_session # [NEW]
+from src.auth.session_handler import init_session
 from src.assets.styles import inject_js_bridge, apply_custom_css
 from src.services.auth.router import handle_auth_redirects
 from src.ui.components.sidebar import render_sidebar
@@ -38,17 +37,15 @@ def main():
     inject_js_bridge()          # Helper JS per UX
     
     # --- 3. GESTIONE STATO UTENTE (Headless) ---
-    # Tenta il ripristino della sessione da cookie se necessario
-    init_session()
-
-    # Recuperiamo l'utente PRIMA di disegnare qualsiasi cosa
     if "user" not in st.session_state:
-        st.session_state.user = get_current_user()
+        st.session_state.user = None
+        
+    init_session()
 
     # --- 4. CSS STATE CONTROL (Anti-Flicker) ---
     # Nascondiamo la sidebar via CSS se non siamo loggati.
     # Questo previene che appaia vuota o "fluttui" durante il caricamento del login.
-    if not st.session_state.user:
+    if not st.session_state.get("user"):
         st.markdown(
             """
             <style>
@@ -96,7 +93,7 @@ def main():
     pages_account = { "Profilo": profile.render }
     
     # 3. Render Sidebar (Navigazione)
-    render_sidebar(st.session_state.user, pages_main, pages_account)
+    render_sidebar(st.session_state.get("user"), pages_main, pages_account)
 
     # 4. Render Contenuto Pagina
     # Scriviamo direttamente nel flusso principale (fuori da master_slot)

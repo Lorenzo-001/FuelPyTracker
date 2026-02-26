@@ -1,6 +1,6 @@
 import streamlit as st
 from src.services.auth.auth_service import exchange_code_for_session, set_session_from_url
-from src.auth.session_handler import save_session # [NEW]
+from src.auth.session_handler import save_session
 
 def handle_auth_redirects():
     """

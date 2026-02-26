@@ -44,8 +44,7 @@ def login_callback():
         res = sign_in(email, password)
         if res.user:
             st.session_state.user = res.user
-            save_session(res.session) # [NEW] Salva token nei cookie
-            time.sleep(0.5) # [FIX] Attesa tecnica per permettere a JS di salvare i cookie prima del rerun
+            save_session(res.session)  # Salva token nel relay sincrono (query_params)
             st.session_state.auth_error = None
             # Il rerun è implicito dopo la callback
     except Exception:
