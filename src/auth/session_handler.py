@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 from src.services.auth.auth_service import get_client
 
 # --- COSTANTI ---
@@ -15,54 +16,55 @@ QP_REFRESH_TOKEN     = "sb_rt"
 
 def _write_cookies_js(access_token: str, refresh_token: str):
     """
-    Scrive i cookie di sessione direttamente nella pagina Streamlit padre.
+    Scrive i cookie di sessione usando un iframe (components.v1.html).
 
-    Usa st.markdown() con unsafe_allow_html=True: il tag <script> viene
-    iniettato nel DOM principale (non in un iframe), quindi l'esecuzione è
-    immediata e sincrona rispetto al ciclo di rendering corrente.
-
-    Aggiunge 'Secure' per garantire compatibilità con HTTPS e Safari mobile.
-    La direttiva SameSite=Lax è compatibile con tutti i browser moderni.
+    NOTA: st.markdown() NON esegue tag <script> (React dangerouslySetInnerHTML).
+    components.v1.html() crea un iframe con allow-same-origin, quindi
+    window.parent.document.cookie è accessibile e funziona correttamente.
     """
     max_age = COOKIE_EXPIRY_DAYS * 24 * 60 * 60
-
-    # Costruiamo la stringa del cookie in modo sicuro
-    # I token Supabase sono JWT standard (sicuri in URL/cookie)
-    at = access_token.replace('"', '')
-    rt = refresh_token.replace('"', '')
-
+    at = access_token.replace('"', '').replace("'", '')
+    rt = refresh_token.replace('"', '').replace("'", '')
     cookie_flags = f"path=/; max-age={max_age}; SameSite=Lax; Secure"
 
-    st.markdown(
+    components.html(
         f"""
         <script>
             (function() {{
-                document.cookie = "{COOKIE_ACCESS_TOKEN}={at}; {cookie_flags}";
-                document.cookie = "{COOKIE_REFRESH_TOKEN}={rt}; {cookie_flags}";
-                console.log("[FuelPyTracker] Cookie di sessione scritti con successo.");
+                try {{
+                    window.parent.document.cookie = "{COOKIE_ACCESS_TOKEN}={at}; {cookie_flags}";
+                    window.parent.document.cookie = "{COOKIE_REFRESH_TOKEN}={rt}; {cookie_flags}";
+                    console.log("[FuelPyTracker] Cookie scritti con successo.");
+                }} catch(e) {{
+                    console.error("[FuelPyTracker] Errore scrittura cookie:", e);
+                }}
             }})();
         </script>
         """,
-        unsafe_allow_html=True,
+        height=0,
     )
 
 
 def _clear_cookies_js():
     """
     Cancella i cookie di sessione impostando max-age=0.
-    Stessa tecnica di _write_cookies_js() — pagina padre, non iframe.
+    Usa la stessa tecnica di _write_cookies_js() — iframe con allow-same-origin.
     """
-    st.markdown(
+    components.html(
         f"""
         <script>
             (function() {{
-                document.cookie = "{COOKIE_ACCESS_TOKEN}=; path=/; max-age=0; SameSite=Lax; Secure";
-                document.cookie = "{COOKIE_REFRESH_TOKEN}=; path=/; max-age=0; SameSite=Lax; Secure";
-                console.log("[FuelPyTracker] Cookie di sessione rimossi.");
+                try {{
+                    window.parent.document.cookie = "{COOKIE_ACCESS_TOKEN}=; path=/; max-age=0; SameSite=Lax; Secure";
+                    window.parent.document.cookie = "{COOKIE_REFRESH_TOKEN}=; path=/; max-age=0; SameSite=Lax; Secure";
+                    console.log("[FuelPyTracker] Cookie rimossi.");
+                }} catch(e) {{
+                    console.error("[FuelPyTracker] Errore rimozione cookie:", e);
+                }}
             }})();
         </script>
         """,
-        unsafe_allow_html=True,
+        height=0,
     )
 
 
