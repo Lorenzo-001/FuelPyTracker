@@ -1,5 +1,5 @@
 import streamlit as st
-import streamlit.components.v1 as components
+from datetime import datetime, timedelta
 from src.services.auth.auth_service import get_client
 
 # --- COSTANTI ---
@@ -11,86 +11,46 @@ QP_REFRESH_TOKEN     = "sb_rt"
 
 
 # ---------------------------------------------------------------------------
-# SCRITTURA COOKIE (pagina padre, NON iframe)
+# COOKIE MANAGER
+# ---------------------------------------------------------------------------
+# Usiamo extra_streamlit_components.CookieManager perché:
+# - components.v1.html() usa iframe con blob URL (origine "null")
+# - window.parent.document.cookie lancia SecurityError cross-origin (silenzioso)
+# - st.markdown() NON esegue <script> (React dangerouslySetInnerHTML)
+# - CookieManager è servito dall'origine dell'app → document.cookie funziona
+#
+# Nota: il CookieManager ha una latenza di 1 rerun sul primo caricamento.
+# Al primo refresh il login potrebbe lampeggiare brevemente, poi la sessione
+# viene ripristinata al rerun successivo (automatico).
 # ---------------------------------------------------------------------------
 
-def _write_cookies_js(access_token: str, refresh_token: str):
-    """
-    Scrive i cookie di sessione usando un iframe (components.v1.html).
-
-    NOTA: st.markdown() NON esegue tag <script> (React dangerouslySetInnerHTML).
-    components.v1.html() crea un iframe con allow-same-origin, quindi
-    window.parent.document.cookie è accessibile e funziona correttamente.
-    """
-    max_age = COOKIE_EXPIRY_DAYS * 24 * 60 * 60
-    at = access_token.replace('"', '').replace("'", '')
-    rt = refresh_token.replace('"', '').replace("'", '')
-    cookie_flags = f"path=/; max-age={max_age}; SameSite=Lax; Secure"
-
-    components.html(
-        f"""
-        <script>
-            (function() {{
-                try {{
-                    window.parent.document.cookie = "{COOKIE_ACCESS_TOKEN}={at}; {cookie_flags}";
-                    window.parent.document.cookie = "{COOKIE_REFRESH_TOKEN}={rt}; {cookie_flags}";
-                    console.log("[FuelPyTracker] Cookie scritti con successo.");
-                }} catch(e) {{
-                    console.error("[FuelPyTracker] Errore scrittura cookie:", e);
-                }}
-            }})();
-        </script>
-        """,
-        height=0,
-    )
-
-
-def _clear_cookies_js():
-    """
-    Cancella i cookie di sessione impostando max-age=0.
-    Usa la stessa tecnica di _write_cookies_js() — iframe con allow-same-origin.
-    """
-    components.html(
-        f"""
-        <script>
-            (function() {{
-                try {{
-                    window.parent.document.cookie = "{COOKIE_ACCESS_TOKEN}=; path=/; max-age=0; SameSite=Lax; Secure";
-                    window.parent.document.cookie = "{COOKIE_REFRESH_TOKEN}=; path=/; max-age=0; SameSite=Lax; Secure";
-                    console.log("[FuelPyTracker] Cookie rimossi.");
-                }} catch(e) {{
-                    console.error("[FuelPyTracker] Errore rimozione cookie:", e);
-                }}
-            }})();
-        </script>
-        """,
-        height=0,
-    )
+def _get_cm():
+    """Ritorna il CookieManager singleton per questo ciclo di render."""
+    import extra_streamlit_components as stx
+    return stx.CookieManager(key="__session_cm__")
 
 
 # ---------------------------------------------------------------------------
-# STAGE (Salva token nei query_params — relay sincrono post-login)
+# SAVE / STAGE SESSION (Relay sincrono via query_params)
 # ---------------------------------------------------------------------------
 
 def save_session(session):
     """
     Salva i token nel relay sincrono (st.query_params) subito dopo il login.
 
-    Perché query_params e non cookie diretti?
-    - st.query_params è SERVER-SIDE: il valore è disponibile già al prossimo
-      ciclo di Streamlit, senza dipendere dall'esecuzione JS nel browser.
+    Perché query_params?
+    - È SERVER‑SIDE: disponibile già al prossimo ciclo Streamlit, senza JS.
     - Elimina la race condition dell'approccio iframe + time.sleep().
 
-    I token vengono letti e convertiti in cookie da init_session() al ciclo
-    successivo (quando Streamlit fa il rerun post-callback).
+    I token vengono letti da init_session() al ciclo successivo e
+    convertiti in cookie persistenti tramite CookieManager.
     """
     if not session:
         return
-
     st.query_params[QP_ACCESS_TOKEN]  = session.access_token
     st.query_params[QP_REFRESH_TOKEN] = session.refresh_token
 
-# Alias per compatibilità
+# Alias per compatibilità con altri moduli
 stage_session = save_session
 
 
@@ -102,80 +62,54 @@ def init_session():
     """
     Ripristina la sessione utente all'avvio di ogni ciclo Streamlit.
 
-    Priorità di ricerca dei token:
-      1. Già loggato (st.session_state.user presente) → niente da fare
+    Priorità:
+      1. session_state.user già presente → niente da fare
       2. Token in st.query_params → relay post-login → scrivi cookie, pulisci QP
-      3. Token in st.context.cookies → restore da sessione precedente
-
-    In entrambi i casi 2 e 3:
-      - Chiama client.auth.set_session() per validare i token con Supabase
-      - Imposta st.session_state.user
+      3. Token in cookie (CookieManager) → restore da sessione precedente
     """
-
-    # --- GUARD: già autenticato ---
     if st.session_state.get("user") is not None:
         return
 
+    cm = _get_cm()
+
     # --- CASO 1: Token nel relay (query_params) ---
-    # Arriva qui solo dopo un login con successo (stage_session ha scritto i QP)
     qp_at = st.query_params.get(QP_ACCESS_TOKEN)
     qp_rt = st.query_params.get(QP_REFRESH_TOKEN)
 
     if qp_at and qp_rt:
         try:
-            client   = get_client()
-            response = client.auth.set_session(qp_at, qp_rt)
-
+            response = get_client().auth.set_session(qp_at, qp_rt)
             if response.user:
                 st.session_state.user = response.user
-
-                # Scrittura cookie persistenti nella pagina padre (sincrona)
-                # Usiamo i token aggiornati restituiti da Supabase (potrebbero
-                # essere stati rinfrescati durante set_session)
-                new_session = response.session or response
-                _write_cookies_js(
-                    new_session.access_token if hasattr(new_session, "access_token") else qp_at,
-                    new_session.refresh_token if hasattr(new_session, "refresh_token") else qp_rt,
-                )
-
-                # Pulizia relay: rimuoviamo i token dall'URL per sicurezza
-                st.query_params.pop(QP_ACCESS_TOKEN, None)
-                st.query_params.pop(QP_REFRESH_TOKEN, None)
-
+                # Ricava i token (eventualmente rinfrescati da Supabase)
+                sess = response.session
+                at = getattr(sess, "access_token",  None) or qp_at
+                rt = getattr(sess, "refresh_token", None) or qp_rt
+                # Scrivi cookie persistenti tramite CookieManager
+                exp = datetime.now() + timedelta(days=COOKIE_EXPIRY_DAYS)
+                cm.set(COOKIE_ACCESS_TOKEN,  at, expires_at=exp, key="__set_at__")
+                cm.set(COOKIE_REFRESH_TOKEN, rt, expires_at=exp, key="__set_rt__")
         except Exception as e:
-            print(f"[FuelPyTracker] Stage session restore failed: {e}")
+            print(f"[FuelPyTracker] QP session restore failed: {e}")
             st.session_state.user = None
-            # Pulizia in caso di errore
-            st.query_params.pop(QP_ACCESS_TOKEN, None)
+        finally:
+            # Pulizia relay: rimuoviamo i token dall'URL per sicurezza
+            st.query_params.pop(QP_ACCESS_TOKEN,  None)
             st.query_params.pop(QP_REFRESH_TOKEN, None)
-
-        return  # Usciamo: il cookie è stato scritto, al prossimo refresh useremo il caso 2
+        return
 
     # --- CASO 2: Token nei cookie (restore da refresh browser) ---
-    try:
-        cookies = st.context.cookies
-    except AttributeError:
-        cookies = {}
-
-    cookie_at = cookies.get(COOKIE_ACCESS_TOKEN)
-    cookie_rt = cookies.get(COOKIE_REFRESH_TOKEN)
+    # Nota: al primo refresh dopo un nuovo deploy, cm.get() potrebbe restituire
+    # None perché il componente non ha ancora inviato i valori. Streamlit fa un
+    # rerun automatico e al ciclo successivo i cookie sono disponibili.
+    cookie_at = cm.get(COOKIE_ACCESS_TOKEN)
+    cookie_rt = cm.get(COOKIE_REFRESH_TOKEN)
 
     if cookie_at and cookie_rt:
         try:
-            client   = get_client()
-            response = client.auth.set_session(cookie_at, cookie_rt)
-
+            response = get_client().auth.set_session(cookie_at, cookie_rt)
             if response.user:
                 st.session_state.user = response.user
-                # Aggiorniamo i cookie con i token eventualmente rinfrescati
-                new_session = response.session or response
-                if (hasattr(new_session, "access_token") and
-                        new_session.access_token != cookie_at):
-                    _write_cookies_js(
-                        new_session.access_token,
-                        new_session.refresh_token,
-                    )
-
         except Exception as e:
             print(f"[FuelPyTracker] Cookie session restore failed: {e}")
             st.session_state.user = None
@@ -187,16 +121,19 @@ def init_session():
 
 def clear_session():
     """
-    Esegue il logout completo:
-    1. Cancella i cookie via JS (pagina padre)
-    2. Sign-out da Supabase
-    3. Azzera la session_state
+    Logout completo: cancella cookie, fa sign-out da Supabase, azzera session_state.
     """
-    _clear_cookies_js()
-
+    cm = _get_cm()
+    try:
+        cm.delete(COOKIE_ACCESS_TOKEN,  key="__del_at__")
+    except Exception:
+        pass
+    try:
+        cm.delete(COOKIE_REFRESH_TOKEN, key="__del_rt__")
+    except Exception:
+        pass
     try:
         get_client().auth.sign_out()
     except Exception:
         pass
-
     st.session_state.user = None
