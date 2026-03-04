@@ -12,7 +12,9 @@ def _show_alert_dialog(overdue_list):
         
     st.write("")
     if st.button("Ho capito, vado ai Promemoria", type="primary", width='stretch'):
-        st.session_state.current_page = "Manutenzione" # O la pagina dove sono i reminder
+        st.session_state.current_page = "Manutenzione"
+        st.session_state.nav_radio_main = "Manutenzione"
+        st.session_state.nav_radio_account = None
         st.rerun()
 
 def check_and_show_alerts(user_id):

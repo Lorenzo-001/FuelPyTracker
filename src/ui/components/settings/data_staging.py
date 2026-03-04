@@ -24,7 +24,7 @@ def render_staging_table(user_id: str, df: pd.DataFrame, error_msg: str, data_ty
     
     # 1. Gestione Errori Preliminari
     if error_msg:
-        st.error(f"⚠️ Errore durante la lettura di {data_type}: {error_msg}")
+        st.error(f"⚠️ Errore durante la lettura: {error_msg}")
         return
 
     if df is None or df.empty:
@@ -33,10 +33,11 @@ def render_staging_table(user_id: str, df: pd.DataFrame, error_msg: str, data_ty
 
     # 2. Calcolo KPI e Metriche
     # Fornisce un riassunto immediato dello stato del file importato
-    n_new = len(df[df['Stato'] == 'Nuovo'])
-    n_mod = len(df[df['Stato'] == 'Modifica'])
-    n_err = len(df[df['Stato'] == 'Errore'])
-    n_tot = len(df)
+    n_new  = len(df[df['Stato'] == 'Nuovo'])
+    n_mod  = len(df[df['Stato'] == 'Modifica'])
+    n_warn = len(df[df['Stato'] == 'Warning'])
+    n_err  = len(df[df['Stato'] == 'Errore'])
+    n_tot  = len(df)
 
     def _get_tooltip(status):
         """Helper per mostrare anteprima date nel tooltip"""
@@ -49,6 +50,8 @@ def render_staging_table(user_id: str, df: pd.DataFrame, error_msg: str, data_ty
     c2.metric("Nuovi Record", n_new, help=_get_tooltip('Nuovo'))
     c3.metric("Da Aggiornare", n_mod, delta_color="off", help=_get_tooltip('Modifica'))
     c4.metric("Errori", n_err, delta_color="inverse")
+    if n_warn:
+        st.warning(f"⚠️ {n_warn} riga/e con anomalie rilevate (Warning): verranno importate ma meritano un controllo manuale.", icon="⚠️")
 
     # 3. Configurazione Dinamica Colonne
     # Seleziona la configurazione e le funzioni di callback in base al tipo dati
@@ -83,11 +86,18 @@ def render_staging_table(user_id: str, df: pd.DataFrame, error_msg: str, data_ty
 
     with col_actions_2:
         # Action: COMMIT (SALVA)
-        # Abilitato solo se ci sono dati validi e zero errori bloccanti
-        can_save = (n_new + n_mod) > 0 and n_err == 0
-        btn_label = f"🚀 Importa {n_new + n_mod} record nel Database"
-        
-        if st.button(btn_label, key=f"save_{data_type}", type="primary", disabled=not can_save, width='stretch'):
+        # Abilitato solo se ci sono dati validi (Nuovo/Modifica/Warning), zero errori bloccanti e non in corso un salvataggio
+        is_saving = st.session_state.get(f'import_saving_{data_type}', False)
+        n_saveable = n_new + n_mod + n_warn
+        can_save = n_saveable > 0 and n_err == 0 and not is_saving
+        btn_label = (
+            f"⏳ Importazione in corso..." if is_saving
+            else f"🚀 Importa {n_saveable} record nel Database"
+        )
+
+        if st.button(btn_label, key=f"save_{data_type}", type="primary",
+                     disabled=not can_save, width='stretch'):
+            st.session_state[f'import_saving_{data_type}'] = True
             _handle_save(user_id, edited_df, data_type, save_func)
 
 
@@ -119,44 +129,50 @@ def _handle_save(user_id, df, data_type, save_func):
     """
     Itera sulle righe del DataFrame ed esegue il salvataggio atomico per riga.
     Fornisce feedback visivo tramite Progress Bar.
+    Al termine mostra un toast di riepilogo e chiude il componente di staging.
     """
     db = next(get_db())
     prog_bar = st.progress(0)
     status_text = st.empty()
-    
+
     try:
         total = len(df)
         success_count = 0
-        
-        # Loop di persistenza
-        for i, row in df.iterrows():
+
+        # Loop di persistenza con enumerate per progress bar corretta
+        for i, (_, row) in enumerate(df.iterrows()):
             save_func(db, user_id, row)
-            
-            # Update UI Feedback
+
             prog = (i + 1) / total
             prog_bar.progress(prog)
-            status_text.caption(f"Elaborazione riga {i+1}/{total}...")
-            time.sleep(0.01) # Micro-delay per fluidità UX
+            status_text.caption(f"Elaborazione riga {i + 1}/{total}...")
+            time.sleep(0.01)
             success_count += 1
-            
-        # Feedback finale e pulizia
-        st.success(f"✅ Importazione completata! Processati {success_count} record.")
-        time.sleep(1)
-        
-        # Rimozione dati processati dallo staging area
+
+        # Rimozione dati processati dallo staging area (chiude il componente)
         if "import_results" in st.session_state:
             del st.session_state.import_results[data_type]
             if not st.session_state.import_results:
                 st.session_state.import_results = {}
-        
+
         # Invalidazione cache per riflettere i nuovi dati nelle dashboard
         st.cache_data.clear()
-        st.rerun()
-        
+
+        # Toast di conferma (persiste dopo il rerun, visibile ~4 secondi)
+        label_map = {'fuel': 'Rifornimenti', 'maintenance': 'Manutenzioni'}
+        section = label_map.get(data_type, data_type)
+        st.toast(
+            f"✅ {success_count} record di {section} importati con successo!",
+            icon="⛽" if data_type == 'fuel' else "🔧"
+        )
+
     except Exception as e:
         st.error(f"Errore critico durante il salvataggio: {e}")
     finally:
+        # Sempre: rimuovi il flag anti-click e forza chiusura del componente
+        st.session_state.pop(f'import_saving_{data_type}', None)
         db.close()
+        st.rerun()
 
 
 # =============================================================================
@@ -166,9 +182,11 @@ def _handle_save(user_id, df, data_type, save_func):
 def _get_fuel_config():
     """Configurazione visuale per la tabella Rifornimenti."""
     return {
-        "db_id": None, # Colonna tecnica nascosta
+        "db_id": None,  # Colonna tecnica nascosta
         "Stato": st.column_config.TextColumn(
-            "Stato", width="small", validate="^(OK|Nuovo|Modifica)$", help="Nuovo, Modifica o Errore"
+            "Stato", width="small",
+            validate="^(OK|Nuovo|Modifica|Invariato|Warning|Errore)$",
+            help="Nuovo, Modifica, Invariato, Warning o Errore"
         ),
         "Note": st.column_config.TextColumn("Log Sistema", width="medium", disabled=True),
         "Data": st.column_config.DateColumn("Data", format="DD/MM/YYYY"),
@@ -185,7 +203,10 @@ def _get_maintenance_config():
     """Configurazione visuale per la tabella Manutenzione."""
     return {
         "db_id": None,
-        "Stato": st.column_config.TextColumn("Stato", width="small", validate="^(OK|Nuovo|Modifica)$"),
+        "Stato": st.column_config.TextColumn(
+            "Stato", width="small",
+            validate="^(OK|Nuovo|Modifica|Invariato|Warning|Errore)$"
+        ),
         "Note": st.column_config.TextColumn("Log Sistema", width="medium", disabled=True),
         "Data": st.column_config.DateColumn("Data", format="DD/MM/YYYY"),
         "Km": st.column_config.NumberColumn("Km", format="%d"),

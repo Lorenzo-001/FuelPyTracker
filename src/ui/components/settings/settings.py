@@ -2,6 +2,7 @@ import streamlit as st
 from datetime import datetime
 from src.database.core import get_db
 from src.database import crud
+from src.config import DEFAULTS
 from src.services.data.exporters import reports, templates
 # Importiamo i nuovi moduli refattorizzati
 from src.services.data.importers import manager
@@ -132,26 +133,72 @@ def _render_config_tab(user):
             "Range Oscillazione Prezzo (+/- €)", 
             min_value=0.01, max_value=0.50, 
             value=settings.price_fluctuation_cents,
-            step=0.01, format="%.2f"
+            step=0.01, format="%.2f",
+            help="Margine di tolleranza dello slider prezzo. Un valore di 0.15 significa che lo slider copre il prezzo storico ±0.15 €."
         )
         
         new_max = st.number_input(
             "Tetto Massimo Spesa per Pieno (€)", 
             min_value=50.0, max_value=500.0, 
             value=settings.max_total_cost,
-            step=10.0, format="%.2f"
+            step=10.0, format="%.2f",
+            help="Costo massimo consentito per un rifornimento. Record superiori a questo valore vengono segnalati come Warning nell’importazione."
         )
         
         new_alert_threshold = st.number_input(
             "Soglia Allerta Parziali Cumulati (€)",
             min_value=20.0, max_value=500.0,
             value=settings.max_accumulated_partial_cost,
-            step=10.0, format="%.2f"
+            step=10.0, format="%.2f",
+            help="Somma massima di rifornimenti parziali consecutivi prima di ricevere un avviso nella dashboard."
         )
         
         st.divider()
         
-        # --- SEZIONE 2: Gestione Categorie Promemoria ---
+        # --- SEZIONE 1b: Limiti Importazione Excel ---
+        st.markdown("##### 📊 Limiti Importazione Excel")
+        st.caption(
+            "Soglie usate durante la validazione dei dati Excel importati. "
+            "**Warning** (riga importabile ma segnalata) vs **Errore** (riga bloccata, correzione richiesta)."
+        )
+        
+        c_kml1, c_kml2 = st.columns(2)
+        
+        new_kml_min = c_kml1.number_input(
+            "Consumo Minimo km/L ⚠️ Warning",
+            min_value=0.5, max_value=20.0,
+            value=float(settings.import_kml_min or DEFAULTS.SETTINGS.IMPORT.KML_MIN),
+            step=0.5, format="%.1f",
+            help="Consumo minimo plausibile per singolo rifornimento. Valori **sotto** questa soglia generano un `Warning`: la riga viene importata ma evidenziata. Abbassa per furgoni pesanti o veicoli ad alto consumo (es. 2.0 km/L)."
+        )
+        
+        new_kml_max = c_kml2.number_input(
+            "Consumo Massimo km/L ⚠️ Warning",
+            min_value=5.0, max_value=100.0,
+            value=float(settings.import_kml_max or DEFAULTS.SETTINGS.IMPORT.KML_MAX),
+            step=1.0, format="%.1f",
+            help="Consumo massimo plausibile per singolo rifornimento. Valori **sopra** questa soglia generano un `Warning`: la riga viene importata ma evidenziata. Alza per auto ibride molto efficienti (es. 35 km/L)."
+        )
+        
+        c_kml3, c_kml4 = st.columns(2)
+        
+        new_kml_error = c_kml3.number_input(
+            "Soglia km/L Impossibile ❌ Errore",
+            min_value=50.0, max_value=500.0,
+            value=float(settings.import_kml_error or DEFAULTS.SETTINGS.IMPORT.KML_ERROR),
+            step=10.0, format="%.0f",
+            help="Soglia assoluta oltre la quale il consumo è fisicamente impossibile per qualsiasi veicolo stradale. Valori **sopra** questa soglia generano un `Errore` bloccante. Default: 150 km/L (nessun veicolo convenzionale supera questo valore)."
+        )
+        
+        new_kmd_max = c_kml4.number_input(
+            "Velocità Massima km/giorno ❌ Errore",
+            min_value=500.0, max_value=5000.0,
+            value=float(settings.import_kmd_max or DEFAULTS.SETTINGS.IMPORT.KMD_MAX),
+            step=100.0, format="%.0f",
+            help="Distanza massima percorribile in un giorno. Se tra un rifornimento e il precedente i km percorsi superano (giorni × questo limite), la riga viene bloccata come `Errore`. Default: 1500 km/giorno, limite realistico anche per guide intercontinentali."
+        )
+        
+        st.divider()
         st.markdown("##### 🏷️ Gestione Categorie")
         st.caption("Aggiungi o rimuovi le categorie.")
 
@@ -223,7 +270,11 @@ def _render_config_tab(user):
                 new_range, 
                 new_max, 
                 new_alert_threshold,
-                st.session_state.settings_temp_labels
+                st.session_state.settings_temp_labels,
+                kml_min=new_kml_min,
+                kml_max=new_kml_max,
+                kml_error=new_kml_error,
+                kmd_max=new_kmd_max
             )
             del st.session_state["settings_temp_labels"]
             del st.session_state["settings_editing_idx"]

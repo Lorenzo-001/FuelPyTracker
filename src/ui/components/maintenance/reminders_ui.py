@@ -234,8 +234,8 @@ def _render_check_dialog(db, user, reminder, current_km):
     st.write(f"Confermi di aver eseguito: **{reminder.title}**?")
     
     with st.form("check_rem_form"):
-        d_date = st.date_input("Data Esecuzione", value=date.today())
         d_km = st.number_input("Km Attuali", value=current_km, step=100)
+        d_date = st.date_input("Data Esecuzione", value=date.today())
         d_note = st.text_input("Note opzionali")
         
         if st.form_submit_button("Conferma e Aggiorna", type="primary", width='stretch'):

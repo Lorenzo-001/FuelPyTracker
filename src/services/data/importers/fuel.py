@@ -1,8 +1,9 @@
 import pandas as pd
+from datetime import date as date_type
 from sqlalchemy.orm import Session
-
 from src.database import crud
 from .utils import clean_column_names, parse_date, parse_float, parse_int
+from src.config import DEFAULTS
 
 # =============================================================================
 # COSTANTI DI MAPPING
@@ -37,7 +38,7 @@ def process_fuel_data(db: Session, user_id: str, df: pd.DataFrame) -> tuple[pd.D
     Entry point per l'elaborazione del foglio Rifornimenti.
     Pulisce i nomi delle colonne e delega la validazione business.
     """
-    if df.empty: return pd.DataFrame(), "Il foglio è vuoto."
+    if df.empty: return pd.DataFrame(), "Il foglio Rifornimenti è vuoto."
     
     # 1. Pulizia preliminare Header
     df = clean_column_names(df)
@@ -97,12 +98,77 @@ def validate_fuel_logic(db: Session, user_id: str, df: pd.DataFrame) -> pd.DataF
                 res['Note'] = 'Record duplicato nel file'
                 processed_rows.append(res)
 
-    # 4. Preparazione Output
+    # 4. Controllo Plausibilità km/L + Velocità km/giorno (post-loop)
+    # Timeline combinata: DB + righe del file non in errore (per trovare predecessore immediato)
+    kml_min   = getattr(settings, 'import_kml_min',   None) or DEFAULTS.SETTINGS.IMPORT.KML_MIN
+    kml_max   = getattr(settings, 'import_kml_max',   None) or DEFAULTS.SETTINGS.IMPORT.KML_MAX
+    kml_error = getattr(settings, 'import_kml_error', None) or DEFAULTS.SETTINGS.IMPORT.KML_ERROR
+    kmd_max   = getattr(settings, 'import_kmd_max',   None) or DEFAULTS.SETTINGS.IMPORT.KMD_MAX
+
+    db_pts   = [(r.date, r.total_km) for r in sorted_history]
+    file_pts = [
+        (r['Data'], r['Km']) for r in processed_rows
+        if r['Stato'] not in ('Errore',) and r.get('Data') and r.get('Km', 0) > 0
+    ]
+    combined = sorted(set(db_pts + file_pts), key=lambda x: (x[0], x[1]))
+
+    for row in processed_rows:
+        if row['Stato'] != 'Nuovo' or not row.get('Litri') or row['Litri'] <= 0:
+            continue
+        d_km   = row['Km']
+        d_date = row['Data']
+
+        # Predecessore immediato nella timeline combinata
+        prev_km   = None
+        prev_date = None
+        for dt, km in combined:
+            if dt < d_date or (dt == d_date and km < d_km):
+                prev_km   = km
+                prev_date = dt
+
+        if prev_km is None:
+            continue  # Primo record assoluto, nessun predecessore
+
+        delta_km = d_km - prev_km
+        if delta_km <= 0:
+            continue  # Già gestito dal sandwich check
+
+        # --- Check Velocità (Opzione 3) ---
+        delta_giorni = (d_date - prev_date).days if prev_date else 0
+        if delta_giorni > 0:
+            km_per_giorno = delta_km / delta_giorni
+            if km_per_giorno > kmd_max:
+                row['Stato'] = 'Errore'
+                row['Note'] = (
+                    row['Note'] + f' | Velocità impossibile: {km_per_giorno:.0f} km/giorno '
+                    f'({delta_km} km in {delta_giorni} giorni, max {kmd_max:.0f})'
+                ).strip(' | ')
+                continue  # Già marcato Errore, saltiamo il check km/L
+
+        # --- Check km/L Tiered (Opzione 1) ---
+        km_per_liter = delta_km / row['Litri']
+
+        if km_per_liter > kml_error:
+            # Oltre la soglia configurata: fisicamente impossibile → Errore bloccante
+            row['Stato'] = 'Errore'
+            row['Note'] = (
+                row['Note'] + f' | Consumo impossibile: {km_per_liter:.1f} km/L '
+                f'(limite assoluto: {kml_error} km/L)'
+            ).strip(' | ')
+        elif not (kml_min <= km_per_liter <= kml_max):
+            # Fuori range configurato ma non impossibile → Warning importabile
+            row['Stato'] = 'Warning'
+            row['Note'] = (
+                row['Note'] + f' | Consumo anomalo: {km_per_liter:.1f} km/L '
+                f'(range atteso: {kml_min}–{kml_max})'
+            ).strip(' | ')
+
+    # 5. Preparazione Output
     res_df = pd.DataFrame(processed_rows)
     if not res_df.empty:
         res_df['Data'] = pd.to_datetime(res_df['Data'])
         res_df = res_df.sort_values(by='Data')
-        
+
     return res_df
 
 
@@ -115,8 +181,11 @@ def _parse_single_row(row, settings, ref_map, date_map, sorted_history, file_key
     d_km = parse_int(row.get('km'))
     
     # Fast-fail su dati mancanti
-    if not d_date and d_km == 0: return None 
-    if not d_date: status, notes = "Errore", ["Data invalida"]
+    if not d_date and d_km == 0: return None
+    if not d_date:
+        status, notes = "Errore", ["Data invalida"]
+    elif d_date > date_type.today():
+        status, notes = "Errore", ["Data nel futuro"]
     
     d_price = parse_float(row.get('prezzo'))
     d_cost = parse_float(row.get('costo'))
@@ -192,25 +261,27 @@ def _sandwich_check(d_date, d_km, sorted_history, notes, current_status):
     """
     Verifica la coerenza cronologica dei chilometri (Sandwich Logic).
     Il nuovo record deve avere Km > del precedente e Km < del successivo.
+    KM identici al record precedente o successivo sono bloccati (odometro non può essere fermo).
     """
     prev_rec = None
     next_rec = None
-    
-    # Scansione sequenziale (ottimizzabile con bisect per grandi volumi)
+
     for r in sorted_history:
         if r.date < d_date: prev_rec = r
-        elif r.date > d_date: 
+        elif r.date > d_date:
             next_rec = r
-            break # Trovato il primo record futuro, stop
-            
+            break
+
+    # KM deve essere STRETTAMENTE maggiore del precedente
     if prev_rec and d_km <= prev_rec.total_km:
-        notes.append(f"Km < del {prev_rec.date} ({prev_rec.total_km})")
+        notes.append(f"Km ≤ del {prev_rec.date} ({prev_rec.total_km})")
         return "Errore"
-        
+
+    # KM deve essere STRETTAMENTE minore del successivo
     if next_rec and d_km >= next_rec.total_km:
-        notes.append(f"Km > del {next_rec.date} ({next_rec.total_km})")
+        notes.append(f"Km ≥ del {next_rec.date} ({next_rec.total_km})")
         return "Errore"
-        
+
     return current_status
 
 

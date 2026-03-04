@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 from src.database.core import get_db
 from src.database import crud
@@ -12,7 +13,10 @@ from src.ui.components import startup_alerts
 def render():
     """Vista Dashboard: Analisi Dati, Salute Auto e Trend."""
 
-    # 1. Recupero Dati Essenziali
+    # 1. Inizializzazione Stato
+    _init_session_state()
+
+    # 2. Recupero Dati Essenziali
     user = st.session_state["user"]
     
     # --- STARTUP CHECK (Pop-up automatico one-shot) ---
@@ -113,7 +117,27 @@ def render():
     # ==========================================
     # SEZIONE: GRAFICI ANALITICI
     # ==========================================
-    
+
+    # Fix scroll mobile: usa components.html (l'unico modo per eseguire JS in Streamlit)
+    # per applicare touch-action:pan-y agli iframe Plotly nel documento padre,
+    # permettendo allo scroll verticale della pagina di passare attraverso i grafici su mobile.
+    components.html("""
+        <script>
+        (function() {
+            // Accedi al documento padre (la pagina Streamlit)
+            var parentDoc = window.parent.document;
+            function fixPlotlyIframes() {
+                parentDoc.querySelectorAll('.stPlotlyChart iframe').forEach(function(iframe) {
+                    iframe.style.touchAction = 'pan-y';
+                });
+            }
+            fixPlotlyIframes();
+            var observer = new MutationObserver(fixPlotlyIframes);
+            observer.observe(parentDoc.body, { childList: true, subtree: true });
+        })();
+        </script>
+    """, height=0)
+
     time_opts = ["Ultimo Mese", "Ultimi 3 Mesi", "Ultimi 6 Mesi", "Anno Corrente (YTD)", "Ultimo Anno", "Tutto lo storico"]
 
     # --- GRAFICO 1: TREND PREZZO ---
@@ -152,6 +176,14 @@ def render():
             st.plotly_chart(charts.build_spending_bar_chart(df_c), width='stretch', config={'displayModeBar': False, 'scrollZoom': False})
         else:
             st.warning("Nessuna spesa registrata.")
+
+
+# --- INTERNAL HELPERS ---
+
+def _init_session_state():
+    """Inizializza le variabili di stato necessarie per la dashboard."""
+    if "trip_calc_key" not in st.session_state:
+        st.session_state.trip_calc_key = 0
 
 
 # --- DIALOGS ---

@@ -80,7 +80,7 @@ def render_sidebar(current_user, pages_main, pages_account):
     with st.sidebar:
         # --- 1. LOGO ---
         if os.path.exists(LOGO_PATH):
-            st.image(LOGO_PATH, width='stretch') # width='stretch' deprecated -> use_container_width
+            st.image(LOGO_PATH, width='stretch')
         else:
             # Fallback se non c'è il logo, magari un titolo testuale
             st.warning("Logo not found") 
@@ -96,13 +96,10 @@ def render_sidebar(current_user, pages_main, pages_account):
             st.session_state.nav_radio_main = None
 
         # Menu Principale
-        st.markdown('<div class="nav-header">Navigazione</div>', unsafe_allow_html=True) # Titolo stilizzato custom invece di st.title
-        idx_main = list(pages_main.keys()).index(st.session_state.current_page) if st.session_state.current_page in pages_main else None
-        
+        st.markdown('<div class="nav-header">Navigazione</div>', unsafe_allow_html=True)
         st.radio(
             "Main Menu", 
             list(pages_main.keys()), 
-            index=idx_main, 
             key="nav_radio_main", 
             label_visibility="collapsed", 
             on_change=_update_nav_main
@@ -111,13 +108,10 @@ def render_sidebar(current_user, pages_main, pages_account):
         st.write("") 
 
         # Menu Account
-        st.markdown('<div class="nav-header">Account</div>', unsafe_allow_html=True) # Titolo stilizzato custom
-        idx_acc = list(pages_account.keys()).index(st.session_state.current_page) if st.session_state.current_page in pages_account else None
-        
+        st.markdown('<div class="nav-header">Account</div>', unsafe_allow_html=True)
         st.radio(
             "Account Menu", 
             list(pages_account.keys()), 
-            index=idx_acc, 
             key="nav_radio_account", 
             label_visibility="collapsed", 
             on_change=_update_nav_account

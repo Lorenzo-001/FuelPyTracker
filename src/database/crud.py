@@ -4,6 +4,7 @@ from datetime import date
 from sqlalchemy import func, desc, and_, or_
 from sqlalchemy.orm import Session
 from src.database.models import Refueling, Maintenance, AppSettings, Reminder, ReminderHistory
+from src.config import DEFAULTS
 
 # ==========================================
 # SEZIONE: GESTIONE RIFORNIMENTI (Refueling)
@@ -314,21 +315,30 @@ def get_settings(_db: Session, user_id: str) -> AppSettings:
     settings = _db.query(AppSettings).filter(AppSettings.user_id == user_id).first()
     
     # Default Labels se non esistono
-    default_labels = ["Controllo Livello Olio", "Pressione Pneumatici", "Liquido Tergicristalli", "Inversione Gomme"]
+    default_labels = DEFAULTS.SETTINGS.REMINDER_TYPES
     
     if not settings:
         settings = AppSettings(
             user_id=user_id,
-            reminder_types=default_labels # Set default
+            reminder_types=list(default_labels)  # copia della lista
         )
         _db.add(settings)
         _db.commit()
         _db.refresh(settings)
     
-    # Fallback se il campo nel DB è None (es. vecchi record)
+    # Fallback se il campo nel DB è None (es. vecchi record prima della migrazione)
     if settings.reminder_types is None:
-        settings.reminder_types = default_labels
-        # Non facciamo commit qui per velocità, lo farà il prossimo update
+        settings.reminder_types = list(default_labels)
+    
+    # Fallback per i campi import_limits (record creati prima della migrazione colonne)
+    if settings.import_kml_min is None:
+        settings.import_kml_min = DEFAULTS.SETTINGS.IMPORT.KML_MIN
+    if settings.import_kml_max is None:
+        settings.import_kml_max = DEFAULTS.SETTINGS.IMPORT.KML_MAX
+    if settings.import_kml_error is None:
+        settings.import_kml_error = DEFAULTS.SETTINGS.IMPORT.KML_ERROR
+    if settings.import_kmd_max is None:
+        settings.import_kmd_max = DEFAULTS.SETTINGS.IMPORT.KMD_MAX
         
     return settings
 
@@ -338,7 +348,11 @@ def update_settings(
     fluctuation: float, 
     max_cost: float, 
     alert_threshold: float,
-    custom_labels: List[str]
+    custom_labels: List[str],
+    kml_min:   float = DEFAULTS.SETTINGS.IMPORT.KML_MIN,
+    kml_max:   float = DEFAULTS.SETTINGS.IMPORT.KML_MAX,
+    kml_error: float = DEFAULTS.SETTINGS.IMPORT.KML_ERROR,
+    kmd_max:   float = DEFAULTS.SETTINGS.IMPORT.KMD_MAX,
 ):
     settings = db.query(AppSettings).filter(AppSettings.user_id == user_id).first()
     if not settings:
@@ -348,7 +362,11 @@ def update_settings(
     settings.price_fluctuation_cents = fluctuation
     settings.max_total_cost = max_cost
     settings.max_accumulated_partial_cost = alert_threshold
-    settings.reminder_types = custom_labels # Salva JSON/Array
+    settings.reminder_types = custom_labels
+    settings.import_kml_min = kml_min
+    settings.import_kml_max = kml_max
+    settings.import_kml_error = kml_error
+    settings.import_kmd_max = kmd_max
     
     db.commit()
     db.refresh(settings)

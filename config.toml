@@ -1,0 +1,60 @@
+# =============================================================================
+# FuelPyTracker — Configurazione Applicazione
+# =============================================================================
+# Modifica questo file per cambiare il comportamento globale dell'applicazione
+# senza toccare il codice sorgente. Le modifiche hanno effetto al prossimo avvio.
+#
+# Formato: TOML (https://toml.io)
+# =============================================================================
+
+[app]
+name = "FuelPyTracker"
+
+# -----------------------------------------------------------------------------
+# [defaults.settings]
+# Valori di default usati quando un utente crea un account per la prima volta,
+# o quando un campo mancante deve essere ripristinato al suo valore originale.
+# L'utente può sovrascrivere questi valori dalla sezione "Impostazioni" dell'app.
+# -----------------------------------------------------------------------------
+[defaults.settings]
+
+# Tolleranza dello slider al momento dell'inserimento del rifornimento.
+# Es: 0.15 significa che lo slider copre ±0.15 € rispetto all'ultimo prezzo noto.
+price_fluctuation_cents = 0.15
+
+# Tetto massimo di spesa per un singolo rifornimento (€).
+# Record superiori a questo valore vengono segnalati come Warning nell'importazione.
+max_total_cost = 120.0
+
+# Soglia allerta parziali cumulati (€).
+# L'app avvisa quando la somma dei rifornimenti parziali consecutivi supera questo valore.
+max_accumulated_partial_cost = 80.0
+
+# Categorie di promemoria manutenzione proposte di default all'utente.
+# L'utente può aggiungerne o rimuoverne delle proprie dalla sezione "Impostazioni".
+reminder_types = [
+    "Controllo Livello Olio",
+    "Pressione Pneumatici",
+    "Liquido Tergicristalli",
+    "Inversione Gomme",
+]
+
+# -----------------------------------------------------------------------------
+# [defaults.settings.import_limits]
+# Soglie usate durante la validazione dei file Excel importati.
+#
+# Logica a due livelli:
+#   Warning  → La riga viene importata ma evidenziata (l'utente può ignorare)
+#   Errore   → La riga è bloccata: l'utente DEVE correggere il dato prima di importare
+#
+# Schema:
+#   kml_min   → Consumo minimo plausibile (km/L):   sotto  → Warning
+#   kml_max   → Consumo massimo plausibile (km/L):  sopra  → Warning
+#   kml_error → Soglia fisicamente impossibile:     sopra  → Errore bloccante
+#   kmd_max   → Velocità massima giornaliera:       sopra  → Errore bloccante
+# -----------------------------------------------------------------------------
+[defaults.settings.import_limits]
+kml_min   = 3.0     # km/L – consumo minimo plausibile  (es. furgone pesante)
+kml_max   = 30.0    # km/L – consumo massimo plausibile (es. auto media efficiente)
+kml_error = 50.0    # km/L – soglia fisicamente impossibile per veicoli stradali
+kmd_max   = 1000.0  # km/giorno – velocità massima giornaliera realistica

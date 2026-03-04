@@ -99,7 +99,9 @@ def render():
 
     # --- TAB 2: Modifica Email ---
     with tab_email:
-        st.info("Riceverai una mail di conferma al nuovo indirizzo.")
+        st.markdown("**Modifica l'indirizzo email** associato al tuo account. Una volta inviata la richiesta, riceverai una mail di conferma al **nuovo indirizzo**: dovrai cliccare il link per completare la modifica.")
+        st.caption("⚠️ Finché non confermi il link, il tuo accesso continuerà a funzionare con l'email attuale.")
+        st.write("")
         
         with st.form("change_email_form", border=False):
             col_mail_1, col_mail_2 = st.columns([3, 1], vertical_alignment="bottom")
@@ -122,7 +124,10 @@ def render():
 
     # --- TAB 3: Sicurezza (Password) ---
     with tab_security:
-        st.caption("È richiesta la password attuale per confermare le modifiche.")
+        st.markdown("**Cambia la password** del tuo account. Per motivi di sicurezza, è richiesta la **password attuale** per confermare l'operazione. La nuova password deve essere di almeno 6 caratteri.")
+        st.caption("🔒 Le password sono cifrate e non accessibili nemmeno agli amministratori.")
+        st.write("")
+
         
         with st.form("change_pass_form_secure", border=True):
             old_pass = st.text_input("Password Attuale", type="password")

@@ -83,6 +83,12 @@ def main():
     # 2. Setup Routing
     if "current_page" not in st.session_state:
         st.session_state.current_page = "Dashboard"
+    # Inizializzazione chiavi di navigazione sidebar: deve avvenire qui (una volta sola)
+    # per evitare il warning "widget created with default but also set via Session State API".
+    if "nav_radio_main" not in st.session_state:
+        st.session_state.nav_radio_main = st.session_state.current_page
+    if "nav_radio_account" not in st.session_state:
+        st.session_state.nav_radio_account = None
 
     pages_main = {
         "Dashboard": dashboard.render,

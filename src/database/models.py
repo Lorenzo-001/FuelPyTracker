@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, Date, Text, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Float, Boolean, Date, Text, ForeignKey, JSON, DateTime
 from sqlalchemy.orm import declarative_base, relationship
+from src.config import DEFAULTS
 
 # Base class per i modelli SQLAlchemy
 Base = declarative_base()
@@ -80,10 +81,17 @@ class AppSettings(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String, index=True, nullable=False, unique=True)
-    price_fluctuation_cents = Column(Float, default=0.15)
-    max_total_cost = Column(Float, default=120.0)
-    max_accumulated_partial_cost = Column(Float, default=80.0)
-    reminder_types = Column(JSON, nullable=True)
+    # Impostazioni utente configurabili
+    price_fluctuation_cents      = Column(Float, default=DEFAULTS.SETTINGS.PRICE_FLUCTUATION_CENTS)
+    max_total_cost               = Column(Float, default=DEFAULTS.SETTINGS.MAX_TOTAL_COST)
+    max_accumulated_partial_cost = Column(Float, default=DEFAULTS.SETTINGS.MAX_ACCUMULATED_PARTIAL_COST)
+    reminder_types               = Column(JSON, nullable=True)
+
+    # Limiti validazione consumo km/L durante l'importazione Excel
+    import_kml_min   = Column(Float, default=DEFAULTS.SETTINGS.IMPORT.KML_MIN)
+    import_kml_max   = Column(Float, default=DEFAULTS.SETTINGS.IMPORT.KML_MAX)
+    import_kml_error = Column(Float, default=DEFAULTS.SETTINGS.IMPORT.KML_ERROR)
+    import_kmd_max   = Column(Float, default=DEFAULTS.SETTINGS.IMPORT.KMD_MAX)
 
     def __repr__(self):
         return f"<AppSettings(user={self.user_id})>"
