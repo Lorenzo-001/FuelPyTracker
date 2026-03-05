@@ -7,6 +7,7 @@ from src.services.data.exporters import reports, templates
 # Importiamo i nuovi moduli refattorizzati
 from src.services.data.importers import manager
 from src.ui.components.settings import export_dialog, data_staging
+from src.demo import is_demo_mode
 
 @st.fragment
 def render():
@@ -57,7 +58,11 @@ def _render_export_tab(user):
     
     st.divider()
     
-    if st.button("📦 Genera File Excel", type="primary"):
+    if n_fuels == 0 and n_maints == 0:
+        st.info("ℹ️ Nessun dato da esportare. Aggiungi prima dei rifornimenti o delle manutenzioni.")
+    elif st.button("📦 Genera File Excel", type="primary",
+                   disabled=(n_fuels == 0),
+                   help="Aggiungi almeno un rifornimento per abilitare l'esportazione." if n_fuels == 0 else None):
         try:
             # Generazione in RAM
             excel_data = reports.generate_excel_report(db, user.id)
@@ -121,6 +126,7 @@ def _render_config_tab(user):
     > 2. **Tetto Spesa:** Fissa un limite massimo di sicurezza per evitare errori di digitazione (es. 500€).
     > 3. **Soglia Allerta:** Ricevi un avviso se accumuli troppi rifornimenti parziali consecutivi.
     > 4. **Categorie Promemoria:** Definisci qui le voci che troverai nel menu a tendina "Categoria" quando crei un nuovo promemoria.
+    > 5. **Salvataggio:** Tutte le modifiche vengono salvate al click del bottone "Salva Configurazioni".
     """)
     
     st.write("") 
@@ -264,7 +270,9 @@ def _render_config_tab(user):
         st.write("")
         
         # --- SALVATAGGIO FINALE ---
-        if st.form_submit_button("💾 Salva Configurazioni", type="primary", width='stretch'):
+        if is_demo_mode():
+            st.warning("🔒 Modalità Demo: Modifiche disabilitate per sicurezza.")
+        elif st.form_submit_button("💾 Salva Configurazioni", type="primary", width='stretch'):
             crud.update_settings(
                 db, user.id, 
                 new_range, 
@@ -319,6 +327,10 @@ def _render_import_tab(user):
         )
 
     # --- GESTIONE RESET UPLOADER ---
+    if is_demo_mode():
+        st.warning("🔒 Modalità Demo: Modifiche disabilitate per sicurezza.")
+        return
+
     # Usiamo un contatore nella sessione per creare una chiave dinamica.
     # Quando incrementiamo il contatore, Streamlit resetta il widget file_uploader.
     if "uploader_key" not in st.session_state:
@@ -391,11 +403,12 @@ def _render_pdf_tab(user):
     all_maints = crud.get_all_maintenances(db, user.id)
     db.close()
     
-    available_years = sorted(list(set(m.date.year for m in all_maints)), reverse=True)
+    # Guard: nessuna manutenzione registrata
+    if not all_maints:
+        st.warning("ℹ️ Nessuna manutenzione registrata. Aggiungi degli interventi prima di generare il PDF.")
+        return
     
-    # Se non ci sono dati, aggiungiamo l'anno corrente come fallback
-    if not available_years:
-        available_years = [datetime.now().year]
+    available_years = sorted(list(set(m.date.year for m in all_maints)), reverse=True)
 
     st.divider()
 

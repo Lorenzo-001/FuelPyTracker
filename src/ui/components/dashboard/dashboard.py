@@ -35,8 +35,29 @@ def render():
     db.close()
 
     if not records:
-        st.info("👋 Benvenuto! Inizia aggiungendo il tuo primo rifornimento.")
+        st.markdown("""
+        <div style="
+            background: linear-gradient(135deg, rgba(99,110,250,0.12), rgba(0,204,150,0.08));
+            border: 1px solid rgba(99,110,250,0.30);
+            border-radius: 12px;
+            padding: 28px 32px;
+            margin-top: 24px;
+        ">
+            <h3 style="margin-top:0;">👋 Benvenuto in FuelPyTracker!</h3>
+            <p style="margin-bottom:16px;">La tua dashboard è pronta — occorre solo aggiungere il primo rifornimento per iniziare a vedere grafici e statistiche.</p>
+            <p><strong>Come iniziare:</strong></p>
+            <ol style="line-height:2.0; margin-bottom:12px;">
+                <li>Vai alla sezione <strong>⛽ Rifornimenti</strong> dalla barra laterale.</li>
+                <li>Apri il pannello <em>➕ Registra Nuovo Rifornimento</em>.</li>
+                <li>Inserisci i dati (o usa lo scan AI dello scontrino) e salva.</li>
+            </ol>
+            <p style="margin-bottom:0; font-size:0.9em; opacity:0.75;">
+                💡 Hai già uno storico in Excel? Importalo direttamente da <strong>⚙️ Impostazioni → Importazione Dati</strong>.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
         return
+
 
     # 2. Preparazione DataFrame Base (Rifornimenti)
     records_asc = sorted(records, key=lambda x: x.date)

@@ -14,6 +14,9 @@ from src.assets.styles import inject_js_bridge, apply_custom_css
 from src.services.auth.router import handle_auth_redirects
 from src.ui.components.sidebar import render_sidebar
 from src.auth.reset_page import render_reset_page
+from src.demo import is_demo_mode, DEMO_USER
+
+
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 
@@ -42,7 +45,12 @@ def main():
         
     init_session()
 
-    # --- 4. CSS STATE CONTROL (Anti-Flicker) ---
+    # --- 4. DEMO MODE: Bypass autenticazione ---
+    if is_demo_mode() and not st.session_state.get("user"):
+        st.session_state.user = DEMO_USER
+        st.rerun()  # Forza un re-run pulito con la sessione già valorizzata
+
+    # --- 5. CSS STATE CONTROL (Anti-Flicker) ---
     # Nascondiamo la sidebar via CSS se non siamo loggati.
     # Questo previene che appaia vuota o "fluttui" durante il caricamento del login.
     if not st.session_state.get("user"):

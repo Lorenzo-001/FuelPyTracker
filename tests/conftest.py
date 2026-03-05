@@ -1,12 +1,23 @@
 import sys
 import os
 import pytest
+from unittest.mock import patch
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 # 1. Setup Path: Aggiunge la cartella 'src' al path di Python
 # Permette ai test di importare i moduli come 'database' invece di 'src.database'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+
+# 2. DEMO_MODE isolation: forza False per l'intera suite.
+# Evita che il valore in .env (DEMO_MODE=True in produzione locale) inquini
+# i test che si aspettano il comportamento non-demo (es. OCR engine).
+# I test specifici di demo.py sovrascrivono localmente con patch.dict.
+os.environ.setdefault("DEMO_MODE", "")
+if os.environ.get("DEMO_MODE", "").strip().lower() in ("1", "true", "yes"):
+    os.environ["DEMO_MODE"] = "False"
+
+
 
 from src.database.models import Base
 

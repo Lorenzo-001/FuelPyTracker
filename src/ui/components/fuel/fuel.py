@@ -7,6 +7,7 @@ from src.ui.components.fuel import grids, kpi, forms
 from src.services.business import fuel_logic
 from src.services.ocr import process_receipt_image
 from src.services.ocr.engine import is_openai_enabled
+from src.demo import is_demo_mode
 
 @st.fragment
 def render():
@@ -59,7 +60,12 @@ def render():
 
         # Bottone Grande invece di Expander annidato
         st.markdown("##### 📸 Vuoi velocizzare l'inserimento?")
-        if is_openai_enabled():
+        if is_demo_mode():
+            # DEMO MODE: OCR disabilitato — la modalità demo non consente upload reali
+            st.button("🚀 SCANSIONA SCONTRINO CON AI (Demo)", disabled=True, width='stretch',
+                      help="Funzionalità non disponibile in modalità Demo.")
+            st.warning("🔒 Modalità Demo: Modifiche disabilitate per sicurezza.")
+        elif is_openai_enabled():
             # CASO POSITIVO: Mostra il bottone normale
             if st.button("🚀 SCANSIONA SCONTRINO CON AI", type="primary", width='stretch'):
                 _open_ocr_dialog()
@@ -67,6 +73,7 @@ def render():
             # CASO NEGATIVO: Mostra bottone disabilitato o avviso
             st.button("🚀 SCANSIONA SCONTRINO (Non disponibile)", disabled=True, width='stretch', help="Funzionalità disabilitata: API Key OpenAI mancante.")
             st.caption("⚠️ Configura la chiave OpenAI nei settings per abilitare l'AI.")
+
 
         # === B. CALCOLO DEFAULTS ===
         # Se abbiamo dati in bozza (da OCR), usiamo quelli. Altrimenti storici.

@@ -5,6 +5,9 @@ from datetime import datetime
 from openai import OpenAI, APIConnectionError, RateLimitError, AuthenticationError, APIError
 from typing import Optional
 from .models import ReceiptData
+from src.demo import is_demo_mode, mock_analyze_receipt
+
+
 
 # =============================================================================
 # CONFIGURAZIONE CLIENT OPENAI
@@ -30,6 +33,10 @@ def analyze_receipt(file_buffer) -> ReceiptData:
     Returns:
         ReceiptData: DTO popolato con i dati estratti (o errore nel campo raw_text).
     """
+    # Demo Mode: short-circuit prima di qualsiasi chiamata esterna.
+    if is_demo_mode():
+        return mock_analyze_receipt()
+
     # 1. Controllo Pre-Flight
     if not client:
         return ReceiptData(raw_text="ERRORE: API Key OpenAI mancante in .streamlit/secrets.toml")

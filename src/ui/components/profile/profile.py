@@ -3,6 +3,7 @@ import time
 from src.services.auth.auth_service import update_user_password_secure, update_user_email
 from src.services.data.storage import upload_avatar, get_avatar_url
 from src.ui.components.profile.kpi import _inject_custom_css
+from src.demo import is_demo_mode
 
 @st.fragment
 def render():
@@ -72,55 +73,61 @@ def render():
     # --- TAB 1: Upload Foto ---
     with tab_photo:
         st.caption("Aggiorna la tua immagine di profilo.")
-        
-        if "uploader_key" not in st.session_state:
-            st.session_state["uploader_key"] = 0
 
-        # File Uploader
-        uploaded_file = st.file_uploader(
-            "Scegli file", 
-            type=['png', 'jpg', 'jpeg'],
-            label_visibility="collapsed", 
-            key=f"avatar_uploader_{st.session_state['uploader_key']}"
-        )
-        
-        if uploaded_file is not None:
-            with st.spinner("Caricamento in corso..."):
-                new_url = upload_avatar(user.id, uploaded_file)
-                
-                if new_url:
-                    st.toast("✅ Avatar aggiornato con successo!", icon="🎉")
-                    time.sleep(1)
-                    st.session_state["uploader_key"] += 1
-                    st.session_state["avatar_version"] = int(time.time())
-                    st.rerun()
-                else:
-                    st.error("Errore durante l'upload.")
+        if is_demo_mode():
+            st.warning("🔒 Modalità Demo: Modifiche disabilitate per sicurezza.")
+        else:
+            if "uploader_key" not in st.session_state:
+                st.session_state["uploader_key"] = 0
+
+            # File Uploader
+            uploaded_file = st.file_uploader(
+                "Scegli file", 
+                type=['png', 'jpg', 'jpeg'],
+                label_visibility="collapsed", 
+                key=f"avatar_uploader_{st.session_state['uploader_key']}"
+            )
+            
+            if uploaded_file is not None:
+                with st.spinner("Caricamento in corso..."):
+                    new_url = upload_avatar(user.id, uploaded_file)
+                    
+                    if new_url:
+                        st.toast("✅ Avatar aggiornato con successo!", icon="🎉")
+                        time.sleep(1)
+                        st.session_state["uploader_key"] += 1
+                        st.session_state["avatar_version"] = int(time.time())
+                        st.rerun()
+                    else:
+                        st.error("Errore durante l'upload.")
 
     # --- TAB 2: Modifica Email ---
     with tab_email:
         st.markdown("**Modifica l'indirizzo email** associato al tuo account. Una volta inviata la richiesta, riceverai una mail di conferma al **nuovo indirizzo**: dovrai cliccare il link per completare la modifica.")
         st.caption("⚠️ Finché non confermi il link, il tuo accesso continuerà a funzionare con l'email attuale.")
         st.write("")
-        
-        with st.form("change_email_form", border=False):
-            col_mail_1, col_mail_2 = st.columns([3, 1], vertical_alignment="bottom")
-            with col_mail_1:
-                new_email = st.text_input("Nuovo Indirizzo Email", placeholder="nuova@email.com")
-            with col_mail_2:
-                btn_email = st.form_submit_button("Invia", type="primary", width='stretch')
-            
-            if btn_email:
-                if not new_email or "@" not in new_email:
-                    st.error("Inserisci un'email valida.")
-                elif new_email == user.email:
-                    st.warning("Email identica all'attuale.")
-                else:
-                    success, msg = update_user_email(new_email)
-                    if success:
-                        st.success(msg)
+
+        if is_demo_mode():
+            st.warning("🔒 Modalità Demo: Modifiche disabilitate per sicurezza.")
+        else:
+            with st.form("change_email_form", border=False):
+                col_mail_1, col_mail_2 = st.columns([3, 1], vertical_alignment="bottom")
+                with col_mail_1:
+                    new_email = st.text_input("Nuovo Indirizzo Email", placeholder="nuova@email.com")
+                with col_mail_2:
+                    btn_email = st.form_submit_button("Invia", type="primary", width='stretch')
+                
+                if btn_email:
+                    if not new_email or "@" not in new_email:
+                        st.error("Inserisci un'email valida.")
+                    elif new_email == user.email:
+                        st.warning("Email identica all'attuale.")
                     else:
-                        st.error(f"Errore: {msg}")
+                        success, msg = update_user_email(new_email)
+                        if success:
+                            st.success(msg)
+                        else:
+                            st.error(f"Errore: {msg}")
 
     # --- TAB 3: Sicurezza (Password) ---
     with tab_security:
@@ -128,27 +135,29 @@ def render():
         st.caption("🔒 Le password sono cifrate e non accessibili nemmeno agli amministratori.")
         st.write("")
 
-        
-        with st.form("change_pass_form_secure", border=True):
-            old_pass = st.text_input("Password Attuale", type="password")
-            st.divider()
-            
-            c1, c2 = st.columns(2)
-            with c1:
-                new_pass = st.text_input("Nuova Password", type="password")
-            with c2:
-                confirm_pass = st.text_input("Conferma Password", type="password")
-            
-            if st.form_submit_button("Aggiorna Password", type="primary", width='stretch'):
-                if not old_pass:
-                    st.error("Inserisci la password attuale.")
-                elif new_pass != confirm_pass:
-                    st.error("Le nuove password non coincidono.")
-                elif len(new_pass) < 6:
-                    st.error("Password troppo corta (min 6 car).")
-                else:
-                    success, msg = update_user_password_secure(user.email, old_pass, new_pass)
-                    if success:
-                        st.success(msg)
+        if is_demo_mode():
+            st.warning("🔒 Modalità Demo: Modifiche disabilitate per sicurezza.")
+        else:
+            with st.form("change_pass_form_secure", border=True):
+                old_pass = st.text_input("Password Attuale", type="password")
+                st.divider()
+                
+                c1, c2 = st.columns(2)
+                with c1:
+                    new_pass = st.text_input("Nuova Password", type="password")
+                with c2:
+                    confirm_pass = st.text_input("Conferma Password", type="password")
+                
+                if st.form_submit_button("Aggiorna Password", type="primary", width='stretch'):
+                    if not old_pass:
+                        st.error("Inserisci la password attuale.")
+                    elif new_pass != confirm_pass:
+                        st.error("Le nuove password non coincidono.")
+                    elif len(new_pass) < 6:
+                        st.error("Password troppo corta (min 6 car).")
                     else:
-                        st.error(msg)
+                        success, msg = update_user_password_secure(user.email, old_pass, new_pass)
+                        if success:
+                            st.success(msg)
+                        else:
+                            st.error(msg)
