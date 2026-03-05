@@ -35,12 +35,8 @@ def analyze_receipt(file_buffer) -> ReceiptData:
         return ReceiptData(raw_text="ERRORE: API Key OpenAI mancante in .streamlit/secrets.toml")
 
     try:
-        # 2. Preparazione Immagine (Encoding Base64)
-        # OpenAI richiede l'immagine come stringa base64
         base64_image = _encode_image_to_base64(file_buffer)
 
-        # 3. Definizione del Prompt (System Instruction)
-        # Istruiamo l'AI a comportarsi come un parser JSON rigoroso
         system_prompt = """
         Sei un motore OCR intelligente specializzato in scontrini carburante italiani.
         Analizza l'immagine fornita ed estrai i dati nel seguente formato JSON rigoroso:
@@ -56,7 +52,6 @@ def analyze_receipt(file_buffer) -> ReceiptData:
         - Restituisci SOLO il JSON, nessun markdown.
         """
 
-        # 4. Chiamata API
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
@@ -78,10 +73,8 @@ def analyze_receipt(file_buffer) -> ReceiptData:
             response_format={ "type": "json_object" } # Forza output JSON
         )
 
-        # 5. Parsing & Pulizia Risposta
         content = response.choices[0].message.content
-        
-        # Rimuove eventuali backtick markdown se l'AI sbaglia formato
+        # Strip eventuali backtick markdown in caso di formato errato
         content = content.replace("```json", "").replace("```", "").strip()
         
         data_dict = json.loads(content)
@@ -113,14 +106,13 @@ def analyze_receipt(file_buffer) -> ReceiptData:
 
 def _encode_image_to_base64(file_buffer) -> str:
     """Legge il buffer e lo converte in stringa base64 utf-8."""
-    # Assicuriamoci di essere all'inizio del file
     file_buffer.seek(0)
     return base64.b64encode(file_buffer.read()).decode('utf-8')
 
 def _map_json_to_model(data: dict) -> ReceiptData:
     """Converte il dizionario JSON grezzo nell'oggetto ReceiptData."""
     rd = ReceiptData()
-    rd.raw_text = "Analisi GPT-4o Completata" # Feedback positivo
+    rd.raw_text = "Analisi GPT-4o Completata"
     
     # Mapping sicuro con controlli di tipo
     try:

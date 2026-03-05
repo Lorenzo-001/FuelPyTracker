@@ -29,7 +29,6 @@ def sign_in(email, password):
         })
         return response
     except Exception as e:
-        # Ritorna l'errore puro per gestirlo nella UI
         raise e
 
 def sign_up(email, password):
@@ -66,14 +65,11 @@ def update_user_password_secure(email, old_password, new_password):
     Gestisce l'errore di password identica traducendolo.
     Usa un client temporaneo per la verifica per non corrompere la sessione attiva.
     """
-    # 1. Creiamo un client 'Disposable' (Usa e Getta) solo per verificare le credenziali
-    # Se il login fallisce qui, non invalidiamo la sessione dell'utente nell'app principale.
+    # Client usa-e-getta per verificare le credenziali senza invalidare la sessione attiva.
     try:
         temp_url = st.secrets["supabase"]["url"]
         temp_key = st.secrets["supabase"]["key"]
         temp_client = create_client(temp_url, temp_key)
-        
-        # Tentativo di login sul client temporaneo
         temp_client.auth.sign_in_with_password({
             "email": email, 
             "password": old_password
@@ -81,8 +77,7 @@ def update_user_password_secure(email, old_password, new_password):
     except Exception:
         return False, "La password attuale inserita non è corretta."
 
-    # 2. Se siamo qui, la vecchia password è corretta.
-    # Usiamo il client PRINCIPALE (che ha la sessione attiva) per fare l'update.
+    # Vecchia password verificata: aggiorna via client principale (sessione attiva intatta).
     try:
         attributes = {"password": new_password}
         get_client().auth.update_user(attributes)
@@ -111,8 +106,6 @@ def update_user_email(new_email):
 def send_password_reset_email(email):
     """Invia la mail di recupero password."""
     try:
-        # Recupera l'URL dai secrets. 
-        # Se non c'è nel TOML, usa localhost come fallback di default.
         redirect_url = st.secrets["supabase"].get("redirect_url", "http://localhost:8501")
         
         get_client().auth.reset_password_email(email, options={
@@ -155,7 +148,7 @@ def set_session_from_url(access_token, refresh_token):
     Usato quando il link di reset password contiene #access_token invece di ?code.
     """
     try:
-        # Imposta manualmente la sessione nel client Supabase
+        # Imposta la sessione nel client Supabase a partire dai token raw (Implicit Flow).
         res = get_client().auth.set_session(access_token, refresh_token)
         return True, res.user
     except Exception as e:

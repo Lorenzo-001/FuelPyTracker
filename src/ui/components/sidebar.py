@@ -10,12 +10,10 @@ from src.database import crud
 
 def _render_user_profile(current_user):
     """Renderizza la card del profilo utente."""
-    # Calcoliamo l'iniziale e puliamo il nome
     user_email = current_user.email if current_user.email else "Guest"
     short_name = user_email.split('@')[0]
     initial = short_name[0].upper() if short_name else "U"
 
-    # HTML Strutturato con Flexbox (Avatar + Testo)
     st.markdown(f"""
         <div class="profile-container">
             <div class="profile-avatar">{initial}</div>
@@ -82,7 +80,6 @@ def render_sidebar(current_user, pages_main, pages_account):
         if os.path.exists(LOGO_PATH):
             st.image(LOGO_PATH, width='stretch')
         else:
-            # Fallback se non c'è il logo, magari un titolo testuale
             st.warning("Logo not found") 
             
         # --- 2. NAVIGAZIONE ---        
@@ -126,7 +123,7 @@ def render_sidebar(current_user, pages_main, pages_account):
         _render_user_profile(current_user)
         
         # Logout
-        if st.button("Esci (Logout)", type="primary", width='stretch'): # width='stretch' deprecated
+        if st.button("Esci (Logout)", type="primary", width='stretch'):
             clear_session()
             st.rerun()
 

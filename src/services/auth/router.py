@@ -17,16 +17,9 @@ def handle_auth_redirects():
         ok, res = exchange_code_for_session(auth_code)
         if ok:
             success = True
-            st.session_state['user'] = res # Imposta utente temporaneo
-            if hasattr(res, 'session'): # Se l'oggetto user ha la sessione (dipende dalla risposta)
-                 # Nota: exchange_code_for_session ritorna .user, ma spesso abbiamo bisogno della sessione completa per i token
-                 # In questo caso PKCE logga automaticamente, ma per i cookie serve access_token.
-                 # Il server side di supabase gestisce la sessione, ma per il cookie manager client side
-                 # dovremmo idealmente avere i token. 
-                 # TODO: Verificare se res contiene token. Per ora ci affidiamo al fatto che l'utente è loggato
-                 # e al prossimo refresh init_session forse non troverà i cookie ma l'utente sarà sloggato?
-                 # FIX: Per sicurezza, se è un flusso di login, idealmente salviamo la sessione.
-                 pass 
+            st.session_state['user'] = res
+            # Il flusso PKCE autentica server-side; i query_params vengono puliti al rerun.
+            pass
         else:
             error_msg = res
 

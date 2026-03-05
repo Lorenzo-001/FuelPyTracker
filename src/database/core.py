@@ -9,9 +9,7 @@ from src.database.models import Base, Refueling, Maintenance, AppSettings, Remin
 # CONFIGURAZIONE & CONNESSIONE DATABASE
 # =============================================================================
 
-# 1. Recupero URL di Connessione
-# Tentativo di recupero dai secrets di Streamlit.
-# Questo approccio garantisce sicurezza separando le credenziali dal codice.
+# URL di connessione dai secrets di Streamlit — credenziali separate dal codice.
 try:
     DATABASE_URL = st.secrets["database"]["url"]
 except Exception:
@@ -28,18 +26,14 @@ except Exception:
     )
     st.stop()
 
-# 2. Inizializzazione Engine SQLAlchemy
-# Configurazione specifica per PostgreSQL.
+# Engine SQLAlchemy — pool_pre_ping per rilevare connessioni stantie.
 engine = create_engine(
     DATABASE_URL, 
     pool_pre_ping=True,
     poolclass=NullPool
 )
 
-# 3. Session Factory
-# Configurazione della fabbrica di sessioni:
-# - autocommit=False: Per gestire esplicitamente le transazioni.
-# - autoflush=False: Per evitare scritture parziali prima del commit esplicito.
+# Configurazione transazioni esplicite (no autocommit, no autoflush prematuro)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # =============================================================================
@@ -60,16 +54,10 @@ def init_db():
 def get_db():
     """
     Generatore per la Dependency Injection della sessione database.
-    
-    Gestisce il ciclo di vita della connessione (apertura e chiusura sicura)
-    utilizzando il pattern 'yield' per l'uso nei contesti 'with' o nelle dipendenze.
-    
-    Yields:
-        Session: Un'istanza attiva di SessionLocal.
+    Garantisce la chiusura della connessione anche in caso di eccezioni.
     """
     db = SessionLocal()
     try:
         yield db
     finally:
-        # Garantisce la chiusura della connessione anche in caso di eccezioni
         db.close()

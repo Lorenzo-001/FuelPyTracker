@@ -33,13 +33,7 @@ def calculate_year_kpis(records, year):
 
 def validate_refueling(new_data, all_records):
     """
-    Valida i dati assicurando la coerenza cronologica dei chilometri.
-    Controlla che i Km inseriti siano coerenti con i record immediatamente precedenti e successivi.
-    
-    Args:
-        new_data (dict): I dati del form.
-        all_records (list): La lista completa di tutti i rifornimenti esistenti.
-        
+    Valida la coerenza cronologica dei chilometri contro i record adiacenti.
     Return: (bool, str) -> (is_valid, error_message)
     """
     input_km = new_data['km']
@@ -62,13 +56,13 @@ def validate_refueling(new_data, all_records):
     prev_record = None
     next_record = None
 
-    # Troviamo il record immediatamente prima e quello immediatamente dopo
+    # Trova il record immediatamente prima e quello immediatamente dopo la data inserita
     for record in sorted_records:
         if record.date <= input_date:
-            prev_record = record # Continuiamo ad aggiornare finché siamo nel passato/presente
+            prev_record = record
         else:
             next_record = record
-            break # Appena troviamo una data futura, quello è il "next" e ci fermiamo
+            break
 
     # 3. Controllo Coerenza col Passato (Prev <= Input)
     if prev_record:

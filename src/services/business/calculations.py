@@ -39,7 +39,7 @@ def calculate_stats(current: Refueling, history: List[Refueling]) -> dict:
         last_full_refuel = None
         found_full = False
 
-        # 3a. Backtracking: Risale lo storico accumulando i litri dei parziali
+        # Backtracking: accumula i litri dei parziali fino al precedente pieno (anchor point)
         for record in past_records:
             if record.is_full_tank:
                 last_full_refuel = record
@@ -47,7 +47,6 @@ def calculate_stats(current: Refueling, history: List[Refueling]) -> dict:
                 break
             liters_consumed += record.liters
 
-        # 3b. Calcolo finale se trovato un pieno di riferimento ("Anchor Point")
         if found_full and last_full_refuel and liters_consumed > 0:
             distance = current.total_km - last_full_refuel.total_km
             stats["km_per_liter"] = distance / liters_consumed
@@ -72,10 +71,8 @@ def check_partial_accumulation(history: List[Refueling]) -> dict:
     
     for r in sorted_history:
         if r.is_full_tank:
-            # Trovato un pieno (reset del contatore), stop analisi
             break
         else:
-            # È un parziale, accumuliamo costo e conteggio
             accumulated_cost += r.total_cost
             count += 1
             

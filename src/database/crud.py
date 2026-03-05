@@ -10,10 +10,7 @@ from src.config import DEFAULTS
 # SEZIONE: GESTIONE RIFORNIMENTI (Refueling)
 # ==========================================
 
-# NOTE SU CACHE: 
-# Usiamo ttl=300 (5 minuti) per le query frequenti.
-# Usiamo _db con underscore per evitare che Streamlit provi a hashare la sessione DB.
-
+# Prefisso underscore: evita che Streamlit tenti di hashare la sessione DB.
 @st.cache_data(ttl=300, show_spinner=False)
 def get_all_refuelings(_db: Session, user_id: str) -> List[Refueling]:
     """Restituisce storico filtrato per utente (Cachato)."""
@@ -59,15 +56,10 @@ def create_refueling(
         notes=notes
     )
     
-    # 1. Add & Commit transazione
     db.add(new_refueling)
     db.commit()
-    
-    # 2. Refresh per ottenere ID generato
     db.refresh(new_refueling)
-    
-    # 3. Pulizia Cache (Fondamentale per vedere il nuovo dato)
-    st.cache_data.clear()
+    st.cache_data.clear()  # Invalida cache Streamlit per rendere il nuovo dato visibile
     
     return new_refueling
 
@@ -287,9 +279,7 @@ def update_reminder(
 def delete_reminder(db: Session, user_id: str, reminder_id: int) -> bool:
     rem = db.query(Reminder).filter(and_(Reminder.id == reminder_id, Reminder.user_id == user_id)).first()
     if rem:
-        # Nota: Se mettiamo cascade delete nel DB, history si cancella da sola.
-        # Altrimenti qui dovremmo cancellare prima la history manualmnete. 
-        # Per ora assumiamo un soft delete o gestione DB.
+        # La cascade="all, delete-orphan" nel modello gestisce la pulizia della history.
         db.delete(rem)
         db.commit()
         st.cache_data.clear()
@@ -297,11 +287,7 @@ def delete_reminder(db: Session, user_id: str, reminder_id: int) -> bool:
     return False
 
 def get_reminder_history(db: Session, user_id: str, limit: int = 10) -> List[ReminderHistory]:
-    """
-    Recupera gli ultimi N log di esecuzione routine.
-    Eager loading (.join) non strettamente necessario con lazy load, 
-    ma SQLAlchemy gestirà la relazione grazie a models.py.
-    """
+    """Recupera gli ultimi N log di esecuzione routine per l'utente."""
     return db.query(ReminderHistory).filter(
         ReminderHistory.user_id == user_id
     ).order_by(desc(ReminderHistory.date_checked)).limit(limit).all()
