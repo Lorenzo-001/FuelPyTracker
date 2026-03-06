@@ -130,4 +130,4 @@ def render_sidebar(current_user, pages_main, pages_account):
         st.divider()
 
         # Versione
-        st.markdown('<div class="version-footer">FuelPyTracker v2.0</div>', unsafe_allow_html=True)
+        st.markdown('<div class="version-footer">FuelPyTracker v1.0</div>', unsafe_allow_html=True)
