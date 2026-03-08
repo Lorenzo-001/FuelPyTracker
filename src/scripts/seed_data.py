@@ -196,46 +196,82 @@ def seed(user_id):
     maint_count = 0
     curr_date   = start_date
     prev_full   = True     # L'ultimo rifornimento era pieno?
-    partial_acc = 0.0      # Costo accumulato da parziali consecutivi
 
-    # Traccia l'ultimo pieno per calcolo km/L coerente
-    last_full_km = current_km
+    # --- NUOVE VARIABILI E COSTANTI LOGICHE ---
+    TANK_CAPACITY = 50.0   # Litri massimi del veicolo in configurazione
+    current_fuel_liters = 50.0 # Partiamo col pieno
+
+    # Abitudini Rifornimento
+    ROUTINE_STATIONS = random.sample(FUEL_STATIONS, 2)
+    last_vacation_year = None
+    in_summer_burst = False
+    summer_burst_remaining = 0
 
     while curr_date < date.today():
 
-        # --- AVANZAMENTO TEMPO ---
-        # Giorni tra un rifornimento e l'altro: variabile per stagione
+        # === 3.1 CALCOLO CHILOMETRAGGIO DISPONIBILE (VIRTUAL TANK) ===
+        # L'auto può viaggiare solo finché c'è carburante.
         month = curr_date.month
-        if month in (7, 8):
-            days_skip = random.randint(9, 18)   # Estate: percorsi più lunghi
-        elif month in (12, 1, 2):
-            days_skip = random.randint(12, 25)  # Inverno: meno km, auto usata meno
+        km_per_day = max(15.0, get_km_per_day(curr_date))
+        efficiency = get_efficiency(curr_date, km_per_day)
+
+        # Se non siamo in vacanza simulata, gestiamo il classico drop del serbatoio
+        if not in_summer_burst:
+            # Scegliamo un livello casuale di "accensione spia riserva" (tra 3L e 12L)
+            reserve_trigger = random.uniform(3.0, 12.0)
+            liters_to_consume = max(0.0, current_fuel_liters - reserve_trigger)
+
+            # Chilometri che possiamo percorrere prima di fermarci
+            km_driven = int(liters_to_consume * efficiency)
+            
+            # Quanti giorni ci mettiamo a fare questi km?
+            days_skip = math.ceil(km_driven / km_per_day)
+
+            # Vacanza Estiva (Luglio-Agosto)? Un solo evento all'anno.
+            if month in (7, 8) and curr_date.year != last_vacation_year and random.random() < 0.6:
+                in_summer_burst = True
+                summer_burst_remaining = random.randint(3, 4)
+                last_vacation_year = curr_date.year
+                # Accorciamo la prima tratta della vacanza
+                days_skip = random.randint(1, 3)
+                km_driven = int(days_skip * km_per_day * 4.0) # Giorni densi in autostrada
         else:
-            days_skip = random.randint(8, 18)   # Resto dell'anno
+            # Durante la vacanza (burst di rifornimenti) guidiamo tanto e ci fermiamo spesso
+            days_skip = random.randint(2, 4)
+            km_driven = int(days_skip * km_per_day * 4.5)
 
         curr_date += timedelta(days=days_skip)
+        
+        # Consumiamo la benzina (anche andando in negativo temporaneamente, se la vacanza è intensa)
+        current_fuel_liters -= (km_driven / efficiency)
+        
         if curr_date >= date.today():
             break
 
-        # --- KM PERCORSI NEL PERIODO ---
-        km_day = max(15.0, get_km_per_day(curr_date))
-        km_driven = int(km_day * days_skip)
         current_km += km_driven
 
         # =====================================================================
         # A. MANUTENZIONE
         # =====================================================================
 
-        # 1. TAGLIANDO (ogni ~20.000 km, ±1.000)
+        # 1. TAGLIANDO LOGICO (ogni ~20.000 km alternati Minore/Maggiore)
         service_interval = random.randint(19_000, 21_000)
         if (current_km - last_service_km) >= service_interval:
             _disable_previous_expiry(db, last_active_ids["Tagliando"])
             next_expiry_km = current_km + 20_000
             workshop = random.choice(WORKSHOPS)
-            cost = round(random.uniform(260.0, 430.0), 2)
-            # A volte il tagliando include filtri extra
-            extras = random.choice(["", ", filtro aria", ", filtro abitacolo", ", filtro olio e aria", ""])
-            desc = f"Tagliando ordinario{extras} — {workshop}"
+            
+            # Logica Progressiva (Alternata)
+            service_cycle = current_km // 20000
+            if service_cycle % 2 == 1:
+                # Tagliando "Minore" (Olio, Filtri)
+                cost = round(random.uniform(200.0, 280.0), 2)
+                desc = f"Tagliando Minore (Olio motore, Filtro olio/abitacolo) — {workshop}"
+            else:
+                # Tagliando "Maggiore" (Cinghie, Candele, Freni liquidi)
+                cost = round(random.uniform(450.0, 650.0), 2)
+                desc = f"Tagliando Maggiore (Olio, Filtri, Candele/Cinghia) — {workshop}"
+
             new_rec = crud.create_maintenance(
                 db, user_id, curr_date, current_km, "Tagliando",
                 cost, desc, expiry_km=next_expiry_km, expiry_date=None
@@ -243,7 +279,7 @@ def seed(user_id):
             last_active_ids["Tagliando"] = new_rec.id
             last_service_km = current_km
             maint_count += 1
-            print(f"   🔧 Tagliando @ {current_km} km ({curr_date}) — €{cost:.2f}")
+            print(f"   🔧 {desc} @ {current_km} km ({curr_date}) — €{cost:.2f}")
 
         # 2. CAMBIO GOMME (ogni ~40-50.000 km)
         tire_interval = random.randint(40_000, 52_000)
@@ -334,35 +370,58 @@ def seed(user_id):
             print(f"   ⚠️  Guasto ({curr_date}) — €{cost:.2f}")
 
         # =====================================================================
-        # B. RIFORNIMENTO
+        # B. RIFORNIMENTO (Ora basato sul Serbatotio Virtuale)
         # =====================================================================
         price = get_price_with_noise(curr_date)
-        efficiency = get_efficiency(curr_date, km_per_day=km_day)
-        liters_needed = km_driven / efficiency
+        
+        # Litri mancanti per fare il pieno (clamp a 0 per sicurezza)
+        missing_liters = max(0.0, TANK_CAPACITY - current_fuel_liters)
 
-        # Logica pieno vs parziale:
-        # - Se il precedente era parziale: probabilità alta di fare pieno ora
-        # - Se consecutivi parziali: forza il pieno dopo 2 parziali
-        if not prev_full:
-            is_full = random.random() > 0.30
+        if in_summer_burst:
+            # Vacanza: sempre pieno, sempre in autostrada
+            is_full = True
+            liters_added = missing_liters
+            station = random.choice(["Eni", "Q8", "Esso"])
+            notes = "Autostrada"
+            
+            summer_burst_remaining -= 1
+            if summer_burst_remaining <= 0:
+                in_summer_burst = False
         else:
-            is_full = random.random() > 0.18
+            # Logica Routine Ordinaria
+            is_full = True
+            if not prev_full:
+                is_full = random.random() > 0.30  # Più probabile fare il pieno dopo un parziale
+            else:
+                is_full = random.random() > 0.18
+            
+            # Rifornimento Parziale
+            if not is_full:
+                # Mettiamo tra i 15 e i 30 litri, ma senza superare il max cap
+                liters_added = min(missing_liters, random.uniform(15.0, 30.0))
+            else:
+                liters_added = missing_liters
+            
+            # Scelta della Stazione in base alle Abitudini
+            if random.random() < 0.8:
+                station = random.choice(ROUTINE_STATIONS)
+                note_extra = random.choice(["Vicino ufficio", "Distributore sotto casa", ""])
+            else:
+                station = random.choice(FUEL_STATIONS)
+                note_extra = random.choice(FUEL_NOTES)
+                
+            notes = f"{station}" + (f" — {note_extra}" if note_extra else "")
 
-        # Se è parziale, il serbatoio è solo parzialmente vuoto → meno litri
-        if not is_full:
-            liters_needed = liters_needed * random.uniform(0.45, 0.80)
+        # Aggiorniamo il serbatoio virtuale reale
+        current_fuel_liters += liters_added
+        total_cost = liters_added * price
 
-        total_cost = liters_needed * price
-
-        station = random.choice(FUEL_STATIONS)
-        note_extra = random.choice(FUEL_NOTES)
-        notes = f"{station}" + (f" — {note_extra}" if note_extra else "")
-
+        # Crea Record
         crud.create_refueling(
             db, user_id, curr_date, current_km,
             round(price, 3),
             round(total_cost, 2),
-            round(liters_needed, 2),
+            round(liters_added, 2),
             is_full,
             notes
         )
