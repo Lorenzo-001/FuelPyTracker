@@ -64,11 +64,9 @@ pycparser==2.21
 pydantic==2.12.5
 pydantic_core==2.41.5
 pydeck==0.9.1
-pygame==2.5.2
 Pygments==2.19.2
 pyiceberg==0.10.0
 PyJWT==2.10.1
-pymongo==4.3.3
 pyparsing==3.1.1
 pyroaring==1.0.3
 pytesseract==0.3.13
@@ -110,3 +108,5 @@ websockets==15.0.1
 xlsxwriter==3.2.9
 yarl==1.22.0
 extra-streamlit-components==0.1.71
+streamlit-javascript==0.1.5
+python-dotenv==1.0.1
