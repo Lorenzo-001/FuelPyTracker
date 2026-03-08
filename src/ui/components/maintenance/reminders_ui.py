@@ -2,6 +2,7 @@ import streamlit as st
 from datetime import date, timedelta
 from src.database import crud
 from src.ui.components.maintenance import forms
+from src.demo import is_demo_mode
 
 def render_tab(db, user, last_km):
     """Renderizza l'intero contenuto del tab Promemoria."""
@@ -65,7 +66,7 @@ def _render_creation_form(db, user, current_km):
             
         notes = st.text_area("Note fisse (es. 'Controllare a freddo')", height=68)
 
-        if st.form_submit_button("Salva Promemoria", type="primary", width='stretch'):
+        if st.form_submit_button("Salva Promemoria", type="primary", width='stretch', disabled=is_demo_mode()):
             crud.create_reminder(
                 db, user.id, title, 
                 frequency_km=freq_km, 
@@ -91,10 +92,10 @@ def _render_reminders_grid(db, user, reminders, current_km):
                 c_head.markdown(f"**{rem.title}**")
                 
                 with c_menu.popover("⚙️", width='stretch'):
-                    if st.button("✏️ Modifica", key=f"edit_btn_{rem.id}", width='stretch'):
+                    if st.button("✏️ Modifica", key=f"edit_btn_{rem.id}", width='stretch', disabled=is_demo_mode()):
                         _render_edit_dialog(db, user, rem)
                     
-                    if st.button("✖️ Elimina", key=f"del_btn_{rem.id}", type="primary", width='stretch'):
+                    if st.button("✖️ Elimina", key=f"del_btn_{rem.id}", type="primary", width='stretch', disabled=is_demo_mode()):
                         _render_delete_confirm_dialog(db, user, rem)
 
                 # --- 2. INFO DATE/KM (Inserimento e Scadenza) ---
@@ -167,7 +168,7 @@ def _render_reminders_grid(db, user, reminders, current_km):
                 
                 # --- 4. AZIONE PRINCIPALE ---
                 # Pulsante sempre uguale (Secondary per non essere aggressivo, o Primary se preferisci)
-                if st.button("Fatto", key=f"check_rem_{rem.id}", width='stretch', type="secondary"):
+                if st.button("Fatto", key=f"check_rem_{rem.id}", width='stretch', type="secondary", disabled=is_demo_mode()):
                     _render_check_dialog(db, user, rem, current_km)
 
 # --- DIALOGHI ---
@@ -178,7 +179,7 @@ def _render_delete_confirm_dialog(db, user, rem):
     st.caption("Questa azione è irreversibile e rimuoverà il promemoria dalla lista attiva.")
     
     c1, c2 = st.columns(2)
-    if c1.button("Sì, Elimina", type="primary", width='stretch'):
+    if c1.button("Sì, Elimina", type="primary", width='stretch', disabled=is_demo_mode()):
         crud.delete_reminder(db, user.id, rem.id)
         st.success("Eliminato.")
         st.rerun()
@@ -209,7 +210,7 @@ def _render_edit_dialog(db, user, rem):
         
         st.caption("ℹ️ Imposta a 0 la frequenza che non vuoi utilizzare.")
         
-        if st.form_submit_button("Salva Modifiche", type="primary", width='stretch'):
+        if st.form_submit_button("Salva Modifiche", type="primary", width='stretch', disabled=is_demo_mode()):
             # Validazione: Almeno uno dei due deve essere > 0
             km_val = new_freq_km if new_freq_km > 0 else None
             days_val = new_freq_days if new_freq_days > 0 else None
@@ -238,7 +239,7 @@ def _render_check_dialog(db, user, reminder, current_km):
         d_date = st.date_input("Data Esecuzione", value=date.today())
         d_note = st.text_input("Note opzionali")
         
-        if st.form_submit_button("Conferma e Aggiorna", type="primary", width='stretch'):
+        if st.form_submit_button("Conferma e Aggiorna", type="primary", width='stretch', disabled=is_demo_mode()):
             crud.log_reminder_execution(
                 db, user.id, reminder.id, 
                 check_date=d_date, 

@@ -98,7 +98,7 @@ def render():
                 last_km_known=last_km # Passiamo il dato per il tooltip
             )
             
-            if st.form_submit_button("Salva", type="primary", width="stretch"):
+            if st.form_submit_button("Salva", type="primary", width="stretch", disabled=is_demo_mode(), help="Salvataggio disabilitato in modalità Demo" if is_demo_mode() else None):
                 # Validazione KM: deve essere > 0 e >= last_km
                 if new_data['km'] == 0:
                     st.error("⛔ Inserisci il valore dell'Odometro!")
@@ -302,11 +302,11 @@ def _render_management_tab(db, user, all_records, years, def_idx, settings):
     
     # Pulsanti Azione
     c1, c2 = st.columns(2)
-    if c1.button("✏️ Modifica", width="stretch"):
+    if c1.button("✏️ Modifica", width="stretch", disabled=is_demo_mode()):
         st.session_state.active_operation = "edit"
         st.session_state.selected_record_id = target_id
         st.rerun()
-    if c2.button("❌ Elimina", type="primary", width="stretch"):
+    if c2.button("❌ Elimina", type="primary", width="stretch", disabled=is_demo_mode()):
         st.session_state.active_operation = "delete"
         st.session_state.selected_record_id = target_id
         st.rerun()
@@ -341,7 +341,7 @@ def _handle_edit_flow(db, user_id, rec, settings):
             last_km_known=rec.total_km 
         )
         
-        if st.form_submit_button("Aggiorna", type="primary", width="stretch"):
+        if st.form_submit_button("Aggiorna", type="primary", width="stretch", disabled=is_demo_mode()):
             # Nota: In edit non controlliamo "last_km" stretto come in insert per flessibilità
             new_liters = edit_data['cost'] / edit_data['price'] if edit_data['price'] > 0 else 0
             
@@ -362,7 +362,7 @@ def _handle_edit_flow(db, user_id, rec, settings):
 def _handle_delete_flow(db, user_id, record_id):
     st.error("Sei sicuro di voler eliminare definitivamente questo record?")
     cd1, cd2 = st.columns(2)
-    if cd1.button("Sì, Elimina", type="primary", width="stretch"):
+    if cd1.button("Sì, Elimina", type="primary", width="stretch", disabled=is_demo_mode()):
         crud.delete_refueling(db, user_id, record_id)
         st.success("Eliminato."); st.session_state.active_operation = None; st.rerun()
     if cd2.button("No, Annulla", width="stretch"):

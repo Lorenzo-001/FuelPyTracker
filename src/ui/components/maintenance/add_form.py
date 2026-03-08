@@ -2,6 +2,7 @@ import streamlit as st
 from datetime import date
 from src.database import crud
 from src.ui.components.maintenance import dialogs, forms
+from src.demo import is_demo_mode
 
 def render_add_form(db, user):
     """Renderizza il form di inserimento nuovo record."""
@@ -11,7 +12,7 @@ def render_add_form(db, user):
             last_km = crud.get_max_km(db, user.id)
             data = forms.render_maintenance_inputs(date.today(), last_km, "Tagliando", 0.0, "")
             
-            if st.form_submit_button("Salva Intervento", type="primary", width="stretch"):
+            if st.form_submit_button("Salva Intervento", type="primary", width="stretch", disabled=is_demo_mode(), help="Salvataggio disabilitato in modalità Demo" if is_demo_mode() else None):
                 # Validazioni Base
                 if data['cost'] < 0:
                     st.error("Inserire un costo valido.")

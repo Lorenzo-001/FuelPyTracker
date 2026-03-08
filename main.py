@@ -109,6 +109,9 @@ def main():
     # 3. Render Sidebar (Navigazione)
     render_sidebar(st.session_state.get("user"), pages_main, pages_account)
 
+    if is_demo_mode():
+        st.info("👀 Benvenuto nella Demo Pubblica! Per garantire un'esperienza ottimale a tutti, l'applicazione è in modalità Sola Lettura. L'aggiunta e la modifica dei dati sono disabilitate.")
+
     # 4. Render Contenuto Pagina
     # Scriviamo direttamente nel flusso principale (fuori da master_slot)
     # per garantire il corretto funzionamento di layout e scrolling.

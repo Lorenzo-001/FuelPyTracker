@@ -213,7 +213,7 @@ def _render_config_tab(user):
         new_label_input = c_add_in.text_input("Nuova Categoria", placeholder="Es. Filtro Abitacolo", label_visibility="collapsed")
         
         # FIX 1: Messaggio se input vuoto
-        if c_add_btn.form_submit_button("➕", help="Aggiungi", type="secondary", width='stretch'):
+        if c_add_btn.form_submit_button("➕", help="Aggiungi", type="secondary", width='stretch', disabled=is_demo_mode()):
             if new_label_input:
                 clean_val = new_label_input.strip()
                 if clean_val not in st.session_state.settings_temp_labels:
@@ -248,7 +248,7 @@ def _render_config_tab(user):
                     b1, b2 = st.columns(2)
                     
                     if is_editing:
-                        if b1.form_submit_button("✅", key=f"s_{i}", width='stretch'):
+                        if b1.form_submit_button("✅", key=f"s_{i}", width='stretch', disabled=is_demo_mode()):
                             if edit_val:
                                 st.session_state.settings_temp_labels[i] = edit_val.strip()
                                 st.session_state.settings_editing_idx = -1
@@ -258,12 +258,12 @@ def _render_config_tab(user):
                             st.session_state.settings_editing_idx = -1
                             st.rerun()
                     else:
-                        if b1.form_submit_button("✏️", key=f"e_{i}", help="Modifica", width='stretch'):
+                        if b1.form_submit_button("✏️", key=f"e_{i}", help="Modifica", width='stretch', disabled=is_demo_mode()):
                             st.session_state.settings_editing_idx = i
                             st.rerun()
                             
                         # FIX 2: Apertura Dialog conferma eliminazione
-                        if b2.form_submit_button("❌", key=f"d_{i}", help="Elimina", width='stretch'):
+                        if b2.form_submit_button("❌", key=f"d_{i}", help="Elimina", width='stretch', disabled=is_demo_mode()):
                             show_delete_dialog(i, label)
 
         st.write("")

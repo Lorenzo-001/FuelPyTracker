@@ -1,6 +1,8 @@
 # 1. Usa un'immagine base di Python leggera (Debian Slim)
 FROM python:3.11-slim
 
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
 # 2. Evita che Python scriva file __pycache__ e bufferizzi l'output
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1

@@ -2,6 +2,7 @@ import streamlit as st
 from datetime import date
 from src.database import crud
 from src.ui.components.maintenance import forms
+from src.demo import is_demo_mode
 
 def perform_save(db, user_id, data, clear_form=True):
     """Helper per il salvataggio fisico (Centralizzato)."""
@@ -51,7 +52,7 @@ def render_resolve_dialog(db, user, origin_record):
         new_exp_km = c5.number_input("Scadenza Km", min_value=0, value=0, step=1000, help="Lascia 0 se non vuoi impostarla")
         new_exp_date = c6.date_input("Scadenza Data", value=None)
         
-        if st.form_submit_button("💾 Salva e Chiudi Scadenza", type="primary", width='stretch'):
+        if st.form_submit_button("💾 Salva e Chiudi Scadenza", type="primary", width='stretch', disabled=is_demo_mode()):
             # VALIDAZIONI
             if m_cost < 0:
                 st.error("Costo non valido.")
@@ -92,7 +93,7 @@ def render_remove_deadline_dialog(db, user, origin_record):
     st.info("Il record originale della spesa rimarrà nello storico, verrà cancellata solo la data/km di scadenza futura.")
     
     col1, col2 = st.columns(2)
-    if col1.button("Sì, Rimuovi", type="primary", width='stretch'):
+    if col1.button("Sì, Rimuovi", type="primary", width='stretch', disabled=is_demo_mode()):
         crud.update_maintenance(db, user.id, origin_record.id, {"expiry_km": None, "expiry_date": None})
         st.success("Scadenza rimossa.")
         st.cache_data.clear()
@@ -122,12 +123,12 @@ def render_conflict_dialog(db, user, new_data, old_record):
 
     c_yes, c_no = st.columns(2)
     with c_yes:
-        if st.button("Sì, Sovrascrivi", type="primary", width='stretch'):
+        if st.button("Sì, Sovrascrivi", type="primary", width='stretch', disabled=is_demo_mode()):
             crud.update_maintenance(db, user.id, old_record.id, {"expiry_km": None, "expiry_date": None})
             perform_save(db, user.id, new_data)
 
     with c_no:
-        if st.button("No, tieni vecchia", type="secondary", width='stretch'):
+        if st.button("No, tieni vecchia", type="secondary", width='stretch', disabled=is_demo_mode()):
             data_no_exp = new_data.copy()
             data_no_exp['expiry_km'] = None; data_no_exp['expiry_date'] = None
             perform_save(db, user.id, data_no_exp)

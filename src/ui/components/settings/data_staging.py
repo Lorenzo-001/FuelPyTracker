@@ -5,6 +5,7 @@ import streamlit as st
 
 from src.database.core import get_db
 from src.services.data.importers import fuel, maintenance
+from src.demo import is_demo_mode
 
 # =============================================================================
 # COMPONENTE DI STAGING (REVIEW IMPORT)
@@ -81,7 +82,7 @@ def render_staging_table(user_id: str, df: pd.DataFrame, error_msg: str, data_ty
     with col_actions_1:
         # Action: RIVALIDA
         # Utile se l'utente corregge manualmente dei dati nell'editor e vuole ricalcolare lo stato
-        if st.button(f"🔄 Rivalida", key=f"reval_{data_type}", help="Ricalcola gli stati dopo le tue modifiche"):
+        if st.button(f"🔄 Rivalida", key=f"reval_{data_type}", help="Ricalcola gli stati dopo le tue modifiche", disabled=is_demo_mode()):
             _handle_revalidate(user_id, edited_df, data_type, validate_func)
 
     with col_actions_2:
@@ -96,7 +97,7 @@ def render_staging_table(user_id: str, df: pd.DataFrame, error_msg: str, data_ty
         )
 
         if st.button(btn_label, key=f"save_{data_type}", type="primary",
-                     disabled=not can_save, width='stretch'):
+                     disabled=(not can_save) or is_demo_mode(), width='stretch'):
             st.session_state[f'import_saving_{data_type}'] = True
             _handle_save(user_id, edited_df, data_type, save_func)
 
