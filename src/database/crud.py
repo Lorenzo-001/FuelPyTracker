@@ -302,11 +302,13 @@ def get_settings(_db: Session, user_id: str) -> AppSettings:
     
     # Default Labels se non esistono
     default_labels = DEFAULTS.SETTINGS.REMINDER_TYPES
+    default_maint  = DEFAULTS.SETTINGS.MAINTENANCE_TYPES
     
     if not settings:
         settings = AppSettings(
             user_id=user_id,
-            reminder_types=list(default_labels)  # copia della lista
+            reminder_types=list(default_labels),
+            maintenance_types=list(default_maint)
         )
         _db.add(settings)
         _db.commit()
@@ -315,6 +317,9 @@ def get_settings(_db: Session, user_id: str) -> AppSettings:
     # Fallback se il campo nel DB è None (es. vecchi record prima della migrazione)
     if settings.reminder_types is None:
         settings.reminder_types = list(default_labels)
+    
+    if settings.maintenance_types is None:
+        settings.maintenance_types = list(default_maint)
     
     # Fallback per i campi import_limits (record creati prima della migrazione colonne)
     if settings.import_kml_min is None:
@@ -335,6 +340,7 @@ def update_settings(
     max_cost: float, 
     alert_threshold: float,
     custom_labels: List[str],
+    maintenance_labels: List[str],
     kml_min:   float = DEFAULTS.SETTINGS.IMPORT.KML_MIN,
     kml_max:   float = DEFAULTS.SETTINGS.IMPORT.KML_MAX,
     kml_error: float = DEFAULTS.SETTINGS.IMPORT.KML_ERROR,
@@ -349,6 +355,7 @@ def update_settings(
     settings.max_total_cost = max_cost
     settings.max_accumulated_partial_cost = alert_threshold
     settings.reminder_types = custom_labels
+    settings.maintenance_types = maintenance_labels
     settings.import_kml_min = kml_min
     settings.import_kml_max = kml_max
     settings.import_kml_error = kml_error

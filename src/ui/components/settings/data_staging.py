@@ -4,7 +4,10 @@ import pandas as pd
 import streamlit as st
 
 from src.database.core import get_db
+from src.database import crud
 from src.services.data.importers import fuel, maintenance
+from src.demo import is_demo_mode
+from src.config import DEFAULTS
 
 # =============================================================================
 # COMPONENTE DI STAGING (REVIEW IMPORT)
@@ -51,7 +54,7 @@ def render_staging_table(user_id: str, df: pd.DataFrame, error_msg: str, data_ty
     c3.metric("Da Aggiornare", n_mod, delta_color="off", help=_get_tooltip('Modifica'))
     c4.metric("Errori", n_err, delta_color="inverse")
     if n_warn:
-        st.warning(f"⚠️ {n_warn} riga/e con anomalie rilevate (Warning): verranno importate ma meritano un controllo manuale.", icon="⚠️")
+        st.warning(f"{n_warn} riga/e con anomalie rilevate (Warning): verranno importate ma meritano un controllo manuale.", icon="⚠️")
 
     # 3. Configurazione Dinamica Colonne
     # Seleziona la configurazione e le funzioni di callback in base al tipo dati
@@ -60,7 +63,12 @@ def render_staging_table(user_id: str, df: pd.DataFrame, error_msg: str, data_ty
         validate_func = fuel.validate_fuel_logic
         save_func = fuel.save_row
     else:
-        cols_cfg = _get_maintenance_config()
+        # Carica le categorie manutenzione personalizzate dell'utente
+        _db_cfg = next(get_db())
+        settings = crud.get_settings(_db_cfg, user_id)
+        _db_cfg.close()
+        maint_opts = settings.maintenance_types or DEFAULTS.SETTINGS.MAINTENANCE_TYPES
+        cols_cfg = _get_maintenance_config(maint_opts)
         validate_func = maintenance.validate_maintenance_logic
         save_func = maintenance.save_row
 
@@ -199,8 +207,10 @@ def _get_fuel_config():
     }
 
 
-def _get_maintenance_config():
+def _get_maintenance_config(options: list = None):
     """Configurazione visuale per la tabella Manutenzione."""
+    if options is None:
+        options = DEFAULTS.SETTINGS.MAINTENANCE_TYPES
     return {
         "db_id": None,
         "Stato": st.column_config.TextColumn(
@@ -212,7 +222,7 @@ def _get_maintenance_config():
         "Km": st.column_config.NumberColumn("Km", format="%d"),
         "Tipo": st.column_config.SelectboxColumn(
             "Tipo Intervento", 
-            options=["Tagliando", "Gomme", "Batteria", "Revisione", "Freni", "Altro"], 
+            options=options, 
             required=True
         ),
         "Costo": st.column_config.NumberColumn("Costo €", format="%.2f"),

@@ -49,7 +49,10 @@ def _render_creation_form(db, user, current_km):
     )
 
     with st.form("new_reminder_form", clear_on_submit=True):
-        title = st.selectbox("Categoria", available_opts)
+        title = st.selectbox(
+            "Categoria", available_opts,
+            help="💡 Puoi aggiungere nuove voci nelle **Configurazioni → Gestione Categorie → Categorie Promemoria**."
+        )
         
         freq_km = None
         freq_days = None

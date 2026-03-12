@@ -165,7 +165,11 @@ def seed(user_id):
         "Pulizia Filtro Abitacolo",
         "Verifica Pastiglie Freno"
     ]
-    crud.update_settings(db, user_id, 0.12, 140.0, 90.0, custom_labels)
+    crud.update_settings(
+        db, user_id, 0.12, 140.0, 90.0, custom_labels,
+        maintenance_labels=["Tagliando", "Gomme", "Batteria", "Revisione",
+                            "Bollo", "Riparazione", "Assicurazione", "Altro"]
+    )
 
     # =========================================================================
     # 2. CONFIGURAZIONE SIMULAZIONE

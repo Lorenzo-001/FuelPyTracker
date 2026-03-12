@@ -44,6 +44,16 @@ _FALLBACK_CONFIG: dict = {
                 "Liquido Tergicristalli",
                 "Inversione Gomme",
             ],
+            "maintenance_types": [
+                "Tagliando",
+                "Gomme",
+                "Batteria",
+                "Revisione",
+                "Bollo",
+                "Riparazione",
+                "Assicurazione",
+                "Altro",
+            ],
             "import_limits": {
                 "kml_min":   3.0,
                 "kml_max":   30.0,
@@ -136,6 +146,7 @@ class _SettingsDefaults:
     MAX_TOTAL_COST:               float
     MAX_ACCUMULATED_PARTIAL_COST: float
     REMINDER_TYPES:               List[str]
+    MAINTENANCE_TYPES:            List[str]
     IMPORT:                       _ImportLimits
 
 
@@ -152,6 +163,10 @@ def _build_defaults() -> _Defaults:
         KML_ERROR=cfg("defaults.settings.import_limits.kml_error", 50.0),
         KMD_MAX=cfg("defaults.settings.import_limits.kmd_max",   1000.0),
     )
+    _default_maint = [
+        "Tagliando", "Gomme", "Batteria", "Revisione",
+        "Bollo", "Riparazione", "Assicurazione", "Altro",
+    ]
     sd = _SettingsDefaults(
         PRICE_FLUCTUATION_CENTS=cfg(
             "defaults.settings.price_fluctuation_cents", 0.15),
@@ -163,6 +178,9 @@ def _build_defaults() -> _Defaults:
             "defaults.settings.reminder_types",
             ["Controllo Livello Olio", "Pressione Pneumatici",
              "Liquido Tergicristalli", "Inversione Gomme"]),
+        MAINTENANCE_TYPES=cfg(
+            "defaults.settings.maintenance_types",
+            _default_maint),
         IMPORT=il,
     )
     return _Defaults(SETTINGS=sd)

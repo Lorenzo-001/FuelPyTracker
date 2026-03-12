@@ -1,6 +1,7 @@
 import streamlit as st
 from datetime import date
-from typing import Optional
+from typing import Optional, List
+from src.config import DEFAULTS
 
 def render_maintenance_inputs(
     default_date: date, 
@@ -9,11 +10,12 @@ def render_maintenance_inputs(
     default_cost: float, 
     default_desc: str,
     default_expiry_km: Optional[int] = None,
-    default_expiry_date: Optional[date] = None
+    default_expiry_date: Optional[date] = None,
+    cat_opts: Optional[List[str]] = None
 ) -> dict:
     """
     Renderizza i widget per l'input dati manutenzione (Add/Edit).
-    Aggiornato per gestire le scadenze (Km o Data).
+    Aggiornato per gestire le scadenze (Km o Data) e categorie personalizzate.
     """
     c1, c2 = st.columns(2)
     
@@ -21,13 +23,18 @@ def render_maintenance_inputs(
     date_val = c1.date_input("Data Intervento", value=default_date)
     km_val = c1.number_input("Odometro al momento", value=default_km, step=1, format="%d")
     
-    cat_opts = ["Tagliando", "Gomme", "Batteria", "Revisione", "Bollo", "Riparazione", "Altro"]
+    # Usa la lista passata dal chiamante; fallback ai default centralizzati
+    if cat_opts is None:
+        cat_opts = DEFAULTS.SETTINGS.MAINTENANCE_TYPES
     try:
         idx_type = cat_opts.index(default_type)
     except ValueError:
-        idx_type = 6 
+        idx_type = len(cat_opts) - 1  # Seleziona l'ultimo elemento (es. 'Altro')
         
-    type_val = c2.selectbox("Categoria", cat_opts, index=idx_type)
+    type_val = c2.selectbox(
+        "Categoria", cat_opts, index=idx_type,
+        help="💡 Puoi aggiungere o rimuovere le voci di questo menu nelle **Configurazioni → Gestione Categorie → Categorie Manutenzione**."
+    )
     cost_val = c2.number_input("Costo €", value=float(default_cost), min_value=0.0, step=1.0, format="%.2f")
     
     # Riga 2: Descrizione

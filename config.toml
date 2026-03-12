@@ -39,6 +39,19 @@ reminder_types = [
     "Inversione Gomme",
 ]
 
+# Categorie di intervento manutenzione selezionabili nell'inserimento manuale e nell'importazione Excel.
+# L'utente può personalizzarle dalla sezione "Impostazioni" → "Gestione Categorie".
+maintenance_types = [
+    "Tagliando",
+    "Gomme",
+    "Batteria",
+    "Revisione",
+    "Bollo",
+    "Riparazione",
+    "Assicurazione",
+    "Altro",
+]
+
 # -----------------------------------------------------------------------------
 # [defaults.settings.import_limits]
 # Soglie usate durante la validazione dei file Excel importati.

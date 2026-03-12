@@ -2,6 +2,8 @@ import streamlit as st
 from src.services.business import maintenance_logic
 from src.ui.components.maintenance import grids, forms
 from src.database import crud
+from src.database.core import get_db
+from src.config import DEFAULTS
 from datetime import date
 
 def render_history_tab(records_filtered, all_records):
@@ -66,10 +68,16 @@ def render_management_tab(db, user, all_records):
 
 def _handle_edit(db, user_id, rec):
     st.markdown(f"**Modifica:** {rec.date.strftime('%d/%m/%Y')}")
+    # Carica le categorie personalizzate dell'utente
+    _db = next(get_db())
+    settings = crud.get_settings(_db, user_id)
+    _db.close()
+    maint_cats = settings.maintenance_types or DEFAULTS.SETTINGS.MAINTENANCE_TYPES
     with st.form("edit_maint_form"):
         d_edit = forms.render_maintenance_inputs(
             rec.date, rec.total_km, rec.expense_type, rec.cost, rec.description,
-            default_expiry_km=rec.expiry_km, default_expiry_date=rec.expiry_date
+            default_expiry_km=rec.expiry_km, default_expiry_date=rec.expiry_date,
+            cat_opts=maint_cats
         )
         
         if st.form_submit_button("Aggiorna", type="primary", width="stretch"):
@@ -121,7 +129,10 @@ def _render_reminder_tab(db, user, settings, active_reminders, current_km):
             
             if available_cats:
                 c1, c2, c3 = st.columns(3)
-                cat = c1.selectbox("Categoria", available_cats)
+                cat = c1.selectbox(
+                    "Categoria", available_cats,
+                    help="💡 Puoi aggiungere nuove voci nelle **Configurazioni → Gestione Categorie → Categorie Promemoria**."
+                )
                 target_km = c2.number_input("Scadenza Km (Intervallo)", min_value=1000, value=15000, step=1000)
                 # target_date = c3.date_input("Scadenza Temporale", value=date.today() + timedelta(days=365))
                 target_months = c3.number_input("Scadenza Mesi", min_value=1, value=12)

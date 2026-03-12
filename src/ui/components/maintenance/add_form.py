@@ -1,7 +1,9 @@
 import streamlit as st
 from datetime import date
 from src.database import crud
+from src.database.core import get_db
 from src.ui.components.maintenance import dialogs, forms
+from src.config import DEFAULTS
 
 def render_add_form(db, user):
     """Renderizza il form di inserimento nuovo record."""
@@ -9,7 +11,12 @@ def render_add_form(db, user):
         st.markdown("##### ✨ Nuovo Intervento")
         with st.form("new_maint_form", clear_on_submit=False): 
             last_km = crud.get_max_km(db, user.id)
-            data = forms.render_maintenance_inputs(date.today(), last_km, "Tagliando", 0.0, "")
+            # Carica le categorie personalizzate dall'utente
+            _db_settings = next(get_db())
+            settings = crud.get_settings(_db_settings, user.id)
+            _db_settings.close()
+            maint_cats = settings.maintenance_types or DEFAULTS.SETTINGS.MAINTENANCE_TYPES
+            data = forms.render_maintenance_inputs(date.today(), last_km, maint_cats[0], 0.0, "", cat_opts=maint_cats)
             
             if st.form_submit_button("Salva Intervento", type="primary", width="stretch"):
                 # Validazioni Base

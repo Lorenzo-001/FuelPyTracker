@@ -112,15 +112,27 @@ def validate_fuel_logic(db: Session, user_id: str, df: pd.DataFrame) -> pd.DataF
     ]
     combined = sorted(set(db_pts + file_pts), key=lambda x: (x[0], x[1]))
 
+    file_partial_keys = {
+        (r['Data'], r['Km'])
+        for r in processed_rows
+        if not r.get('Pieno', True) and r.get('Data') and r.get('Km')
+    }
+
     for row in processed_rows:
         if row['Stato'] != 'Nuovo' or not row.get('Litri') or row['Litri'] <= 0:
             continue
+
+        # Salto del check per evitare falsi warning su dati corretti.
+        if not row.get('Pieno', True):
+            continue
+
         d_km   = row['Km']
         d_date = row['Data']
 
         # Predecessore immediato nella timeline combinata
         prev_km   = None
         prev_date = None
+        prev_is_full = True  # Default: assumiamo pieno se record DB senza info
         for dt, km in combined:
             if dt < d_date or (dt == d_date and km < d_km):
                 prev_km   = km
@@ -129,11 +141,19 @@ def validate_fuel_logic(db: Session, user_id: str, df: pd.DataFrame) -> pd.DataF
         if prev_km is None:
             continue  # Primo record assoluto, nessun predecessore
 
+        # Se il predecessore è un parziale (nel DB oppure nel file in import),
+        # il delta km/L non è affidabile → skip.
+        prev_db_rec = next((r for r in sorted_history if r.date == prev_date and r.total_km == prev_km), None)
+        if prev_db_rec and not prev_db_rec.is_full_tank:
+            continue
+        if (prev_date, prev_km) in file_partial_keys:
+            continue
+
         delta_km = d_km - prev_km
         if delta_km <= 0:
             continue  # Già gestito dal sandwich check
 
-        # --- Check Velocità (Opzione 3) ---
+        # --- Check Velocità ---
         delta_giorni = (d_date - prev_date).days if prev_date else 0
         if delta_giorni > 0:
             km_per_giorno = delta_km / delta_giorni
@@ -143,20 +163,18 @@ def validate_fuel_logic(db: Session, user_id: str, df: pd.DataFrame) -> pd.DataF
                     row['Note'] + f' | Velocità impossibile: {km_per_giorno:.0f} km/giorno '
                     f'({delta_km} km in {delta_giorni} giorni, max {kmd_max:.0f})'
                 ).strip(' | ')
-                continue  # Già marcato Errore, saltiamo il check km/L
+                continue
 
-        # --- Check km/L Tiered (Opzione 1) ---
+        # --- Check km/L Tiered ---
         km_per_liter = delta_km / row['Litri']
 
         if km_per_liter > kml_error:
-            # Oltre la soglia configurata: fisicamente impossibile → Errore bloccante
             row['Stato'] = 'Errore'
             row['Note'] = (
                 row['Note'] + f' | Consumo impossibile: {km_per_liter:.1f} km/L '
                 f'(limite assoluto: {kml_error} km/L)'
             ).strip(' | ')
         elif not (kml_min <= km_per_liter <= kml_max):
-            # Fuori range configurato ma non impossibile → Warning importabile
             row['Stato'] = 'Warning'
             row['Note'] = (
                 row['Note'] + f' | Consumo anomalo: {km_per_liter:.1f} km/L '
