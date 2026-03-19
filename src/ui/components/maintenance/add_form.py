@@ -4,6 +4,8 @@ from src.database import crud
 from src.database.core import get_db
 from src.ui.components.maintenance import dialogs, forms
 from src.config import DEFAULTS
+from src.demo import is_demo_mode
+
 
 def render_add_form(db, user):
     """Renderizza il form di inserimento nuovo record."""
@@ -18,7 +20,10 @@ def render_add_form(db, user):
             maint_cats = settings.maintenance_types or DEFAULTS.SETTINGS.MAINTENANCE_TYPES
             data = forms.render_maintenance_inputs(date.today(), last_km, maint_cats[0], 0.0, "", cat_opts=maint_cats)
             
-            if st.form_submit_button("Salva Intervento", type="primary", width="stretch"):
+            if is_demo_mode():
+                st.warning("🔒 Modalità Demo: Modifiche disabilitate per sicurezza.")
+            elif st.form_submit_button("Salva Intervento", type="primary", width="stretch"):
+
                 # Validazioni Base
                 if data['cost'] < 0:
                     st.error("Inserire un costo valido.")

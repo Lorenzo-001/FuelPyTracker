@@ -217,7 +217,14 @@ def _parse_single_row(row, settings, ref_map, date_map, sorted_history, file_key
     
     # Normalizzazione booleano 'Pieno'
     raw_pieno = row.get('pieno')
-    if isinstance(raw_pieno, str):
+    pieno_assumed = False
+    if raw_pieno is None:
+        # Colonna assente: assumiamo pieno=True per mantenere attivo il check km/L
+        # (un parziale skipperebbe la validazione). L'assunzione viene segnalata
+        # all'utente tramite nota nella riga di staging.
+        d_full = True
+        pieno_assumed = True
+    elif isinstance(raw_pieno, str):
         d_full = raw_pieno.lower() not in ['no', 'false', '0', 'n']
     else:
         d_full = bool(raw_pieno)
@@ -256,6 +263,8 @@ def _parse_single_row(row, settings, ref_map, date_map, sorted_history, file_key
     if status in ["Nuovo", "Modifica"]:
         if d_km <= 0: status, notes = "Errore", ["Km zero o negativi"]
         if d_cost > settings.max_total_cost: status, notes = "Warning", [f"Spesa > {settings.max_total_cost}"]
+        if pieno_assumed:
+            notes.append("Colonna 'pieno' assente nel file: impostato come pieno per default")
 
     # Risoluzione ID finale (priorità al DB ID recuperato, fallback su quello in input)
     existing_id = row.get('db_id')

@@ -103,10 +103,13 @@ def render_staging_table(user_id: str, df: pd.DataFrame, error_msg: str, data_ty
             else f"🚀 Importa {n_saveable} record nel Database"
         )
 
-        if st.button(btn_label, key=f"save_{data_type}", type="primary",
+        if is_demo_mode():
+            st.warning("🔒 Modalità Demo: Modifiche disabilitate per sicurezza.")
+        elif st.button(btn_label, key=f"save_{data_type}", type="primary",
                      disabled=not can_save, width='stretch'):
             st.session_state[f'import_saving_{data_type}'] = True
             _handle_save(user_id, edited_df, data_type, save_func)
+
 
 
 # =============================================================================
