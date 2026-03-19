@@ -296,9 +296,8 @@ def get_reminder_history(db: Session, user_id: str, limit: int = 10) -> List[Rem
 # SEZIONE: SETTINGS
 # ==========================================
 
-@st.cache_data(ttl=300, show_spinner=False)
-def get_settings(_db: Session, user_id: str) -> AppSettings:
-    settings = _db.query(AppSettings).filter(AppSettings.user_id == user_id).first()
+def get_settings(db: Session, user_id: str) -> AppSettings:
+    settings = db.query(AppSettings).filter(AppSettings.user_id == user_id).first()
     
     # Default Labels se non esistono
     default_labels = DEFAULTS.SETTINGS.REMINDER_TYPES
@@ -310,9 +309,9 @@ def get_settings(_db: Session, user_id: str) -> AppSettings:
             reminder_types=list(default_labels),
             maintenance_types=list(default_maint)
         )
-        _db.add(settings)
-        _db.commit()
-        _db.refresh(settings)
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
     
     # Fallback se il campo nel DB è None (es. vecchi record prima della migrazione)
     if settings.reminder_types is None:
