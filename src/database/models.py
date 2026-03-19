@@ -86,6 +86,7 @@ class AppSettings(Base):
     max_total_cost               = Column(Float, default=DEFAULTS.SETTINGS.MAX_TOTAL_COST)
     max_accumulated_partial_cost = Column(Float, default=DEFAULTS.SETTINGS.MAX_ACCUMULATED_PARTIAL_COST)
     reminder_types               = Column(JSON, nullable=True)
+    maintenance_types            = Column(JSON, nullable=True)
 
     # Limiti validazione consumo km/L durante l'importazione Excel
     import_kml_min   = Column(Float, default=DEFAULTS.SETTINGS.IMPORT.KML_MIN)

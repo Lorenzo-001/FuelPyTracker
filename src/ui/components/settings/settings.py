@@ -86,22 +86,81 @@ def _render_export_tab(user):
     db.close()
 
 @st.dialog("Conferma Eliminazione")
-def show_delete_dialog(index, label_name):
+def show_delete_dialog(index, label_name, session_key: str, editing_key: str):
     st.write(f"Sei sicuro di voler rimuovere la categoria **{label_name}** dalla lista?")
     st.warning("Ricordati di salvare le configurazioni dopo la conferma.")
     
     col1, col2 = st.columns(2)
     if col1.button("Sì, elimina", type="primary", width='stretch'):
-        st.session_state.settings_temp_labels.pop(index)
+        st.session_state[session_key].pop(index)
         # Gestione reset indice se stiamo cancellando l'elemento in modifica
-        if st.session_state.settings_editing_idx == index:
-            st.session_state.settings_editing_idx = -1
-        elif st.session_state.settings_editing_idx > index:
-            st.session_state.settings_editing_idx -= 1
+        if st.session_state[editing_key] == index:
+            st.session_state[editing_key] = -1
+        elif st.session_state[editing_key] > index:
+            st.session_state[editing_key] -= 1
         st.rerun()
         
     if col2.button("Annulla", width='stretch'):
         st.rerun()
+
+def _render_category_editor(session_key: str, editing_key: str, add_placeholder: str = "Nuova categoria"):
+    """Componente riutilizzabile per gestire una lista di categorie (add/edit/delete card)."""
+    # A. AREA AGGIUNTA
+    c_add_in, c_add_btn = st.columns([5, 1], vertical_alignment="bottom")
+    new_label_input = c_add_in.text_input(
+        "Nuova Categoria", placeholder=add_placeholder,
+        label_visibility="collapsed", key=f"{session_key}_new_input"
+    )
+    if c_add_btn.form_submit_button("➕", key=f"{session_key}_add_btn", help="Aggiungi", type="secondary", width='stretch', disabled=is_demo_mode()):
+        if new_label_input:
+            clean_val = new_label_input.strip()
+            if clean_val not in st.session_state[session_key]:
+                st.session_state[session_key].append(clean_val)
+                st.rerun()
+            else:
+                st.warning("Categoria già presente nella lista.")
+        else:
+            st.error("⚠️ Inserisci un nome per la categoria prima di aggiungere.")
+
+    st.write("")
+
+    # B. LISTA CARD
+    if not st.session_state[session_key]:
+        st.info("Nessuna categoria.")
+
+    for i, label in enumerate(st.session_state[session_key]):
+        is_editing = (st.session_state[editing_key] == i)
+
+        with st.container(border=True):
+            c_text, c_actions_block = st.columns([4, 1.2], vertical_alignment="center")
+
+            with c_text:
+                if is_editing:
+                    edit_val = st.text_input(
+                        f"ed_{session_key}_{i}", value=label,
+                        label_visibility="collapsed"
+                    )
+                else:
+                    st.markdown(f"**{label}**")
+
+            with c_actions_block:
+                b1, b2 = st.columns(2)
+
+                if is_editing:
+                    if b1.form_submit_button("✅", key=f"s_{session_key}_{i}", width='stretch', disabled=is_demo_mode()):
+                        if edit_val:
+                            st.session_state[session_key][i] = edit_val.strip()
+                            st.session_state[editing_key] = -1
+                            st.rerun()
+                    if b2.form_submit_button("❌", key=f"u_{session_key}_{i}", width='stretch'):
+                        st.session_state[editing_key] = -1
+                        st.rerun()
+                else:
+                    if b1.form_submit_button("✏️", key=f"e_{session_key}_{i}", help="Modifica", width='stretch', disabled=is_demo_mode()):
+                        st.session_state[editing_key] = i
+                        st.rerun()
+                    if b2.form_submit_button("❌", key=f"d_{session_key}_{i}", help="Elimina", width='stretch', disabled=is_demo_mode()):
+                        show_delete_dialog(i, label, session_key, editing_key)
 
 def _render_config_tab(user):
     """Gestisce i parametri globali dell'app per l'utente specifico."""
@@ -110,13 +169,21 @@ def _render_config_tab(user):
     
     # --- 1. GESTIONE STATO LOCALE (Labels) ---
     if "settings_temp_labels" not in st.session_state:
-        st.session_state.settings_temp_labels = settings.reminder_types or [
-            "Controllo Livello Olio", "Pressione Pneumatici"
-        ]
+        st.session_state.settings_temp_labels = list(
+            settings.reminder_types or DEFAULTS.SETTINGS.REMINDER_TYPES
+        )
+    
+    if "settings_temp_maint_types" not in st.session_state:
+        st.session_state.settings_temp_maint_types = list(
+            settings.maintenance_types or DEFAULTS.SETTINGS.MAINTENANCE_TYPES
+        )
     
     # Reset indici
     if "settings_editing_idx" not in st.session_state:
         st.session_state.settings_editing_idx = -1
+    
+    if "settings_editing_maint_idx" not in st.session_state:
+        st.session_state.settings_editing_maint_idx = -1
 
     st.subheader("Parametri Inserimento & Sicurezza")
     
@@ -125,8 +192,9 @@ def _render_config_tab(user):
     > 1. **Range Prezzo:** Imposta la tolleranza dello slider per il prezzo carburante.
     > 2. **Tetto Spesa:** Fissa un limite massimo di sicurezza per evitare errori di digitazione (es. 500€).
     > 3. **Soglia Allerta:** Ricevi un avviso se accumuli troppi rifornimenti parziali consecutivi.
-    > 4. **Categorie Promemoria:** Definisci qui le voci che troverai nel menu a tendina "Categoria" quando crei un nuovo promemoria.
-    > 5. **Salvataggio:** Tutte le modifiche vengono salvate al click del bottone "Salva Configurazioni".
+    > 4. **Categorie Promemoria:** Voci selezionabili nel menu a tendina quando crei un nuovo Promemoria periodico.
+    > 5. **Categorie Manutenzione:** Voci selezionabili nel campo "Categoria" durante l'inserimento manuale e l'importazione Excel degli interventi.
+    > 6. **Salvataggio:** Tutte le modifiche vengono salvate al click del bottone "Salva Configurazioni".
     """)
     
     st.write("") 
@@ -206,65 +274,33 @@ def _render_config_tab(user):
         
         st.divider()
         st.markdown("##### 🏷️ Gestione Categorie")
-        st.caption("Aggiungi o rimuovi le categorie.")
 
-        # A. AREA AGGIUNTA
-        c_add_in, c_add_btn = st.columns([5, 1], vertical_alignment="bottom")
-        new_label_input = c_add_in.text_input("Nuova Categoria", placeholder="Es. Filtro Abitacolo", label_visibility="collapsed")
-        
-        # FIX 1: Messaggio se input vuoto
-        if c_add_btn.form_submit_button("➕", help="Aggiungi", type="secondary", width='stretch', disabled=is_demo_mode()):
-            if new_label_input:
-                clean_val = new_label_input.strip()
-                if clean_val not in st.session_state.settings_temp_labels:
-                    st.session_state.settings_temp_labels.append(clean_val)
-                    st.rerun()
-                else:
-                    st.warning("Categoria già presente nella lista.")
-            else:
-                st.error("⚠️ Inserisci un nome per la categoria prima di aggiungere.")
+        cat_tab_rem, cat_tab_maint = st.tabs(["🔔 Categorie Promemoria", "🔧 Categorie Manutenzione"])
 
-        st.write("") 
+        # ── TAB 1: CATEGORIE PROMEMORIA ───────────────────────────────────
+        with cat_tab_rem:
+            st.caption(
+                "Voci selezionabili nel menu a tendina **Categoria** quando crei un nuovo Promemoria periodico. "
+                "Aggiungine di personalizzate in base alle esigenze del tuo veicolo."
+            )
+            _render_category_editor(
+                session_key="settings_temp_labels",
+                editing_key="settings_editing_idx",
+                add_placeholder="Es. Filtro Abitacolo",
+            )
 
-        # B. LISTA CARD (Mobile Optimized)
-        if not st.session_state.settings_temp_labels:
-            st.info("Nessuna categoria.")
-        
-        for i, label in enumerate(st.session_state.settings_temp_labels):
-            is_editing = (st.session_state.settings_editing_idx == i)
-            
-            with st.container(border=True):
-                c_text, c_actions_block = st.columns([4, 1.2], vertical_alignment="center")
-                
-                # --- COLONNA 1: CONTENUTO ---
-                with c_text:
-                    if is_editing:
-                        edit_val = st.text_input(f"ed_{i}", value=label, label_visibility="collapsed")
-                    else:
-                        st.markdown(f"**{label}**")
-
-                # --- COLONNA 2: PULSANTI ---
-                with c_actions_block:
-                    b1, b2 = st.columns(2)
-                    
-                    if is_editing:
-                        if b1.form_submit_button("✅", key=f"s_{i}", width='stretch', disabled=is_demo_mode()):
-                            if edit_val:
-                                st.session_state.settings_temp_labels[i] = edit_val.strip()
-                                st.session_state.settings_editing_idx = -1
-                                st.rerun()
-                        
-                        if b2.form_submit_button("❌", key=f"u_{i}", width='stretch'):
-                            st.session_state.settings_editing_idx = -1
-                            st.rerun()
-                    else:
-                        if b1.form_submit_button("✏️", key=f"e_{i}", help="Modifica", width='stretch', disabled=is_demo_mode()):
-                            st.session_state.settings_editing_idx = i
-                            st.rerun()
-                            
-                        # FIX 2: Apertura Dialog conferma eliminazione
-                        if b2.form_submit_button("❌", key=f"d_{i}", help="Elimina", width='stretch', disabled=is_demo_mode()):
-                            show_delete_dialog(i, label)
+        # ── TAB 2: CATEGORIE MANUTENZIONE ─────────────────────────────────
+        with cat_tab_maint:
+            st.caption(
+                "Voci selezionabili nel campo **Categoria** durante l'inserimento manuale di un intervento "
+                "e nella colonna \"Tipo Intervento\" in fase di importazione da file Excel. "
+                "Assicurati che tutte le categorie nei tuoi file di backup siano presenti qui."
+            )
+            _render_category_editor(
+                session_key="settings_temp_maint_types",
+                editing_key="settings_editing_maint_idx",
+                add_placeholder="Es. Freni",
+            )
 
         st.write("")
         st.write("")
@@ -279,6 +315,7 @@ def _render_config_tab(user):
                 new_max, 
                 new_alert_threshold,
                 st.session_state.settings_temp_labels,
+                maintenance_labels=st.session_state.settings_temp_maint_types,
                 kml_min=new_kml_min,
                 kml_max=new_kml_max,
                 kml_error=new_kml_error,
@@ -286,6 +323,8 @@ def _render_config_tab(user):
             )
             del st.session_state["settings_temp_labels"]
             del st.session_state["settings_editing_idx"]
+            del st.session_state["settings_temp_maint_types"]
+            del st.session_state["settings_editing_maint_idx"]
             
             st.success("✅ Configurazioni salvate con successo!")
             st.rerun()
