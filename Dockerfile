@@ -10,6 +10,9 @@ ENV PYTHONUNBUFFERED=1
 # 3. Imposta la cartella di lavoro dentro il container virtuale
 WORKDIR /app
 
+# PYTHONPATH fisso all'immagine: la struttura /app è decisa qui, non dall'utente.
+ENV PYTHONPATH="/app"
+
 # 4. Copia il file dei requisiti e installa le dipendenze
 # Facciamo questo PRIMA di copiare il codice per sfruttare la cache di Docker
 COPY requirements.txt .
