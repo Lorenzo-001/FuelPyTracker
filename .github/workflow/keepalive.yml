@@ -1,0 +1,16 @@
+name: Keep Streamlit Awake
+
+on:
+  schedule:
+    - cron: "0 8 * * *"
+  
+  workflow_dispatch: 
+
+jobs:
+  ping-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Esegue un curl verso le app per svegliarle
+        run: |
+          curl -L https://fuelpytracker-def.streamlit.app/
+          curl -L https://fuelpytracker-demo.streamlit.app/
