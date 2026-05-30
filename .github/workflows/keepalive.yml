@@ -12,5 +12,5 @@ jobs:
     steps:
       - name: Esegue un curl verso le app per svegliarle
         run: |
-          curl -L https://fuelpytracker-def.streamlit.app/_stcore/health
-          curl -L https://fuelpytracker-demo.streamlit.app/_stcore/health
+          curl -b "" -L https://fuelpytracker-def.streamlit.app/_stcore/health
+          curl -b "" -L https://fuelpytracker-demo.streamlit.app/_stcore/health
