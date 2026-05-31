@@ -54,6 +54,7 @@ def analyze_receipt(file_buffer) -> ReceiptData:
             "station_name": string o null (Es. "Eni Station", "Q8")
         }
         Regole:
+        - Fai molta attenzione alla data: negli scontrini italiani il formato è solitamente DD-MM-YY o DD-MM-YYYY (giorno-mese-anno). Non confondere il giorno con l'anno! Ad esempio, se leggi '20-01-26' o '20-01-2026', la data corretta è il 20 gennaio 2026, quindi dovrai restituire '2026-01-20', non scambiando i valori in modo scorretto.
         - Se hai Totale e Litri ma manca il Prezzo/L, calcolalo (Totale / Litri).
         - Ignora punti fedeltà o altri prodotti non carburante se possibile.
         - Restituisci SOLO il JSON, nessun markdown.
