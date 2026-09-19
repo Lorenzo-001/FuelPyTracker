@@ -33,7 +33,7 @@ Queste limitazioni sono state mitigate attraverso la disciplina nel codice, non 
 
 Supabase è stato scelto per due ragioni principali:
 
-1. **Autenticazione già pronta.** Il sistema di login — email/password, Magic Link e gestione automatica delle sessioni — è interamente fornito da Supabase. Non è stato necessario costruire e mantenere un sistema di autenticazione personalizzato.
+1. **Autenticazione già pronta.** Il sistema di login — email/password e gestione automatica delle sessioni — è interamente fornito da Supabase. Non è stato necessario costruire e mantenere un sistema di autenticazione personalizzato.
 2. **Database PostgreSQL gestito.** Supabase si occupa di ospitare e mantenere il database. Dal punto di vista del codice, l'applicazione si connette a un normale database PostgreSQL: se un giorno si volesse spostare il database su un server proprio, basterebbe aggiornare una sola variabile di configurazione — il resto del codice resterebbe invariato.
 
 Il login e la gestione degli utenti passano per i suoi strumenti dedicati, ma **tutte le operazioni sui dati** (leggere i rifornimenti, salvare una manutenzione, aggiornare le impostazioni) vengono eseguite direttamente sul database tramite SQLAlchemy, senza passare per le API di Supabase. In pratica, Supabase fa da "gestore del database e del login", non da intermediario per ogni singola operazione.
@@ -72,7 +72,7 @@ src/
 │   │   ├── importers/
 │   │   └── exporters/
 │   ├── ocr/          # Analisi AI degli scontrini (wrapper GPT-4o Vision)
-│   └── auth/         # Client Supabase Auth e router magic-link
+│   └── auth/         # Client Supabase Auth e auth router
 │
 ├── database/         # Layer di Accesso ai Dati — modelli SQLAlchemy e operazioni CRUD
 │   ├── models.py     # Definizioni entità ORM

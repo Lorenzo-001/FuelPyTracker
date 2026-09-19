@@ -110,3 +110,4 @@ yarl==1.22.0
 extra-streamlit-components==0.1.71
 streamlit-javascript==0.1.5
 python-dotenv==1.0.1
+pypdf
