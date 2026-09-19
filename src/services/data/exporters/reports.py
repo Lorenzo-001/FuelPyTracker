@@ -54,12 +54,14 @@ def generate_excel_report(db: Session, user_id: str) -> bytes:
         })
 
     # 4. Creazione e Ordinamento DataFrame
-    df_fuel = pd.DataFrame(data_fuel)
+    fuel_cols = ["Data", "Km", "Prezzo", "Costo", "Litri", "Pieno", "Note"]
+    df_fuel = pd.DataFrame(data_fuel, columns=fuel_cols)
     if not df_fuel.empty:
         df_fuel['Data'] = pd.to_datetime(df_fuel['Data'])
         df_fuel = df_fuel.sort_values(by='Data', ascending=True)
 
-    df_maint = pd.DataFrame(data_maint)
+    maint_cols = ["Data", "Km", "Tipo", "Costo", "Descrizione", "Scadenza Km", "Scadenza Data"]
+    df_maint = pd.DataFrame(data_maint, columns=maint_cols)
     if not df_maint.empty:
         df_maint['Data'] = pd.to_datetime(df_maint['Data'])
         df_maint = df_maint.sort_values(by='Data', ascending=True)

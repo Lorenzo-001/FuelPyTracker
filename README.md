@@ -252,6 +252,8 @@ Per segnalare un bug o proporre una funzionalità, è possibile [**aprire una Is
 > ```bash
 > docker compose exec fuel-tracker pytest tests/
 > ```
+> 
+> *Nota: Il progetto utilizza GitHub Actions come CI/CD. Ogni Pull Request eseguirà in automatico la suite di test completa.*
 
 ---
 
