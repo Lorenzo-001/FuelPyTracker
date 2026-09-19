@@ -44,6 +44,10 @@ Fotografare uno scontrino del distributore è un gesto naturale e immediato. Tra
 
 L'integrazione di **GPT-4o Vision** è stata una scelta funzionale. Il modello riceve l'immagine, ne comprende il contesto semantico e restituisce i campi rilevanti in modo strutturato, pronti per la pre-compilazione del form di inserimento.
 
+**Architettura della precompilazione (Smart Scan):**
+L'orchestratore OCR (`ocr_dialog.py`) è progettato per tollerare scontrini frammentari o tagliati. Il sistema considera l'analisi "valida" anche se riesce a estrarre un solo dato numerico utile (ad esempio il prezzo al litro, pur mancando il costo totale). I dati estratti vengono impacchettati e salvati temporaneamente in `st.session_state.ocr_draft`. 
+Successivamente, l'interfaccia principale (`add_panel.py`) intercetta questa bozza e auto-compila i widget a schermo, mostrando un banner permanente con l'esito del riconoscimento. Se l'AI ha riconosciuto dati "ausiliari" come il **Nome della Stazione** o i **Litri**, questi vengono iniettati in automatico all'interno del campo testuale "Note", a meno che l'utente non abbia disattivato questa funzionalità modificando i flag dedicati (`ocr_add_station_to_notes`, `ocr_add_liters_to_notes`) nel database tramite le Impostazioni.
+
 La funzionalità è completamente opzionale e disabilitabile: se la chiave API non è configurata, l'intero modulo rimane inerte e non incide sulle funzionalità principali dell'applicazione.
 
 ---

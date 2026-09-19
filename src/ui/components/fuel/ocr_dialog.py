@@ -45,12 +45,39 @@ def open_ocr_dialog():
                 # Chiamata al servizio
                 data = process_receipt_image(img_buffer)
                 
-                if data.total_cost > 0:
+                # Consideriamo successo se l'AI trova almeno un dato numerico utile
+                if data.total_cost > 0 or data.price_per_liter > 0 or getattr(data, "liters", 0) > 0:
+                    # Analisi campi mancanti per feedback visivo
+                    found = []
+                    missing = []
+                    if data.total_cost > 0: found.append("Costo")
+                    else: missing.append("Costo")
+                    
+                    if data.price_per_liter > 0: found.append("Prezzo/L")
+                    else: missing.append("Prezzo/L")
+                    
+                    if getattr(data, "liters", 0) > 0: found.append("Litri")
+                    else: missing.append("Litri")
+                    
+                    if getattr(data, "station_name", None): found.append("Stazione")
+                    else: missing.append("Stazione")
+                    
+                    toast_parts = []
+                    if found:
+                        toast_parts.append(f"✅ **Trovati:** {', '.join(found)}")
+                    if missing:
+                        toast_parts.append(f"⚠️ **Mancanti:** {', '.join(missing)}")
+                        
+                    toast_msg = "\n\n".join(toast_parts)
+
                     # Salviamo i risultati nello stato per precompilare il form
                     st.session_state.ocr_draft = {
                         "date": data.date if data.date else date.today(),
                         "price": data.price_per_liter,
-                        "cost": data.total_cost
+                        "cost": data.total_cost,
+                        "liters": getattr(data, "liters", 0),
+                        "station_name": getattr(data, "station_name", None),
+                        "feedback_toast": toast_msg
                     }
                     st.success("✅ Dati estratti con successo! Il form è stato precompilato.")
                     st.rerun()  # Chiude il modale e aggiorna la pagina sotto

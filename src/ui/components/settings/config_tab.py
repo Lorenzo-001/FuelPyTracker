@@ -195,6 +195,16 @@ def render(user):
         )
         
         st.divider()
+        
+        # --- SEZIONE 1c: Configurazione AI ---
+        st.markdown("##### 🤖 Configurazione AI (Smart Scan)")
+        st.caption("Scegli se inserire automaticamente i dati extra ricavati dallo scontrino nel campo Note.")
+        
+        c_ai1, c_ai2 = st.columns(2)
+        new_ocr_station = c_ai1.checkbox("Aggiungi Distributore nelle Note", value=getattr(settings, 'ocr_add_station_to_notes', True), help="Se l'AI trova il nome della stazione di servizio, lo scriverà nelle Note.")
+        new_ocr_liters = c_ai2.checkbox("Aggiungi Litri (da OCR) nelle Note", value=getattr(settings, 'ocr_add_liters_to_notes', True), help="Se l'AI trova i litri erogati, li scriverà nelle Note per rapido riscontro.")
+
+        st.divider()
         st.markdown("##### 🏷️ Gestione Categorie")
 
         cat_tab_rem, cat_tab_maint = st.tabs(["🔔 Categorie Promemoria", "🔧 Categorie Manutenzione"])
@@ -241,7 +251,9 @@ def render(user):
                 kml_min=new_kml_min,
                 kml_max=new_kml_max,
                 kml_error=new_kml_error,
-                kmd_max=new_kmd_max
+                kmd_max=new_kmd_max,
+                ocr_add_station_to_notes=new_ocr_station,
+                ocr_add_liters_to_notes=new_ocr_liters
             )
             del st.session_state["settings_temp_labels"]
             del st.session_state["settings_editing_idx"]

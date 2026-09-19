@@ -37,10 +37,25 @@ def render_add_panel(db, user, all_records, settings, last_km, last_price, min_p
         # Se abbiamo dati in bozza (da OCR), usiamo quelli. Altrimenti storici.
         draft = st.session_state.ocr_draft
         
+        # Mostra in modo permanente (finché non si salva) il feedback dell'OCR
+        if "feedback_toast" in draft:
+            st.info(f"🤖 **Analisi Scontrino**\n\n{draft['feedback_toast']}")
+        
         # Priorità: OCR Draft -> Storico/Default
         def_date = draft.get("date", date.today())
         def_price = draft.get("price", last_price)
         def_cost = draft.get("cost", 0.0)
+        
+        # Generazione automatica Note da OCR (se abilitata)
+        def_notes = ""
+        notes_parts = []
+        if getattr(settings, 'ocr_add_station_to_notes', True) and draft.get("station_name"):
+            notes_parts.append(f"Stazione: {draft['station_name']}")
+        if getattr(settings, 'ocr_add_liters_to_notes', True) and draft.get("liters"):
+            notes_parts.append(f"Litri (da OCR): {draft['liters']}")
+            
+        if notes_parts:
+            def_notes = "\n".join(notes_parts)
         
         # I KM di default sono None (vuoto) per forzare l'inserimento,
         # ma passiamo last_km come informazione per il tooltip.
@@ -51,7 +66,7 @@ def render_add_panel(db, user, all_records, settings, last_km, last_price, min_p
         with st.form("fuel_form_add", clear_on_submit=False):
             # Form delegato al componente UI, passando i defaults dinamici e l'ultimo KM noto per tooltip
             new_data = forms.render_refueling_inputs(
-                def_date, def_km, def_price, def_cost, True, "", 
+                def_date, def_km, def_price, def_cost, True, def_notes, 
                 min_p, max_p, settings.max_total_cost,
                 last_km_known=last_km, # Passiamo il dato per il tooltip
                 key_suffix="add"
