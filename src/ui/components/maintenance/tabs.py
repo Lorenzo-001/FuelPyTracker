@@ -5,7 +5,7 @@ from src.database import crud
 from src.database.core import get_db
 from src.config import DEFAULTS
 from datetime import date
-from src.demo import is_demo_mode
+from src.demo import writes_disabled
 
 def render_history_tab(records_filtered, all_records):
     """Renderizza il tab Storico (Dataframe)."""
@@ -48,11 +48,11 @@ def render_management_tab(db, user, all_records):
     
     # Pulsanti Azione
     c1, c2 = st.columns(2)
-    if c1.button("✏️ Modifica", width="stretch", disabled=is_demo_mode()):
+    if c1.button("✏️ Modifica", width="stretch", disabled=writes_disabled()):
         st.session_state.active_operation = "edit"
         st.session_state.selected_record_id = target_id
         st.rerun()
-    if c2.button("❌ Elimina", type="primary", width="stretch", disabled=is_demo_mode()):
+    if c2.button("❌ Elimina", type="primary", width="stretch", disabled=writes_disabled()):
         st.session_state.active_operation = "delete"
         st.session_state.selected_record_id = target_id
         st.rerun()
@@ -81,7 +81,7 @@ def _handle_edit(db, user_id, rec):
             cat_opts=maint_cats
         )
         
-        if st.form_submit_button("Aggiorna", type="primary", width="stretch", disabled=is_demo_mode()):
+        if st.form_submit_button("Aggiorna", type="primary", width="stretch", disabled=writes_disabled()):
             # Validazioni
             if d_edit['cost'] < 0:
                 st.error("Inserire un costo valido.")
@@ -108,7 +108,7 @@ def _handle_edit(db, user_id, rec):
 def _handle_delete(db, user_id, rec_id, rec_type):
     st.error(f"Eliminare {rec_type}?")
     c1, c2 = st.columns(2)
-    if c1.button("Sì, Elimina", type="primary", width="stretch", disabled=is_demo_mode()):
+    if c1.button("Sì, Elimina", type="primary", width="stretch", disabled=writes_disabled()):
         crud.delete_maintenance(db, user_id, rec_id)
         st.success("Eliminato.")
         st.session_state.active_operation = None
@@ -138,7 +138,7 @@ def _render_reminder_tab(db, user, settings, active_reminders, current_km):
                 # target_date = c3.date_input("Scadenza Temporale", value=date.today() + timedelta(days=365))
                 target_months = c3.number_input("Scadenza Mesi", min_value=1, value=12)
 
-                if st.form_submit_button("Salva Promemoria", type="primary", width='stretch', disabled=is_demo_mode()):
+                if st.form_submit_button("Salva Promemoria", type="primary", width='stretch', disabled=writes_disabled()):
                     # Ipotetica chiamata al CRUD
                     crud.create_reminder(db, user.id, cat, target_km, target_months, start_km=current_km)
                     st.success(f"Promemoria per {cat} attivato!")
@@ -188,7 +188,7 @@ def _render_reminder_card(db, user, reminder, current_km):
             st.markdown(f"**Gestione {reminder.category}**")
             
             # Action 1: Modifica (Placeholder)
-            if st.button("✏️ Modifica Parametri", key=f"edit_{reminder.id}", width='stretch', disabled=is_demo_mode()):
+            if st.button("✏️ Modifica Parametri", key=f"edit_{reminder.id}", width='stretch', disabled=writes_disabled()):
                 st.toast("Funzionalità modifica in arrivo")
             
             # Action 2: Archiviazione (DONE)
@@ -197,7 +197,7 @@ def _render_reminder_card(db, user, reminder, current_km):
                     cost = st.number_input("Costo Intervento (€)", min_value=0.0, step=10.0)
                     note = st.text_input("Note", value="Tagliando periodico")
                     
-                    if st.form_submit_button("Conferma e Archivia", disabled=is_demo_mode()):
+                    if st.form_submit_button("Conferma e Archivia", disabled=writes_disabled()):
                         # 1. Crea record nello storico
                         crud.create_maintenance(db, user.id, reminder.category, cost, date.today(), note, km=current_km)
                         # 2. Resetta il reminder (nuovo start_km = current_km)
@@ -206,7 +206,7 @@ def _render_reminder_card(db, user, reminder, current_km):
                         st.rerun()
 
             # Action 3: Elimina
-            if st.button("❌ Elimina Reminder", key=f"del_{reminder.id}", type="primary", width='stretch', disabled=is_demo_mode()):
+            if st.button("❌ Elimina Reminder", key=f"del_{reminder.id}", type="primary", width='stretch', disabled=writes_disabled()):
                 crud.delete_reminder(db, reminder.id)
                 st.rerun()
 

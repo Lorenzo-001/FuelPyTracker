@@ -1,5 +1,10 @@
 import sys
 import os
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import streamlit as st
 
 from src.ui.components.dashboard import dashboard
@@ -110,7 +115,17 @@ def main():
     render_sidebar(st.session_state.get("user"), pages_main, pages_account)
 
     if is_demo_mode():
-        st.info("👀 Benvenuto nella Demo Pubblica! Per garantire un'esperienza ottimale a tutti, l'applicazione è in modalità Sola Lettura. L'aggiunta e la modifica dei dati sono disabilitate.")
+        from src.database.url import is_local_sqlite
+        if is_local_sqlite():
+            st.info(
+                "💻 Modalità locale (SQLite): puoi aggiungere e modificare i dati. "
+                "Il database è il file `data/local.db`."
+            )
+        else:
+            st.info(
+                "👀 Benvenuto nella Demo Pubblica! Per garantire un'esperienza ottimale a tutti, "
+                "l'applicazione è in modalità Sola Lettura. L'aggiunta e la modifica dei dati sono disabilitate."
+            )
 
     # 4. Render Contenuto Pagina
     # Scriviamo direttamente nel flusso principale (fuori da master_slot)

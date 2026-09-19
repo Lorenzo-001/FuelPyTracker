@@ -39,10 +39,43 @@ class TestIsDemoMode:
         # Sovrascriviamo con stringa vuota per simulare variabile non configurata.
         # Non usiamo clear=True perché DEMO_MODE potrebbe essere già in os.environ
         # (es. caricato dal processo genitore di pytest).
-        with patch.dict("os.environ", {"DEMO_MODE": ""}):
+        with patch.dict("os.environ", {"DEMO_MODE": "", "LOCAL_SQLITE": "False"}):
             from src.demo import is_demo_mode
             assert is_demo_mode() is False
 
+    def test_defaults_true_when_local_sqlite_and_demo_mode_unset(self):
+        env = {k: v for k, v in os.environ.items() if k != "DEMO_MODE"}
+        env["LOCAL_SQLITE"] = "True"
+        with patch.dict(os.environ, env, clear=True):
+            from src.demo import is_demo_mode
+            assert is_demo_mode() is True
+
+    def test_explicit_false_wins_over_local_sqlite(self):
+        with patch.dict(os.environ, {"LOCAL_SQLITE": "True", "DEMO_MODE": "False"}):
+            from src.demo import is_demo_mode
+            assert is_demo_mode() is False
+
+
+# ---------------------------------------------------------------------------
+# writes_disabled()
+# ---------------------------------------------------------------------------
+
+class TestWritesDisabled:
+
+    def test_false_when_local_sqlite_and_demo(self):
+        with patch.dict(os.environ, {"LOCAL_SQLITE": "True", "DEMO_MODE": "True"}):
+            from src.demo import writes_disabled
+            assert writes_disabled() is False
+
+    def test_true_when_cloud_demo(self):
+        with patch.dict(os.environ, {"LOCAL_SQLITE": "False", "DEMO_MODE": "True"}):
+            from src.demo import writes_disabled
+            assert writes_disabled() is True
+
+    def test_false_when_neither(self):
+        with patch.dict(os.environ, {"LOCAL_SQLITE": "False", "DEMO_MODE": "False"}):
+            from src.demo import writes_disabled
+            assert writes_disabled() is False
 
 
 # ---------------------------------------------------------------------------

@@ -6,7 +6,7 @@ import streamlit as st
 from src.database.core import get_db
 from src.database import crud
 from src.services.data.importers import fuel, maintenance
-from src.demo import is_demo_mode
+from src.demo import writes_disabled
 from src.config import DEFAULTS
 
 # =============================================================================
@@ -103,7 +103,7 @@ def render_staging_table(user_id: str, df: pd.DataFrame, error_msg: str, data_ty
             else f"🚀 Importa {n_saveable} record nel Database"
         )
 
-        if is_demo_mode():
+        if writes_disabled():
             st.warning("🔒 Modalità Demo: Modifiche disabilitate per sicurezza.")
         elif st.button(btn_label, key=f"save_{data_type}", type="primary",
                      disabled=not can_save, width='stretch'):

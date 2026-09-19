@@ -2,7 +2,7 @@ import streamlit as st
 from datetime import date
 from src.database import crud
 from src.database.core import get_db
-from src.demo import is_demo_mode
+from src.demo import writes_disabled
 
 @st.dialog("⚠️ Avvisi Veicolo")
 def _show_alert_dialog(overdue_list):
@@ -26,8 +26,8 @@ def check_and_show_alerts(user_id):
     if "startup_alert_shown" in st.session_state:
         return
 
-    # Non mostrare durante la Demo
-    if is_demo_mode():
+    # Non mostrare in demo pubblica cloud (sola lettura)
+    if writes_disabled():
         return
 
     db = next(get_db())

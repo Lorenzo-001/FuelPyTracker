@@ -2,13 +2,15 @@
 src/demo.py — Feature Flag per la modalità Sandbox/Demo
 
 Espone:
-  - is_demo_mode() -> bool  : True se DEMO_MODE è attivo
-  - DEMO_USER               : SimpleNamespace compatibile con le funzioni CRUD
-  - mock_analyze_receipt()  : Risposta OCR simulata (senza chiamate a OpenAI)
+  - is_demo_mode() -> bool      : utente fittizio / mock OCR / skip auth cloud
+  - writes_disabled() -> bool  : sola lettura UI (demo cloud; False con LOCAL_SQLITE)
+  - DEMO_USER                  : SimpleNamespace compatibile con le funzioni CRUD
+  - mock_analyze_receipt()     : Risposta OCR simulata (senza chiamate a OpenAI)
 
 Lettura del flag (priorità decrescente):
   1. Variabile d'ambiente OS  (sviluppo locale, .env)
-  2. Streamlit Secrets        (Streamlit Cloud / deploy)
+  2. Se DEMO_MODE assente e LOCAL_SQLITE=True → demo on (bootstrap zero-cloud)
+  3. Streamlit Secrets        (Streamlit Cloud / deploy)
 
 Variabili richieste quando DEMO_MODE=True:
   DEMO_USER_ID     — UUID Supabase dell'utente demo
@@ -21,6 +23,8 @@ import time
 from datetime import date
 from types import SimpleNamespace
 
+from src.database.url import is_local_sqlite
+
 
 # =============================================================================
 # FLAG HELPER
@@ -31,7 +35,8 @@ def is_demo_mode() -> bool:
     Restituisce True se la modalità demo è attiva.
     Priorità:
       1. Variabile OS DEMO_MODE (se presente in os.environ, è definitiva — no fallback)
-      2. st.secrets [demo] enabled (solo se DEMO_MODE non è nell'env)
+      2. LOCAL_SQLITE senza DEMO_MODE in env → True (bootstrap locale)
+      3. st.secrets [demo] enabled
     """
     # 1. Variabile d'ambiente (locale + Docker + CI)
     # Nota: controlliamo la presenza PRIMA del valore, così un override esplicito
@@ -39,12 +44,21 @@ def is_demo_mode() -> bool:
     if "DEMO_MODE" in os.environ:
         return os.environ["DEMO_MODE"].strip().lower() in ("1", "true", "yes")
 
-    # 2. Streamlit Secrets (Streamlit Cloud) — solo se env var non è settata
+    # 2. Bootstrap SQLite: senza DEMO_MODE esplicito, entra come utente demo
+    if is_local_sqlite():
+        return True
+
+    # 3. Streamlit Secrets (Streamlit Cloud) — solo se env var non è settata
     try:
         import streamlit as st
         return bool(st.secrets.get("demo", {}).get("enabled", False))
     except Exception:
         return False
+
+
+def writes_disabled() -> bool:
+    """True solo in demo pubblica cloud: locale SQLite resta scrivibile."""
+    return is_demo_mode() and not is_local_sqlite()
 
 
 def _get_demo_credential(env_key: str, secrets_key: str) -> str | None:

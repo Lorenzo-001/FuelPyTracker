@@ -1,5 +1,7 @@
 import streamlit as st
 from src.services.auth.auth_service import get_client
+from src.database.url import is_local_sqlite
+from src.demo import is_demo_mode
 
 # --- COSTANTI ---
 QP_ACCESS_TOKEN  = "sb_at"
@@ -44,14 +46,22 @@ def init_session():
     if st.session_state.get("user") is not None:
         return
 
+    # Bootstrap locale: nessun token Supabase da ripristinare
+    if is_local_sqlite() and is_demo_mode():
+        return
+
     qp_at = st.query_params.get(QP_ACCESS_TOKEN)
     qp_rt = st.query_params.get(QP_REFRESH_TOKEN)
 
     if not (qp_at and qp_rt):
         return  # Nessun token nell'URL → schermata di login
 
+    client = get_client()
+    if client is None:
+        return
+
     try:
-        response = get_client().auth.set_session(qp_at, qp_rt)
+        response = client.auth.set_session(qp_at, qp_rt)
 
         if response and response.user:
             st.session_state.user = response.user

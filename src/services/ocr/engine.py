@@ -12,8 +12,11 @@ from src.demo import is_demo_mode, mock_analyze_receipt
 # =============================================================================
 # CONFIGURAZIONE CLIENT OPENAI
 # =============================================================================
-# Recupera la chiave dai secrets. Se non c'è, il client sarà None.
-_api_key = st.secrets.get("openai", {}).get("api_key")
+# Recupera la chiave dai secrets. Se non c'è (o manca secrets.toml), client = None.
+try:
+    _api_key = st.secrets.get("openai", {}).get("api_key")
+except Exception:
+    _api_key = None
 client = OpenAI(api_key=_api_key) if _api_key else None
 
 def is_openai_enabled() -> bool:

@@ -1,12 +1,19 @@
 import streamlit as st
 from supabase import create_client, Client
 
+from src.database.url import is_local_sqlite
+from src.demo import is_demo_mode
+
 # 1. Inizializzazione Client Supabase (SESSION ISOLATED)
 def get_client() -> Client:
     """
     Recupera o crea il client Supabase per la sessione corrente.
     Assicura che ogni utente abbia la propria istanza isolata.
+    Con LOCAL_SQLITE + demo non serve Supabase (niente secrets).
     """
+    if is_local_sqlite() and is_demo_mode():
+        return None
+
     if "supabase_client" not in st.session_state:
         try:
             url = st.secrets["supabase"]["url"]
@@ -44,7 +51,10 @@ def sign_up(email, password):
 
 def sign_out():
     """Effettua il Logout."""
-    get_client().auth.sign_out()
+    client = get_client()
+    if client is None:
+        return
+    client.auth.sign_out()
 
 def get_current_user():
     """

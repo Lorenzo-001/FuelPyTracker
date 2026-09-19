@@ -1,4 +1,4 @@
-# 📖 Guida Utente — FuelPyTracker v1.0.0
+# 📖 Guida Utente — FuelPyTracker v1.1.0
 
 > **Benvenuto nella tua guida di riferimento.**
 > Questo documento ti accompagnerà passo dopo passo alla scoperta di tutte le funzionalità di FuelPyTracker,
@@ -588,6 +588,9 @@ Se la password attuale è errata, l'operazione viene rifiutata. Se le due nuove 
 
 ## Appendice — Domande Frequenti
 
+**D: Posso usare l’app in locale senza account Supabase?**
+R: Sì, per sviluppo o prova. Nel file `.env` imposta `LOCAL_SQLITE=True` (e di solito `DEMO_MODE=True`). I dati finiscono in `data/local.db` e puoi inserire rifornimenti e manutenzioni. Per l’uso quotidiano con login reale resta la configurazione Supabase descritta nella guida di installazione.
+
 **D: Posso usare FuelPyTracker su smartphone?**
 R: Sì! L'interfaccia si adatta automaticamente agli schermi mobile. Lo scanner AI degli scontrini su mobile ti permette persino di scattare la foto direttamente dalla fotocamera del telefono.
 
@@ -605,4 +608,4 @@ R: Il documento è pensato come resoconto personale e non ha valore legale certi
 
 ---
 
-*Ultima revisione: Aprile 2026 — FuelPyTracker v1.0.0*
+*Ultima revisione: Agosto 2026 — FuelPyTracker v1.1.0*
