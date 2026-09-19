@@ -288,4 +288,6 @@ def _render_health_dialog(score, issues):
         
         if st.button("Vai a Manutenzione", type="primary", width='stretch'):
             st.session_state.current_page = "Manutenzione"
+            st.session_state.nav_radio_main = "Manutenzione"
+            st.session_state.nav_radio_account = None
             st.rerun()
