@@ -17,6 +17,9 @@ os.environ.setdefault("DEMO_MODE", "")
 if os.environ.get("DEMO_MODE", "").strip().lower() in ("1", "true", "yes"):
     os.environ["DEMO_MODE"] = "False"
 
+# 3. Imposta LOCAL_SQLITE=True per permettere ai test (es. in GitHub Actions) di superare
+# il check di resolve_database_url() senza dover avere file secrets o .env reali.
+os.environ["LOCAL_SQLITE"] = "True"
 
 
 from src.database.models import Base
