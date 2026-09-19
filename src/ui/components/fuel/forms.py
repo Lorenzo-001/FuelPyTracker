@@ -34,7 +34,8 @@ def render_refueling_inputs(
     last_default_key = f"last_default_price_{key_suffix}"
     
     if last_default_key not in st.session_state or st.session_state[last_default_key] != default_price:
-        st.session_state[slider_key] = default_price
+        safe_default = max(min_price, min(default_price, max_price))
+        st.session_state[slider_key] = float(f"{safe_default:.3f}")
         st.session_state[last_default_key] = default_price
 
     row1_c2.markdown("**Prezzo €/L**<span class='mobile-inline-price'></span>", unsafe_allow_html=True)
@@ -45,6 +46,8 @@ def render_refueling_inputs(
     btn_right = col_right.form_submit_button("▶", width="stretch")
     
     current_val = st.session_state.get(slider_key, default_price)
+    current_val = max(min_price, min(current_val, max_price))
+    
     if btn_left:
         current_val = max(min_price, current_val - 0.001)
         st.session_state[slider_key] = float(f"{current_val:.3f}")

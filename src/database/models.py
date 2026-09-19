@@ -94,5 +94,9 @@ class AppSettings(Base):
     import_kml_error = Column(Float, default=DEFAULTS.SETTINGS.IMPORT.KML_ERROR)
     import_kmd_max   = Column(Float, default=DEFAULTS.SETTINGS.IMPORT.KMD_MAX)
 
+    # Configurazioni AI (Opt-in inserimento automatico nelle note)
+    ocr_add_station_to_notes     = Column(Boolean, default=True)
+    ocr_add_liters_to_notes      = Column(Boolean, default=True)
+
     def __repr__(self):
         return f"<AppSettings(user={self.user_id})>"

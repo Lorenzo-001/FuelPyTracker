@@ -273,3 +273,36 @@ class TestReminderCrud:
         reminders = crud.get_active_reminders(db_session, USER_ID)
         assert len(reminders) == 1
         assert reminders[0].title == "Olio"
+
+# =============================================================================
+# TESTS: Settings CRUD
+# =============================================================================
+
+class TestSettingsCrud:
+
+    def test_get_settings_creates_default(self, db_session):
+        # Quando l'utente non ha impostazioni, get_settings le crea
+        settings = crud.get_settings(db_session, USER_ID)
+        assert settings is not None
+        assert settings.user_id == USER_ID
+        assert settings.ocr_add_station_to_notes is True
+        assert settings.ocr_add_liters_to_notes is True
+
+    def test_update_settings(self, db_session):
+        crud.update_settings(
+            db=db_session,
+            user_id=USER_ID,
+            fluctuation=20.0,
+            max_cost=150.0,
+            alert_threshold=100.0,
+            custom_labels=[],
+            maintenance_labels=[],
+            ocr_add_station_to_notes=False,
+            ocr_add_liters_to_notes=False
+        )
+        
+        settings = crud.get_settings(db_session, USER_ID)
+        assert settings.price_fluctuation_cents == 20.0
+        assert settings.max_total_cost == 150.0
+        assert settings.ocr_add_station_to_notes is False
+        assert settings.ocr_add_liters_to_notes is False

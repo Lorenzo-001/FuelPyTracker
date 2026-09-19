@@ -330,6 +330,12 @@ def get_settings(db: Session, user_id: str) -> AppSettings:
     if settings.import_kmd_max is None:
         settings.import_kmd_max = DEFAULTS.SETTINGS.IMPORT.KMD_MAX
         
+    # Fallback per i campi AI (record creati prima della migrazione)
+    if getattr(settings, 'ocr_add_station_to_notes', None) is None:
+        settings.ocr_add_station_to_notes = True
+    if getattr(settings, 'ocr_add_liters_to_notes', None) is None:
+        settings.ocr_add_liters_to_notes = True
+        
     return settings
 
 def update_settings(
@@ -344,6 +350,8 @@ def update_settings(
     kml_max:   float = DEFAULTS.SETTINGS.IMPORT.KML_MAX,
     kml_error: float = DEFAULTS.SETTINGS.IMPORT.KML_ERROR,
     kmd_max:   float = DEFAULTS.SETTINGS.IMPORT.KMD_MAX,
+    ocr_add_station_to_notes: bool = True,
+    ocr_add_liters_to_notes: bool = True,
 ):
     settings = db.query(AppSettings).filter(AppSettings.user_id == user_id).first()
     if not settings:
@@ -359,6 +367,8 @@ def update_settings(
     settings.import_kml_max = kml_max
     settings.import_kml_error = kml_error
     settings.import_kmd_max = kmd_max
+    settings.ocr_add_station_to_notes = ocr_add_station_to_notes
+    settings.ocr_add_liters_to_notes = ocr_add_liters_to_notes
     
     db.commit()
     db.refresh(settings)
