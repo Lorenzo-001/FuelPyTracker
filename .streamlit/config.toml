@@ -5,3 +5,6 @@ enableXsrfProtection = false
 
 [client]
 showErrorDetails = false         # In produzione nasconde i traceback brutti
+
+[theme]
+base="dark"
