@@ -7,6 +7,7 @@
 
 ## 📋 Indice
 
+0. [Bootstrap locale con SQLite](#-bootstrap-locale-con-sqlite-senza-supabase)
 1. [Fase 1 — Prerequisiti](#fase-1--prerequisiti-gli-attrezzi-del-mestiere)
 2. [Fase 2 — Clonazione del Codice](#fase-2--clonazione-del-codice)
 3. [Fase 3 — Configurazione Supabase](#fase-3--configurazione-supabase-il-boss-finale-)
@@ -19,7 +20,7 @@
 
 ## ⚡ Bootstrap locale con SQLite (senza Supabase)
 
-Se vuoi solo far partire l’app in demo read-only sul PC:
+Se vuoi solo far partire l’app sul PC **senza** account Supabase:
 
 1. Copia `.env.example` → `.env`
 2. Imposta `LOCAL_SQLITE=True` e `DEMO_MODE=True` (i `DEMO_USER_*` di default vanno bene)
@@ -27,7 +28,7 @@ Se vuoi solo far partire l’app in demo read-only sul PC:
 4. Con Python 3.11: `pip install -r requirements.txt` poi `streamlit run main.py`
 5. Apri `http://localhost:8501`
 
-Il database è il file `data/local.db`. Per auth reale e Postgres continua con le fasi Supabase sotto.
+Il database è il file `data/local.db`. In questa modalità puoi **scrivere** dati (rifornimenti, manutenzioni, impostazioni). Per auth reale e Postgres continua con le fasi Supabase sotto.
 
 ---
 
@@ -187,8 +188,8 @@ Se vuoi abilitarla:
 Sei quasi in fondo. In questa fase "colleghi" le chiavi raccolte all'applicazione, creando due file di configurazione a partire dai template già inclusi nel progetto.
 
 > 💡 **Perché due file separati?** Perché hanno responsabilità diverse e non si mescolano mai.
-> - **`.env`** dice all'app *come comportarsi*: modalità normale o demo pubblica, e quale utente fittizio iniettare. È la mente dell'applicazione.
-> - **`.streamlit/secrets.toml`** custodisce le *chiavi della cassaforte*: le credenziali per il database, per l'autenticazione e per OpenAI. È il portachiavi.
+> - **`.env`** dice all'app *come comportarsi*: `LOCAL_SQLITE`, modalità demo, utente demo. È la mente dell'applicazione.
+> - **`.streamlit/secrets.toml`** custodisce le *chiavi della cassaforte* (Postgres, Supabase Auth, OpenAI). Con bootstrap SQLite può essere omesso.
 >
 > Docker li gestisce entrambi in modo sicuro: le variabili dell'`.env` vengono iniettate nell'ambiente del container tramite la direttiva `env_file`, mentre `secrets.toml` viene montato come volume — il file resta fisicamente sul tuo PC e non finisce mai dentro l'immagine Docker né, tantomeno, su GitHub.
 
@@ -208,20 +209,23 @@ cp .env.example .env
 Copy-Item .env.example .env
 ```
 
-Apri il file `.env` appena creato e lascialo così per un'installazione personale standard:
+Apri il file `.env` appena creato. Per un’installazione **personale con Supabase**, tipicamente:
 
 ```dotenv
-# Modalità demo: imposta True solo per una vetrina pubblica Read-Only.
-# Con False (default), l'app funziona normalmente con il tuo account Supabase.
+# False = usa Postgres da secrets.toml. True = data/local.db senza cloud.
+LOCAL_SQLITE=False
+
+# True solo per vetrina pubblica cloud (sola lettura) o bootstrap locale con utente demo.
 DEMO_MODE=False
 
-# Le variabili seguenti sono obbligatorie SOLO se DEMO_MODE=True.
-# Consulta docs/SETUP_GUIDE.md per istruzioni sulla configurazione della demo.
-DEMO_USER_ID=your-demo-user-uuid
-DEMO_USER_EMAIL=demo@example.com
+# Obbligatorie se DEMO_MODE=True (default ok per LOCAL_SQLITE).
+DEMO_USER_ID=00000000-0000-4000-8000-000000000001
+DEMO_USER_EMAIL=demo@local.fuelpytracker
 ```
 
-I campi `DEMO_USER_ID` e `DEMO_USER_EMAIL` sono usati **solo** quando `DEMO_MODE=True` (per la vetrina pubblica). In modalità normale puoi lasciarli invariati — non vengono letti.
+Per il bootstrap SQLite vedi la sezione in cima a questa guida (`LOCAL_SQLITE=True` + `DEMO_MODE=True`).
+
+I campi `DEMO_USER_*` sono usati quando la modalità demo è attiva. In produzione con login Supabase puoi lasciarli ai default.
 
 > 💡 Non trovi `PYTHONPATH` in questo file? È normale. Il percorso Python è fisso per design — il container usa sempre `/app` come root — e viene impostato direttamente nel `Dockerfile`. Non è una configurazione che devi gestire tu.
 
@@ -318,6 +322,21 @@ http://localhost:8501
 ## 🆘 Risoluzione dei Problemi Comuni
 
 I problemi che seguono coprono la grande maggioranza dei casi in cui l'installazione non va a buon fine al primo tentativo. Leggi il **sintomo**, trovalo nella lista e segui la soluzione corrispondente.
+
+---
+
+### ❌ "Configurazione Database Mancante" / `database.url`
+
+**Sintomo:** all’avvio compare un errore critico su `database.url` / secrets mancanti.
+
+**Cause tipiche:**
+
+1. Stai usando il percorso cloud ma manca `.streamlit/secrets.toml` (o la sezione `[database] url`).
+2. Hai impostato `LOCAL_SQLITE=True` nel `.env` ma Streamlit è stato avviato **prima** di salvare il file, oppure `load_dotenv` non vede il `.env` (avvia da root del repo).
+
+**Soluzione rapida senza Supabase:** nel `.env` metti `LOCAL_SQLITE=True`, riavvia `streamlit run main.py`. Il DB sarà `data/local.db`.
+
+**Soluzione cloud:** crea `secrets.toml` dalla fase 5.2 e riavvia il container / Streamlit.
 
 ---
 

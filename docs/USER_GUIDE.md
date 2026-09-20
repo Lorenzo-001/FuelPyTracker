@@ -1,4 +1,4 @@
-# 📖 Guida Utente — FuelPyTracker v1.0.0
+# 📖 Guida Utente — FuelPyTracker v1.1.0
 
 > **Benvenuto nella tua guida di riferimento.**
 > Questo documento ti accompagnerà passo dopo passo alla scoperta di tutte le funzionalità di FuelPyTracker,
@@ -235,8 +235,10 @@ Niente più digitazione manuale! Clicca **"🚀 SCANSIONA SCONTRINO CON AI"** pe
 **Come funziona:**
 1. L'app apre uno scanner. Su **mobile** puoi usare direttamente la fotocamera; su **desktop** carichi un'immagine dal tuo computer (JPG, PNG).
 2. Dopo aver caricato l'immagine clicca **"✨ Analizza con AI"**.
-3. L'intelligenza artificiale legge lo scontrino e precompila automaticamente data, prezzo al litro e costo totale nel form sottostante.
-4. Verifica i valori, compila manualmente il campo **Km Odometro** e salva.
+3. L'intelligenza artificiale legge lo scontrino e chiude il pannello.
+4. Sopra al form comparirà un **banner azzurro permanente** che ti mostra in modo chiaro quali dati sono stati trovati (es. `✅ Trovati: Costo, Prezzo/L`) e quali mancano all'appello (es. `⚠️ Mancanti: Stazione`). Il banner resta visibile finché non salvi il rifornimento.
+5. I campi del form (Data, Prezzo al litro, Costo totale) vengono **precompilati automaticamente**. Inoltre, se l'AI ha riconosciuto i Litri o il Nome del distributore, questi verranno **aggiunti in automatico nel campo Note** (questa opzione è personalizzabile dalle Impostazioni).
+6. Verifica i valori, compila manualmente il campo **Km Odometro** e salva.
 
 **Consigli per foto perfette:**
 - 📸 Inquadra **solo lo scontrino**, dal bordo superiore a quello inferiore
@@ -466,6 +468,17 @@ Questa sezione ti permette di personalizzare i menu a tendina che compariranno n
 
 ---
 
+#### 🤖 Configurazione AI (Smart Scan)
+
+Questa sezione ti permette di personalizzare come l'intelligenza artificiale interagisce con il form di inserimento dopo la scansione di uno scontrino. I campi obbligatori (Costo e Prezzo/L) vengono sempre precompilati nei rispettivi campi numerici, ma puoi decidere cosa fare con i dati "ausiliari":
+
+- **Aggiungi Distributore nelle Note:** Se attivo, l'AI scriverà il nome della stazione di servizio (es. "Stazione: Eni") nel campo note a testo libero del form.
+- **Aggiungi Litri nelle Note:** Se attivo, l'AI riporterà i litri esatti estratti dallo scontrino nel campo note. (Ricorda: l'app calcola già i litri matematicamente `Costo / Prezzo`, quindi questo valore è solo informativo).
+
+Se preferisci avere un campo note sempre pulito da compilare a mano, disattiva questi flag e l'AI ignorerà i dati ausiliari.
+
+---
+
 ### 📤 Esportazione Dati
 
 Con un clic puoi scaricare un backup completo dei tuoi dati in formato **Excel (.xlsx)**. Il file include due fogli:
@@ -588,6 +601,9 @@ Se la password attuale è errata, l'operazione viene rifiutata. Se le due nuove 
 
 ## Appendice — Domande Frequenti
 
+**D: Posso usare l’app in locale senza account Supabase?**
+R: Sì, per sviluppo o prova. Nel file `.env` imposta `LOCAL_SQLITE=True` (e di solito `DEMO_MODE=True`). I dati finiscono in `data/local.db` e puoi inserire rifornimenti e manutenzioni. Per l’uso quotidiano con login reale resta la configurazione Supabase descritta nella guida di installazione.
+
 **D: Posso usare FuelPyTracker su smartphone?**
 R: Sì! L'interfaccia si adatta automaticamente agli schermi mobile. Lo scanner AI degli scontrini su mobile ti permette persino di scattare la foto direttamente dalla fotocamera del telefono.
 
@@ -605,4 +621,4 @@ R: Il documento è pensato come resoconto personale e non ha valore legale certi
 
 ---
 
-*Ultima revisione: Aprile 2026 — FuelPyTracker v1.0.0*
+*Ultima revisione: Agosto 2026 — FuelPyTracker v1.1.0*

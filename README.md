@@ -9,7 +9,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Backend-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
-[![Release](https://img.shields.io/badge/Release-v1.0.0-brightgreen?style=for-the-badge)](https://github.com/Lorenzo-001/FuelPyTracker/releases/tag/v1.0.0)
+[![Release](https://img.shields.io/badge/Release-v1.1.0-brightgreen?style=for-the-badge)](https://github.com/Lorenzo-001/FuelPyTracker/releases)
 
 </div>
 
@@ -55,20 +55,20 @@
 | **Containerizzazione** | [Docker](https://www.docker.com/) | Deploy riproducibile in un solo comando su qualsiasi macchina |
 | **ORM & Query** | [SQLAlchemy](https://www.sqlalchemy.org/) | Astrazione del layer dati con gestione sicura delle sessioni |
 
-### 🏷️ Come funziona la Demo Pubblica
+### 🏷️ Come funzionano Demo pubblica e bootstrap locale
 
-Per la demo pubblica, l'app utilizza una variabile d'ambiente `DEMO_MODE=True` che fa tre cose semplici:
+| Scenario | Env tipico | Auth | Scritture UI |
+|---|---|---|---|
+| **Demo pubblica (cloud)** | `DEMO_MODE=True`, Postgres via secrets | Utente fittizio | Bloccate (`writes_disabled`) |
+| **Locale SQLite** | `LOCAL_SQLITE=True` (+ demo user) | Utente fittizio | **Abilitate** — dati in `data/local.db` |
+| **Produzione** | `LOCAL_SQLITE=False`, `DEMO_MODE=False` | Supabase Auth | Abilitate |
 
-1. **Inietta un utente fittizio** in sessione — non è necessario un vero account Supabase.
-2. **Disabilita tutte le scritture** sul database — nessun dato reale può essere modificato.
-3. **Sostituisce il modulo OpenAI** con un mock locale — zero chiamate API a pagamento.
-
-Il risultato è un'applicazione identica nella UI ma completamente sicura da esporre pubblicamente.
+In tutti i casi demo l’OCR può usare un mock locale se non c’è chiave OpenAI, così non partono chiamate API a pagamento.
 
 
 ## ⚡ Quick Start — Locale senza Supabase (SQLite)
 
-Per provare l’UI subito (demo read-only, niente cloud):
+Per provare l’UI subito (dati su file locale, niente cloud):
 
 ```bash
 python -m venv .venv
@@ -79,7 +79,7 @@ cp .env.example .env
 streamlit run main.py
 ```
 
-Apri `http://localhost:8501`. I dati stanno in `data/local.db` (gitignored).
+Apri `http://localhost:8501`. Il database è `data/local.db` (gitignored). In questo modo puoi **aggiungere e modificare** rifornimenti/manutenzioni; non serve `.streamlit/secrets.toml`.
 
 Per Docker + Supabase (installazione completa) vedi sotto e `docs/SETUP_GUIDE.md`.
 
@@ -178,8 +178,9 @@ Una documentazione più approfondita è disponibile nella cartella [`docs/`](doc
 
 | Documento | Contenuto |
 |---|---|
-| [`SETUP_GUIDE.md`](docs/SETUP_GUIDE.md) | Manuale dettagliato passo-passo per l'installazione manuale (senza Docker), i requisiti di sistema e la configurazione completa del database Supabase (schema, RLS, variabili d'ambiente). |
-| [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Documentazione funzionale e tecnica unificata: struttura dei moduli, flussi dati, pattern architetturali e decisioni di design. |
+| [`SETUP_GUIDE.md`](docs/SETUP_GUIDE.md) | Installazione: bootstrap SQLite locale, Docker, Supabase, secrets e troubleshooting. |
+| [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Stack, layer, UI per pagina, auth, DEMO_MODE / LOCAL_SQLITE, import pipeline. |
+| [`USER_GUIDE.md`](docs/USER_GUIDE.md) | Guida utente: dashboard, rifornimenti, manutenzione, impostazioni, profilo. |
 
 ---
 
@@ -189,43 +190,34 @@ Una documentazione più approfondita è disponibile nella cartella [`docs/`](doc
 FuelPyTracker/
 │
 ├── main.py                     # Entry point — routing e gestione sessione
-├── Dockerfile                  # Immagine Python 3.11-slim con healthcheck
-├── docker-compose.yml          # Orchestrazione container + mount secrets
-├── config.toml                 # Configurazione centralizzata (soglie, costanti)
+├── Dockerfile / docker-compose.yml
+├── config.toml                 # Soglie e costanti applicative (versionate)
 ├── requirements.txt
+├── .env.example                # LOCAL_SQLITE, DEMO_MODE, DEMO_USER_*
 │
-├── assets/                     # Risorse statiche (logo, screenshot)
+├── assets/                     # Logo, screenshot
 │
 ├── src/
-│   ├── config.py               # Loader TOML con fallback e logging
-│   ├── demo.py                 # Logica Demo Mode — inject utente fittizio
+│   ├── config.py               # Loader TOML
+│   ├── demo.py                 # Demo mode + writes_disabled()
 │   │
-│   ├── database/               # Layer dati
-│   │   ├── models.py           # Definizione tabelle SQLAlchemy (ORM)
-│   │   ├── crud.py             # Operazioni CRUD (Read/Write con RLS)
-│   │   └── core.py             # Connessione e factory della sessione DB
+│   ├── database/
+│   │   ├── models.py / crud.py / core.py
+│   │   └── url.py              # Risoluzione DATABASE_URL (SQLite vs Postgres)
 │   │
-│   ├── services/               # Logica di business (separata dalla UI)
-│   │   ├── ocr/                # Pipeline OCR: engine GPT-4o + mock Demo
-│   │   │   ├── engine.py       # Integrazione OpenAI Vision API
-│   │   │   └── pipeline.py     # Orchestratore (reale o mock)
-│   │   ├── auth/               # Wrapper autenticazione Supabase
-│   │   ├── business/           # Regole di business (validazione, calcoli)
-│   │   └── data/               # Trasformazione e aggregazione dati
+│   ├── services/               # Business, OCR, auth, import/export
 │   │
-│   └── ui/
-│       └── components/         # Componenti Streamlit per feature area
-│           ├── dashboard/      # KPI cards, grafici trend, trip calculator
-│           ├── fuel/           # Form inserimento + lista rifornimenti
-│           ├── maintenance/    # Scadenziario e report manutenzione
-│           ├── profile/        # Gestione profilo utente e veicolo
-│           ├── settings/       # Configurazioni applicazione
-│           ├── sidebar.py      # Navigazione globale
-│           └── startup_alerts.py # Banner alert all'avvio (es. DEMO_MODE)
+│   └── ui/components/          # Una cartella per pagina (orchestrator + moduli)
+│       ├── dashboard/
+│       ├── fuel/               # fuel.py + add_panel, history_tab, manage_tab, ocr_dialog
+│       ├── maintenance/
+│       ├── settings/           # settings.py + config_tab, export_tab, import_tab, pdf_tab
+│       ├── profile/
+│       ├── sidebar.py
+│       └── startup_alerts.py
 │
-├── tests/
-│   └── unit/                   # Suite pytest per services e validazione
-└── docs/                       # Documentazione estesa (Setup, Architettura)
+├── tests/unit/
+└── docs/                       # SETUP_GUIDE, ARCHITECTURE, USER_GUIDE
 ```
 
 ---
@@ -260,6 +252,8 @@ Per segnalare un bug o proporre una funzionalità, è possibile [**aprire una Is
 > ```bash
 > docker compose exec fuel-tracker pytest tests/
 > ```
+> 
+> *Nota: Il progetto utilizza GitHub Actions come CI/CD. Ogni Pull Request eseguirà in automatico la suite di test completa.*
 
 ---
 

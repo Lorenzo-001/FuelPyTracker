@@ -1,4 +1,4 @@
-# ARCHITECTURE.md — FuelPyTracker v1.0.0
+# ARCHITECTURE.md — FuelPyTracker v1.1.0
 
 > **Destinatari:** Tech Lead, Recruiter tecnici, Developer Onboarding.
 > Questo documento descrive le decisioni ingegneristiche alla base di FuelPyTracker: perché sono state scelte determinate tecnologie, come è strutturato il codice e quali sfide architetturali sono state affrontate e risolte.
@@ -33,7 +33,7 @@ Queste limitazioni sono state mitigate attraverso la disciplina nel codice, non 
 
 Supabase è stato scelto per due ragioni principali:
 
-1. **Autenticazione già pronta.** Il sistema di login — email/password, Magic Link e gestione automatica delle sessioni — è interamente fornito da Supabase. Non è stato necessario costruire e mantenere un sistema di autenticazione personalizzato.
+1. **Autenticazione già pronta.** Il sistema di login — email/password e gestione automatica delle sessioni — è interamente fornito da Supabase. Non è stato necessario costruire e mantenere un sistema di autenticazione personalizzato.
 2. **Database PostgreSQL gestito.** Supabase si occupa di ospitare e mantenere il database. Dal punto di vista del codice, l'applicazione si connette a un normale database PostgreSQL: se un giorno si volesse spostare il database su un server proprio, basterebbe aggiornare una sola variabile di configurazione — il resto del codice resterebbe invariato.
 
 Il login e la gestione degli utenti passano per i suoi strumenti dedicati, ma **tutte le operazioni sui dati** (leggere i rifornimenti, salvare una manutenzione, aggiornare le impostazioni) vengono eseguite direttamente sul database tramite SQLAlchemy, senza passare per le API di Supabase. In pratica, Supabase fa da "gestore del database e del login", non da intermediario per ogni singola operazione.
@@ -43,6 +43,10 @@ Il login e la gestione degli utenti passano per i suoi strumenti dedicati, ma **
 Fotografare uno scontrino del distributore è un gesto naturale e immediato. Trascriverne manualmente i valori — specialmente su ricevute termiche sbiadite o sgualcite — è invece soggetto a errori e rappresenta un punto di attrito concreto per l'utente. I sistemi OCR tradizionali risolvono questo problema solo in condizioni ideali: falliscono sistematicamente su scontrini a basso contrasto, font non standard o con danni fisici alla carta.
 
 L'integrazione di **GPT-4o Vision** è stata una scelta funzionale. Il modello riceve l'immagine, ne comprende il contesto semantico e restituisce i campi rilevanti in modo strutturato, pronti per la pre-compilazione del form di inserimento.
+
+**Architettura della precompilazione (Smart Scan):**
+L'orchestratore OCR (`ocr_dialog.py`) è progettato per tollerare scontrini frammentari o tagliati. Il sistema considera l'analisi "valida" anche se riesce a estrarre un solo dato numerico utile (ad esempio il prezzo al litro, pur mancando il costo totale). I dati estratti vengono impacchettati e salvati temporaneamente in `st.session_state.ocr_draft`. 
+Successivamente, l'interfaccia principale (`add_panel.py`) intercetta questa bozza e auto-compila i widget a schermo, mostrando un banner permanente con l'esito del riconoscimento. Se l'AI ha riconosciuto dati "ausiliari" come il **Nome della Stazione** o i **Litri**, questi vengono iniettati in automatico all'interno del campo testuale "Note", a meno che l'utente non abbia disattivato questa funzionalità modificando i flag dedicati (`ocr_add_station_to_notes`, `ocr_add_liters_to_notes`) nel database tramite le Impostazioni.
 
 La funzionalità è completamente opzionale e disabilitabile: se la chiave API non è configurata, l'intero modulo rimane inerte e non incide sulle funzionalità principali dell'applicazione.
 
@@ -59,7 +63,12 @@ Il rischio con i monoliti è l'accoppiamento: codice UI che chiama direttamente 
 ```
 src/
 ├── ui/               # Layer di Presentazione — solo chiamate st.xyz
-│   └── components/   # Un modulo per pagina (dashboard, fuel, maintenance, ...)
+│   └── components/   # Una cartella per pagina; file `*.py` orchestratore + sotto-moduli
+│       ├── dashboard/
+│       ├── fuel/           # fuel.py (orchestrator) + add_panel, history_tab, manage_tab, ocr_dialog, …
+│       ├── maintenance/    # maintenance.py + tabs, add_form, reminders_ui, …
+│       ├── settings/       # settings.py (orchestrator) + config_tab, export_tab, import_tab, pdf_tab, …
+│       └── profile/
 │
 ├── services/         # Layer di Business Logic — Python puro, indipendente dal framework
 │   ├── business/     # Calcoli di dominio (consumo, health score, previsioni)
@@ -67,12 +76,13 @@ src/
 │   │   ├── importers/
 │   │   └── exporters/
 │   ├── ocr/          # Analisi AI degli scontrini (wrapper GPT-4o Vision)
-│   └── auth/         # Client Supabase Auth e router magic-link
+│   └── auth/         # Client Supabase Auth e auth router
 │
 ├── database/         # Layer di Accesso ai Dati — modelli SQLAlchemy e operazioni CRUD
 │   ├── models.py     # Definizioni entità ORM
 │   ├── crud.py       # Tutte le operazioni di lettura/scrittura sul DB
-│   └── core.py       # Engine, SessionLocal, init_db()
+│   ├── core.py       # Engine, SessionLocal, init_db()
+│   └── url.py        # Risoluzione DATABASE_URL (LOCAL_SQLITE vs secrets)
 │
 ├── auth/             # Layer di Sessione — gestione del ciclo di vita dei token
 │   ├── session_handler.py   # Strategia di persistenza token via URL param
@@ -81,6 +91,7 @@ src/
 └── config.py         # Loader centralizzato per la configurazione TOML
 ```
 
+Le pagine pesanti (`settings`, `fuel`, `maintenance`) non vivono in un unico file monolitico: un modulo `render()` orchestratore apre tab/expander e delega ai sotto-moduli della stessa cartella. Move-only: stessa UX, confini più chiari per review e test.
 ### La Separazione tra i Layer
 
 Il principio guida è semplice: il codice della UI (`src/ui/`) non parla mai direttamente con il database, e il database non sa nulla di Streamlit. Ogni layer comunica solo con quello adiacente, tramite oggetti Python standard (dizionari, dataclass, liste).
@@ -178,7 +189,7 @@ erDiagram
 
 Il modello dati riflette scelte consapevoli per tenere il database snello. Le categorie di manutenzione e promemoria — che l'utente può personalizzare — sono memorizzate come colonne `JSON` direttamente nella tabella `SETTINGS`, invece di introdurre tabelle aggiuntive. Per quella che è di fatto una semplice lista di stringhe personalizzabili, una colonna JSON è la soluzione più efficace e mantenibile.
 
-La v1.0.0 è esplicitamente mono-veicolo per utente: non esiste una tabella `Vehicles`. È un vincolo di scope deliberato. La naturale evoluzione verso la gestione multi-veicolo — aggiungere una tabella `vehicles` con chiave esterna da `refuelings` e `maintenances` — non richiederebbe un refactoring significativo dell'architettura esistente.
+La v1.1.0 resta esplicitamente mono-veicolo per utente: non esiste una tabella `Vehicles`. È un vincolo di scope deliberato. La naturale evoluzione verso la gestione multi-veicolo — aggiungere una tabella `vehicles` con chiave esterna da `refuelings` e `maintenances` — non richiederebbe un refactoring significativo dell'architettura esistente.
 
 Eliminare un promemoria (`Reminder`) cancella automaticamente tutto il suo storico tramite la direttiva `cascade="all, delete-orphan"` di SQLAlchemy. È una scelta deliberata: lasciare record orfani nel database per dati senza più un contesto significativo non porta alcun valore e complicherebbe le query di lettura.
 
@@ -208,11 +219,13 @@ Lo `user_id` viene sempre derivato da `st.session_state.user.id`, popolato esclu
 
 ## 💎 5. Deep Dive: Soluzioni Progettuali
 
-### 5.1 Il Feature Flag `DEMO_MODE`
+### 5.1 Feature flag `DEMO_MODE` e bootstrap `LOCAL_SQLITE`
 
-La demo pubblica espone l'intera UI dell'applicazione senza richiedere un account reale. Il meccanismo è un **feature flag** (`DEMO_MODE`) che, quando attivo, inietta un utente isolato con un UUID Supabase dedicato, disabilita tutte le scritture nella UI e sostituisce il modulo OCR con un mock locale che simula la latenza reale ma non consuma nessun token API. I dati mostrati sono pre-caricati e in sola lettura dal punto di vista dell'utente.
+**Demo pubblica (cloud):** `DEMO_MODE=True` senza `LOCAL_SQLITE` inietta un utente fittizio, **blocca le scritture UI** tramite `writes_disabled()`, e sostituisce l’OCR con un mock locale. I dati restano isolati all’account demo.
 
-Il flag è verificabile da due sorgenti — variabile d'ambiente OS per Docker, `st.secrets` per Streamlit Cloud — garantendo la stessa esperienza in entrambi gli ambienti di deploy. La difesa è stratificata: anche se una guardia UI venisse accidentalmente bypassata, il dominio dati rimane isolato all'account demo dedicato.
+**Bootstrap locale:** `LOCAL_SQLITE=True` (via `.env`) punta SQLAlchemy a `data/local.db` senza `secrets.toml`. Con demo attiva in locale le scritture restano **abilitate** (`writes_disabled()` è falso) così puoi provare l’app end-to-end. Se `DEMO_MODE` non è in env, con SQLite locale il demo user viene attivato di default.
+
+Sorgenti del flag demo: variabile d’ambiente OS (priorità), altrimenti `st.secrets["demo"]` su Streamlit Cloud. La risoluzione URL DB è in `src/database/url.py`.
 
 ---
 
@@ -275,8 +288,9 @@ docker compose up --build
 
 La configurazione segue una **gerarchia a due livelli**:
 
-1. **`.streamlit/secrets.toml`** — credenziali runtime (URL del database, credenziali Supabase, chiave API OpenAI, ID utente demo). Questo file non viene mai committato nel version control.
-2. **`config.toml`** — parametri di logica applicativa (soglie di consumo, limiti di costo, etichette delle categorie). Questo file è committato e fornisce una fonte di verità documentata e versionata per i parametri operativi.
+1. **`.env`** — comportamento (es. `LOCAL_SQLITE`, `DEMO_MODE`, credenziali utente demo). Non viene mai committato.
+2. **`.streamlit/secrets.toml`** — credenziali runtime cloud (URL Postgres, Supabase Auth, chiave OpenAI, blocco `[demo]` opzionale). Non viene mai committato. Con `LOCAL_SQLITE=True` può essere omesso.
+3. **`config.toml`** — parametri di logica applicativa (soglie di consumo, limiti di costo, etichette delle categorie). Questo file è committato e fornisce una fonte di verità documentata e versionata per i parametri operativi.
 
 `src/config.py` implementa un loader TOML tollerante agli errori: se `config.toml` è assente o malformato, l'applicazione utilizza automaticamente dei valori predefiniti integrati e registra un avviso nel log, senza bloccarsi. In questo modo l'app rimane avviabile in qualsiasi ambiente, anche quando viene iniettato solo il file dei secrets.
 

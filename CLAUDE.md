@@ -11,9 +11,10 @@ Concise rules for agents working in this repo. [`AGENTS.md`](./AGENTS.md) is a s
 ## Orientation
 
 1. Entry: [`main.py`](./main.py) → `src/ui`, `src/auth`, `src/database`, `src/services`.
-2. Secrets: `.streamlit/secrets.toml` (from `.streamlit/secrets.toml.example`); env: `.env` from `.env.example`. Never commit secrets.
-3. Tests: `tests/unit/` with **pytest**.
-4. Skill logo/IP: `.cursor/skills/ip-as-logo`.
+2. UI pages: `src/ui/components/<page>/` with a thin `*.py` orchestrator (`fuel.py`, `settings.py`, …) plus tab/panel modules — see [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
+3. Secrets: `.streamlit/secrets.toml` (from `.streamlit/secrets.toml.example`); env: `.env` from `.env.example`. Never commit secrets.
+4. Tests: `tests/unit/` with **pytest**.
+5. Skill logo/IP: `.cursor/skills/ip-as-logo`.
 
 ## Creative / multi-step work (Superpowers)
 

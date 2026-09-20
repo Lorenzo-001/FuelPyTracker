@@ -7,6 +7,6 @@ __pycache__/
 data/*.db
 .streamlit/secrets.toml
 !.streamlit/config.toml
-
 # agent scratch (never commit)
 .superpowers/
+_cantiere/
