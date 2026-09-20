@@ -165,12 +165,140 @@ Una delle priorità della Fase 1 è stata l'azzeramento della frizione per svilu
 
 ---
 
-## 🗺️ 7. Roadmap Tecnica di Completamento V2
+## 🔌 7. Fase 2.1: Fondamenta Core, Disaccoppiamento DB e Dependency Injection
+
+La transizione verso un'architettura Headless ha richiesto di affrontare il debito di accoppiamento accumulato nella V1, dove il motore di persistenza dei dati era saldato alle primitive grafiche di Streamlit.
+
+### Il Problema: L'accoppiamento con il runtime di Streamlit
+Nel codice originale di `src.database.core`:
+- La stringa di connessione veniva prelevata unicamente da `st.secrets["database"]["url"]`.
+- In caso di database non raggiungibile o credenziali mancanti, il codice invocava direttamente `st.error()` (per disegnare l'alert box a schermo) e `st.stop()` (per congelare il thread di rendering).
+
+All'interno di un server web headless come FastAPI, l'invocazione di queste funzioni sollevava eccezioni critiche (`ScriptRunContext missing` o `StreamlitSecretNotFoundError`), mandando in crash l'intero processo all'avvio.
+
+```mermaid
+graph TD
+    subgraph V1 [Architettura V1 - Accoppiata]
+        A1[Streamlit UI] --> B1[Database Core]
+        B1 --> C1["st.secrets & st.stop() (Crash se headless)"]
+    end
+
+    subgraph V2 [Architettura V2 - Disaccoppiata]
+        A2[FastAPI Endpoints] --> B2["Dependency Injection (deps.py)"]
+        B2 --> C2[SessionLocal Lifecycle]
+        C2 --> D2[Engine & URL Resolver]
+        D2 --> E2[Priorità: ENV -> secrets.toml -> SQLite]
+    end
+```
+
+### La Soluzione: Risoluzione Resiliente dell'URL (`url.py`)
+Abbiamo introdotto una gerarchia di risoluzione dell'URL di connessione totalmente autonoma:
+1. **Variabile d'ambiente OS (`DATABASE_URL`):** Massima priorità. Gestisce in automatico anche la normalizzazione del prefisso legacy `postgres://` in `postgresql://` (necessario per SQLAlchemy su piattaforme come Render ed Heroku).
+2. **Flag `LOCAL_SQLITE=True`:** Modalità sandbox per bootstrap immediato senza cloud (`sqlite:///data/local.db`).
+3. **Parametro esplicito (`secrets_url`):** Utilizzato da Streamlit o da chiamanti specifici.
+4. **File locale `secrets.toml`:** Letto direttamente tramite parser TOML senza dipendere dal framework grafico.
+
+In `core.py`, la funzione `_is_streamlit_running()` rileva dinamicamente il contesto: se l'app gira sotto Streamlit mostra gli avvisi grafici V1; se gira sotto FastAPI solleva normali eccezioni Python e produce log strutturati.
+
+### Dependency Injection e Gestione della Sessione (`deps.py`)
+FastAPI adotta il pattern della **Dependency Injection** per garantire l'isolamento e la scalabilità:
+
+```python
+def get_db() -> Generator[Session, None, None]:
+    """
+    Fornisce una sessione SQLAlchemy isolata per singola richiesta HTTP.
+    Garantisce la chiusura pulita (db.close()) nel blocco finally.
+    """
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+```
+
+- **Prevenzione dei Memory Leak:** La sessione viene aperta al momento dell'ingresso nella route e chiusa in modo garantito al termine della risposta, evitando il consumo incontrollato del pool di connessioni su PostgreSQL.
+- **Autenticazione Trasparente (`get_current_user_id`):** 
+  - Estrae e valida il token Bearer JWT di Supabase (recuperando l'UUID dal claim `sub`).
+  - Supporta l'header `X-User-Id` per semplificare i test automatici.
+  - Esegue il fallback trasparente sull'utente demo (`DEMO_USER_ID`) quando l'ambiente è configurato in Sandbox o SQLite locale, permettendo di testare tutte le API direttamente da Swagger UI senza login preventivo.
+  - Blocca gli accessi non autorizzati in ambiente di produzione con HTTP 401.
+
+### Configurazione Centralizzata (`config.py`)
+Il modulo `src.api.config` incapsula il caricamento di `.env` (cercando sia nella cartella `backend/` che nella radice del progetto) ed espone costanti tipizzate per le API (`API_TITLE`, `API_VERSION`, `CORS_ORIGINS`, `DEMO_MODE`).
+
+---
+
+## 🔐 8. Fase 2.2: Autenticazione, Contratti Dati Pydantic e Router /api/auth
+
+La Fase 2.2 ha introdotto il primo dominio funzionale della V2: la gestione dell'identità utente, l'emissione di token JWT e la standardizzazione dei contratti dati.
+
+### I Contratti Dati Pydantic (`schemas/auth.py`)
+In un'architettura disaccoppiata, il server API deve garantire che i dati scambiati rispettino vincoli rigorosi di forma e tipo. Abbiamo adottato **Pydantic v2** per definire i contratti dati (DTO) di input e output:
+
+- **`LoginRequest` / `RegisterRequest`:** Validazione formale dell'email tramite `EmailStr` (alimentato dalla libreria `email-validator`) e vincolo di sicurezza sulla lunghezza minima della password (`Field(..., min_length=6)`).
+- **`UserResponse`:** Espone solo le informazioni necessarie al frontend (`id`, `email`, `is_demo`), escludendo metadati sensibili.
+- **`TokenResponse`:** Modella la sessione di autenticazione (`access_token`, `token_type: "bearer"`, `user: UserResponse`).
+- **`PasswordResetRequest` & `MessageResponse`:** Strutture standardizzate per flussi di ripristino credenziali e messaggi informativi.
+
+*Vantaggio architetturale:* Se un client invia un payload malformato, FastAPI intercetta l'errore a monte e risponde automaticamente con un codice **HTTP 422 Unprocessable Entity** e una spiegazione dettagliata, impedendo al dato non valido di raggiungere i servizi di backend.
+
+### Disaccoppiamento di Supabase Auth (`services/auth/auth_service.py`)
+Nella V1, l'istanza del client Supabase era legata a doppio filo a `st.session_state` e `st.secrets`:
+- Abbiamo introdotto la funzione `_get_supabase_credentials()` che preleva le chiavi da variabili d'ambiente (`SUPABASE_URL`, `SUPABASE_KEY`) o dal file `secrets.toml` tramite parser nativo.
+- `get_client()` opera ora in modo polimorfico: in Streamlit preserva l'isolamento della sessione in memoria per utente; fuori da Streamlit (FastAPI e worker) crea client stateless ad alte prestazioni.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Client (Swagger / React)
+    participant API as FastAPI Router (/api/auth)
+    participant Deps as Dependency Injection (deps.py)
+    participant AuthSvc as Supabase Auth Service
+    participant Supabase as Supabase Cloud
+
+    alt Modalità Demo / Local SQLite
+        Client->>API: POST /api/auth/login (qualsiasi credenziale)
+        API-->>Client: 200 OK + demo-session-token + DEMO_USER
+    else Modalità Cloud / Produzione
+        Client->>API: POST /api/auth/login (email, password)
+        API->>AuthSvc: sign_in(email, password)
+        AuthSvc->>Supabase: REST Auth Call
+        Supabase-->>AuthSvc: Access Token JWT + User Data
+        AuthSvc-->>API: Session Object
+        API-->>Client: 200 OK + TokenResponse (JWT Bearer)
+    end
+
+    opt Richiesta Autenticata Successiva
+        Client->>API: GET /api/auth/me (Authorization: Bearer <JWT>)
+        API->>Deps: get_current_user_id()
+        Deps->>Deps: Decodifica JWT (claim 'sub')
+        Deps-->>API: user_id verificato
+        API-->>Client: 200 OK + UserResponse
+    end
+```
+
+### Gli Endpoint del Router `/api/auth`
+Il modulo `src.api.routers.auth` espone 5 route RESTful integrate in `server.py`:
+1. **`POST /api/auth/login`**: Autentica l'utente e restituisce il token JWT; in modalità Demo rilascia un token immediato consentendo il testing istantaneo.
+2. **`POST /api/auth/register`**: Registrazione di un nuovo account (HTTP 201 Created).
+3. **`POST /api/auth/logout`**: Terminazione della sessione e pulizia token.
+4. **`GET /api/auth/me`**: Restituisce il profilo dell'utente autenticato utilizzando la dependency injection `get_current_user_id`.
+5. **`POST /api/auth/reset-password`**: Inoltro della richiesta di ripristino password via email.
+
+---
+
+## 🗺️ 9. Roadmap Tecnica di Completamento V2
 
 | Fase | Titolo | Obiettivo Principale | Stato |
 | :--- | :--- | :--- | :--- |
 | **Fase 1** | **Infrastruttura Backend API** | Monorepo `backend/`, FastAPI, Uvicorn, `/health`, CORS, Swagger UI | ✅ **Completata** |
-| **Fase 2** | **Contratti Dati & Endpoint REST** | Disaccoppiamento DB, router Auth, Fuel + OCR, Maintenance, Dashboard | 🔄 **In corso** |
+| **Fase 2.1**| **Fondamenta Core & Isolamento DB** | Disaccoppiamento database da Streamlit, `deps.py`, DI sessione, config | ✅ **Completata** |
+| **Fase 2.2**| **Auth & Schemi Base** | Schemi Pydantic auth, Supabase Auth disaccoppiato, router `/api/auth` | ✅ **Completata** |
+| **Fase 2.3**| **Dominio Fuel & OCR** | Schemi e CRUD rifornimenti, calcoli consumo, pipeline OCR scontrini | 🔄 **In corso** |
+| **Fase 2.4**| **Dashboard & Maintenance** | Endpoint aggregati KPI, grafici, gestione tagliandi e promemoria | ⏳ Pianificata |
+| **Fase 2.5**| **Settings & Reports** | Preferenze utente, export PDF e fogli Excel | ⏳ Pianificata |
 | **Fase 3** | **Bootstrap Frontend (React)** | Setup Vite, TailwindCSS, Shadcn/UI, routing SPA, TanStack Query | ⏳ Pianificata |
-| **Fase 4** | **Ricostruzione Interfaccia UX** | Pagine React, cruscotti analitici, modal d'inserimento, gestione responsive | ⏳ Pianificata |
+| **Fase 4** | **Ricostruzione Interfaccia UX** | Pagine React, cruscotti analitici, modal d'inserimento, responsive | ⏳ Pianificata |
 | **Fase 5** | **Deploy CI/CD & Dismissione V1** | Deploy Vercel (Frontend), Render (Backend), archiviazione branch V1 | ⏳ Pianificata |
+
+
