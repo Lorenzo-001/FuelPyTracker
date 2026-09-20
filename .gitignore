@@ -4,9 +4,17 @@ __pycache__/
 *.pyc
 .DS_Store
 .env
+**/.env
+**/.env.*
+!**/.env.example
 data/*.db
+**/data/*.db
 .streamlit/secrets.toml
+**/.streamlit/secrets.toml
 !.streamlit/config.toml
+!**/.streamlit/config.toml
+!.streamlit/secrets.toml.example
+!**/.streamlit/secrets.toml.example
 # agent scratch (never commit)
 .superpowers/
-_cantiere/
+_cantiere/

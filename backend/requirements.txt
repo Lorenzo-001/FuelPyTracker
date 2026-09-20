@@ -111,3 +111,7 @@ extra-streamlit-components==0.1.71
 streamlit-javascript==0.1.5
 python-dotenv==1.0.1
 pypdf
+
+# API Server (V2)
+fastapi==0.110.0
+uvicorn==0.27.1

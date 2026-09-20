@@ -1,18 +1,19 @@
 services:
   fuel-tracker:
-    build: .
+    build: ./backend
     container_name: FuelPyTracker
     ports:
       - "8501:8501"
+      - "8000:8000"
     env_file:
       # Inietta le variabili del file .env nell'ambiente del container (es. DEMO_MODE).
       # Senza questa direttiva, le variabili in .env sono visibili solo a Compose
       # per l'interpolazione del YAML, ma NON a os.environ dentro Python.
-      - .env
+      - ./backend/.env
     volumes:
       # Il file secrets.toml viene montato al volo: resta sul tuo PC ma il container
       # lo vede come proprio. Non includerlo mai nel build dell'immagine.
-      - ./.streamlit/secrets.toml:/app/.streamlit/secrets.toml
+      - ./backend/.streamlit/secrets.toml:/app/.streamlit/secrets.toml
       # Live Reload (sviluppo locale): de-commentare le righe sotto per abilitare
       # il ricaricamento automatico di Streamlit ad ogni salvataggio del codice.
       # ATTENZIONE: non usare in produzione. Monta solo le cartelle di codice
