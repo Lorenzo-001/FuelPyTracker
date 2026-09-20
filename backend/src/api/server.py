@@ -1,27 +1,33 @@
-# pyrefly: ignore [missing-import]
-from fastapi import FastAPI
-# pyrefly: ignore [missing-import]
-from fastapi.middleware.cors import CORSMiddleware
-# pyrefly: ignore [missing-import]
-from fastapi.responses import RedirectResponse
+import sys
+from pathlib import Path
 import datetime
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+
+# Assicura la presenza della cartella backend nel sys.path per importare src.*
+backend_dir = Path(__file__).resolve().parent.parent.parent
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+
+from src.api.config import API_TITLE, API_DESCRIPTION, API_VERSION, CORS_ORIGINS
 
 # Inizializza l'applicazione FastAPI
 app = FastAPI(
-    title="FuelPyTracker API",
-    description="Backend API per FuelPyTracker V2.0",
-    version="2.0.0"
+    title=API_TITLE,
+    description=API_DESCRIPTION,
+    version=API_VERSION,
 )
 
-# Configura CORS per permettere al frontend React di chiamare le API
-# (In produzione sostituire * con il dominio di Vercel)
+# Configura CORS per consentire chiamate dal frontend React
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.get("/", include_in_schema=False)
 def root():
