@@ -1,9 +1,15 @@
 import sys
 import os
+# pyrefly: ignore [missing-import]
 import pytest
 from unittest.mock import patch
+# pyrefly: ignore [missing-import]
 from sqlalchemy import create_engine
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import sessionmaker
+# pyrefly: ignore [missing-import]
+from sqlalchemy.pool import StaticPool
+from src.database.models import Base
 
 # 1. Setup Path: Aggiunge la cartella 'src' al path di Python
 # Permette ai test di importare i moduli come 'database' invece di 'src.database'
@@ -22,8 +28,6 @@ if os.environ.get("DEMO_MODE", "").strip().lower() in ("1", "true", "yes"):
 os.environ["LOCAL_SQLITE"] = "True"
 
 
-from src.database.models import Base
-
 # DB in memoria per isolamento totale e velocità
 TEST_DATABASE_URL = "sqlite:///:memory:"
 
@@ -33,8 +37,12 @@ def db_session():
     Fixture che fornisce una sessione DB pulita per ogni singolo test.
     Ciclo di vita: Setup -> Test -> Teardown (Rollback/Drop).
     """
-    # 1. Creazione Engine e Tabelle
-    engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+    # 1. Creazione Engine e Tabelle con StaticPool per condivisione tra thread (FastAPI)
+    engine = create_engine(
+        TEST_DATABASE_URL,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     Base.metadata.create_all(bind=engine)
     
     # 2. Creazione Sessione

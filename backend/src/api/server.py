@@ -32,9 +32,12 @@ app.add_middleware(
 )
 
 from src.api.routers.auth import router as auth_router
+from src.api.routers.fuel import router as fuel_router
 
 # Registra i router modulari dell'API
 app.include_router(auth_router, prefix="/api")
+app.include_router(fuel_router, prefix="/api")
+
 
 
 

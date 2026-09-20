@@ -1,37 +1,73 @@
+import os
+from pathlib import Path
 import base64
 import json
+# pyrefly: ignore [missing-import]
 import streamlit as st
 from datetime import datetime
+# pyrefly: ignore [missing-import]
 from openai import OpenAI, APIConnectionError, RateLimitError, AuthenticationError, APIError
 from typing import Optional
 from .models import ReceiptData
 from src.demo import is_demo_mode, mock_analyze_receipt
 
 
-
 # =============================================================================
 # CONFIGURAZIONE CLIENT OPENAI
 # =============================================================================
-# Recupera la chiave dai secrets. Se non c'è (o manca secrets.toml), client = None.
-try:
-    _api_key = st.secrets.get("openai", {}).get("api_key")
-except Exception:
-    _api_key = None
-client = OpenAI(api_key=_api_key) if _api_key else None
+
+def _get_openai_key() -> str | None:
+    """Recupera la chiave API di OpenAI da variabili d'ambiente, st.secrets o secrets.toml."""
+    env_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if env_key:
+        return env_key
+
+    try:
+        key = st.secrets.get("openai", {}).get("api_key")
+        if key:
+            return str(key)
+    except Exception:
+        pass
+
+    try:
+        import toml
+        candidates = [
+            Path(__file__).resolve().parents[3] / ".streamlit" / "secrets.toml",
+            Path.cwd() / "backend" / ".streamlit" / "secrets.toml",
+            Path.cwd() / ".streamlit" / "secrets.toml",
+        ]
+        for candidate in candidates:
+            if candidate.is_file():
+                data = toml.load(candidate)
+                k = data.get("openai", {}).get("api_key")
+                if k:
+                    return str(k)
+    except Exception:
+        pass
+
+    return None
+
+
+def get_openai_client() -> OpenAI | None:
+    """Restituisce un'istanza del client OpenAI o None se non configurato."""
+    api_key = _get_openai_key()
+    return OpenAI(api_key=api_key) if api_key else None
+
+
+client = get_openai_client()
+
 
 def is_openai_enabled() -> bool:
-    """
-    Restituisce True se OpenAI è configurato correttamente e pronto all'uso.
-    Utile per nascondere/mostrare componenti UI condizionali.
-    """
+    """Restituisce True se OpenAI è configurato e pronto all'uso."""
     return client is not None
+
 
 def analyze_receipt(file_buffer) -> ReceiptData:
     """
     Invia l'immagine dello scontrino a OpenAI GPT-4o e restituisce dati strutturati.
     
     Args:
-        file_buffer: Oggetto file-like (bytes) caricato da Streamlit.
+        file_buffer: Oggetto file-like (bytes) caricato da Streamlit o FastAPI.
         
     Returns:
         ReceiptData: DTO popolato con i dati estratti (o errore nel campo raw_text).
@@ -42,12 +78,13 @@ def analyze_receipt(file_buffer) -> ReceiptData:
 
     # 1. Controllo Pre-Flight
     if not client:
-        return ReceiptData(raw_text="ERRORE: API Key OpenAI mancante in .streamlit/secrets.toml")
+        return ReceiptData(raw_text="ERRORE: API Key OpenAI mancante in .streamlit/secrets.toml o env")
 
     try:
         base64_image = _encode_image_to_base64(file_buffer)
 
         system_prompt = """
+
         Sei un motore OCR intelligente specializzato in scontrini carburante italiani.
         Analizza l'immagine fornita ed estrai i dati nel seguente formato JSON rigoroso:
         {
@@ -65,6 +102,7 @@ def analyze_receipt(file_buffer) -> ReceiptData:
 
         response = client.chat.completions.create(
             model="gpt-4o",
+
             messages=[
                 {"role": "system", "content": system_prompt},
                 {
