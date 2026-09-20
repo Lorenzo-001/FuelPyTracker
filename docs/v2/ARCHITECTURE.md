@@ -287,18 +287,105 @@ Il modulo `src.api.routers.auth` espone 5 route RESTful integrate in `server.py`
 
 ---
 
-## 🗺️ 9. Roadmap Tecnica di Completamento V2
+## ⛽ 9. Fase 2.3: Dominio Fuel, Calcoli Full-to-Full e Pipeline OCR Scontrini
+
+La Fase 2.3 implementa il nucleo applicativo principale di FuelPyTracker: la registrazione, consultazione, modifica ed eliminazione dei rifornimenti, il calcolo delle metriche di efficienza energetica (Km/L e Delta Km) e l'elaborazione computer vision degli scontrini carburante.
+
+```mermaid
+flowchart TD
+    subgraph Client [Frontend / Mobile / Swagger UI]
+        C1[Form Rifornimento]
+        C2[Upload Foto Scontrino]
+    end
+
+    subgraph API [FastAPI Router /api/fuel]
+        R1[POST /api/fuel/ocr]
+        R2[POST /api/fuel/validate]
+        R3[POST /api/fuel]
+        R4[GET /api/fuel?year=YYYY]
+    end
+
+    subgraph CoreEngine [Business Engine & AI]
+        OCR[OpenAI GPT-4o Vision Engine]
+        Val[fuel_logic.validate_refueling]
+        Stats[calculations.calculate_stats Full-to-Full]
+    end
+
+    subgraph Storage [Database Layer]
+        DB[(PostgreSQL / SQLite)]
+    end
+
+    C2 -->|Multipart Image| R1
+    R1 --> OCR
+    OCR -->|Dati Estratti JSON| C1
+
+    C1 -->|Pre-flight Check| R2
+    R2 --> Val
+    Val -->|Coerenza Cronologica OK| C1
+
+    C1 -->|Salva Rifornimento| R3
+    R3 --> Val
+    R3 --> DB
+    R3 --> Stats
+    Stats -->|RefuelingResponse DTO| C1
+
+    C1 -->|Visualizza Storico| R4
+    R4 --> DB
+    R4 --> Stats
+    Stats -->|Elenco DTO con Km/L| C1
+```
+
+### I Contratti Dati Pydantic (`schemas/fuel.py`)
+Tutte le transazioni con il dominio Carburante sono regolate da schemi Pydantic con validazione preventiva a livello di attributo:
+
+- **`RefuelingBase`**: Campi anagrafici essenziali (`date`, `total_km`, `price_per_liter`, `total_cost`, `liters`, `is_full_tank`, `notes`), con vincoli rigorosi di positività (`gt=0`) per litri, spesa e chilometri.
+- **`RefuelingCreate` & `RefuelingUpdate`**: Modelli dedicati rispettivamente alla creazione e alla modifica parziale (tutti i campi opzionali per aggiornamenti chirurgici).
+- **`RefuelingResponse`**: Estende `RefuelingBase` includendo l'identificativo univoco del record, il `user_id` e le metriche calcolate a posteriori:
+  - `delta_km`: Chilometri percorsi dall'ultimo rifornimento registrato.
+  - `km_per_liter`: Efficienza media calcolata secondo l'algoritmo Full-to-Full (arrotondata a 2 cifre decimali).
+  - `days_since_last`: Giorni intercorsi rispetto al rifornimento precedente.
+- **`RefuelingValidationRequest` / `RefuelingValidationResponse`**: Modelli per il controllo pre-flight asincrono in fase di digitazione.
+- **`OCRScanResponse`**: Contratto dati standardizzato per la risposta dell'estrazione computer vision (`success`, `total_cost`, `price_per_liter`, `liters`, `date`, `station_name`, `raw_text`).
+
+### Isolamento Multi-Tenant e Operazioni CRUD (`routers/fuel.py`)
+Tutti gli endpoint del router `/api/fuel` richiedono l'autenticazione tramite la dependency `get_current_user_id`:
+- **Isolamento Rigoroso:** Ogni query al database applica sistematicamente il filtro `user_id == current_user_id`. Un utente non può in alcun modo leggere, modificare o eliminare record appartenenti ad altri account (in caso di accesso a ID non pertinenti, il server restituisce **HTTP 404 Not Found** senza rivelare l'esistenza della risorsa).
+- **Filtro Temporale:** `GET /api/fuel?year=2025` consente di recuperare solo le registrazioni pertinenti all'anno di interesse, ottimizzando il payload di rete per i cruscotti annuali.
+
+### Il Motore di Calcolo Consumi Full-to-Full
+Il metodo convenzionale (dividere semplicemente chilometri per litri su un singolo pieno parziale) produce stime altamente imprecise. FuelPyTracker V2 adotta l'algoritmo **Full-to-Full**:
+1. Le metriche di consumo (`km_per_liter`) vengono calcolate solo in occasione di un rifornimento con esito **Pieno** (`is_full_tank = True`).
+2. L'algoritmo esegue un backtracking nello storico del singolo utente per rintracciare il **Pieno precedente** (ancora di riferimento).
+3. Tutti i rifornimenti intermedi parziali vengono sommati nei litri totali consumati.
+4. L'efficienza reale è data dalla distanza totale percorsa tra i due pieni divisa per la somma cumulativa dei litri erogati.
+
+### Integrità Cronologica e Validazione Pre-Flight (`/api/fuel/validate`)
+Per prevenire errori materiali di digitazione da parte dell'utente:
+- Prima di ogni inserimento o aggiornamento, il backend verifica la coerenza contro i rifornimenti cronologicamente adiacenti (`prev_record` e `next_record`).
+- Se l'utente tenta di salvare una lettura chilometrica inferiore a quella di un rifornimento precedente o superiore a quella di un rifornimento successivo, la richiesta viene respinta con **HTTP 400 Bad Request** e messaggio descrittivo in italiano.
+- L'endpoint `POST /api/fuel/validate` permette al frontend React di effettuare questa verifica istantaneamente mentre l'utente compila il form, senza attendere il submit finale.
+
+### Pipeline OCR Scontrini Decoupled (`POST /api/fuel/ocr`)
+Il modulo `src.services.ocr.engine` è stato disaccoppiato da Streamlit e ottimizzato per FastAPI:
+- Accetta file in formato `multipart/form-data` con validazione preventiva del MIME-type (`image/*`).
+- **Supporto Multi-Sorgente Credenziali:** La chiave OpenAI viene risolta gerarchicamente da variabili d'ambiente OS (`OPENAI_API_KEY`), `secrets.toml` o `st.secrets`.
+- **Integrazione Sandbox / Demo Mode:** Se l'applicazione gira in modalità demo, la pipeline bypassa la chiamata di rete esterna e restituisce istantaneamente un DTO simulato realistico (`mock_analyze_receipt`), azzerando i costi API durante test e presentazioni.
+
+---
+
+## 🗺️ 10. Roadmap Tecnica di Completamento V2
 
 | Fase | Titolo | Obiettivo Principale | Stato |
 | :--- | :--- | :--- | :--- |
 | **Fase 1** | **Infrastruttura Backend API** | Monorepo `backend/`, FastAPI, Uvicorn, `/health`, CORS, Swagger UI | ✅ **Completata** |
 | **Fase 2.1**| **Fondamenta Core & Isolamento DB** | Disaccoppiamento database da Streamlit, `deps.py`, DI sessione, config | ✅ **Completata** |
 | **Fase 2.2**| **Auth & Schemi Base** | Schemi Pydantic auth, Supabase Auth disaccoppiato, router `/api/auth` | ✅ **Completata** |
-| **Fase 2.3**| **Dominio Fuel & OCR** | Schemi e CRUD rifornimenti, calcoli consumo, pipeline OCR scontrini | 🔄 **In corso** |
-| **Fase 2.4**| **Dashboard & Maintenance** | Endpoint aggregati KPI, grafici, gestione tagliandi e promemoria | ⏳ Pianificata |
+| **Fase 2.3**| **Dominio Fuel & OCR** | Schemi e CRUD rifornimenti, calcoli consumo, pipeline OCR scontrini | ✅ **Completata** |
+| **Fase 2.4**| **Dashboard & Maintenance** | Endpoint aggregati KPI, grafici, gestione tagliandi e promemoria | 🔄 **Prossima** |
 | **Fase 2.5**| **Settings & Reports** | Preferenze utente, export PDF e fogli Excel | ⏳ Pianificata |
 | **Fase 3** | **Bootstrap Frontend (React)** | Setup Vite, TailwindCSS, Shadcn/UI, routing SPA, TanStack Query | ⏳ Pianificata |
 | **Fase 4** | **Ricostruzione Interfaccia UX** | Pagine React, cruscotti analitici, modal d'inserimento, responsive | ⏳ Pianificata |
 | **Fase 5** | **Deploy CI/CD & Dismissione V1** | Deploy Vercel (Frontend), Render (Backend), archiviazione branch V1 | ⏳ Pianificata |
+
 
 
