@@ -5,6 +5,7 @@ Verifica KPI aggregati, Car Health Score, aggregazione serie grafici e simulator
 # pyrefly: ignore [missing-import]
 import pytest
 from datetime import date, timedelta
+# pyrefly: ignore [missing-import]
 from fastapi.testclient import TestClient
 
 from src.api.server import app

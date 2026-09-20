@@ -6,7 +6,9 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 from typing import Optional, List, Dict
-from fastapi import APIRouter, Depends, Query, status
+# pyrefly: ignore [missing-import]
+from fastapi import APIRouter, Depends, Query
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 
 from src.database import crud
