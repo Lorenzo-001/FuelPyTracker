@@ -461,7 +461,104 @@ flowchart TD
 
 ---
 
-## 🗺️ 11. Roadmap Tecnica di Completamento V2
+## 🛠️ 11. Fase 2.5: Settings & Reports (Configurazioni, Esportazione Dati & Pipeline Staging)
+
+La Fase 2.5 completa il layer applicativo del backend, introducendo la gestione centralizzata delle preferenze utente, l'esportazione documentale multi-formato e la pipeline di importazione massiva a due fasi (Staging Preview & Transactional Commit).
+
+```mermaid
+flowchart TD
+    subgraph Client [Frontend React / Swagger UI]
+        S_UI[Pannello Impostazioni]
+        E_UI[Download & Export Hub]
+        I_UI[Modal Importazione Dati]
+    end
+
+    subgraph API [FastAPI Routers]
+        R_SET[/api/settings/*]
+        R_REP[/api/reports/*]
+    end
+
+    subgraph Services [Engine & Processors Layer]
+        EXP_XLS[reports.generate_excel_report]
+        EXP_TPL[templates.generate_empty_template]
+        EXP_PDF[pdf_generator.generate_maintenance_report]
+        IMP_MGR[importers.manager.parse_upload_file]
+        IMP_FUEL[importers.fuel.validate_fuel_logic]
+        IMP_MAINT[importers.maintenance.validate_maintenance_logic]
+    end
+
+    subgraph Storage [Database Layer]
+        SET_TABLE[(settings)]
+        REF_TABLE[(refuelings)]
+        MAI_TABLE[(maintenances)]
+    end
+
+    S_UI -->|GET / PUT & Category Ops| R_SET
+    R_SET --> SET_TABLE
+
+    E_UI -->|GET /stats, /excel, /template| R_REP
+    E_UI -->|POST /pdf| R_REP
+    R_REP --> EXP_XLS
+    R_REP --> EXP_TPL
+    R_REP --> EXP_PDF
+    EXP_XLS --> REF_TABLE
+    EXP_XLS --> MAI_TABLE
+    EXP_PDF --> MAI_TABLE
+
+    I_UI -->|POST /import/preview| R_REP
+    I_UI -->|POST /import/commit| R_REP
+    R_REP --> IMP_MGR
+    IMP_MGR --> IMP_FUEL
+    IMP_MGR --> IMP_MAINT
+    IMP_FUEL --> REF_TABLE
+    IMP_MAINT --> MAI_TABLE
+    R_REP -->|Commit Ins/Upd| REF_TABLE
+    R_REP -->|Commit Ins/Upd| MAI_TABLE
+```
+
+### 1. Dominio Impostazioni & Configurazioni (`schemas/settings.py`, `routers/settings.py`)
+- **Auto-Provisioning per Utente:** Il recupero delle impostazioni (`GET /api/settings`) inizializza automaticamente un record isolato per l'utente qualora acceda per la prima volta, attingendo ai default di `src/config.py` e `config.toml`.
+- **Parametri Operativi e di Sicurezza:**
+  - *Soglia Oscillazione Prezzo:* `price_fluctuation_cents` (default `0.15` €/L) per tolleranza allarmi sul costo del carburante.
+  - *Tetti di Spesa e Allarmi:* `max_total_cost` (default `120.0` €) per rifornimenti singoli e `max_accumulated_partial_cost` (default `80.0` €) per accumulo di parziali.
+  - *Limiti Importazione:* `import_kml_min` (3.0), `import_kml_max` (30.0), `import_kml_error` (50.0) e `import_kmd_max` (1000.0 km/giorno) per la rilevazione di anomalie fisiche.
+  - *Preferenze AI Vision:* `ocr_add_station_to_notes` e `ocr_add_liters_to_notes` per l'inserimento facoltativo dei dettagli estratti nelle note.
+- **Gestione Categorie Personalizzate:**
+  - Endpoint atomici dedicati per aggiungere e rimuovere categorie personalizzate per promemoria (`/api/settings/reminder-categories`) e manutenzioni (`/api/settings/maintenance-categories`).
+  - Previene duplicati restituendo `400 Bad Request` e gestisce l'eliminazione di voci inesistenti con `404 Not Found`.
+- **Multi-Tenant Isolation:** Tutte le impostazioni e le categorie sono legate univocamente a `user_id`, garantendo totale segregazione tra utenti.
+
+### 2. Dominio Report & Esportazione Dati (`schemas/reports.py`, `routers/reports.py`)
+- **Statistiche di Export (`GET /api/reports/stats`):** Fornisce alla UI il numero totale di rifornimenti e manutenzioni disponibili per il download e la lista ordinata degli anni solari registrati.
+- **Archivio Excel Multi-Sheet (`GET /api/reports/excel`):**
+  - Genera al volo un file binario `.xlsx` con stili professionali, contenente i fogli *Rifornimenti* (con consumi Full-to-Full calcolati e formattazioni valuta/km) e *Manutenzione*.
+  - Restituisce `400 Bad Request` descrittivo se il database dell'utente è privo di record.
+- **Modello Excel Vuoto Pre-Formattato (`GET /api/reports/template`):**
+  - Fornisce il file `FuelPyTracker_Template.xlsx` con la struttura standard dei fogli e delle colonne, pronto per l'inserimento manuale dei dati storici da parte dell'utente.
+- **Libretto Manutenzione Digitale PDF (`POST /api/reports/pdf`):**
+  - Compila con `FPDF` un documento PDF con testata grafica (o fallback geometrico), anagrafica proprietario, targa e modello veicolo.
+  - Genera la tabella riassuntiva degli interventi con totalizzatore finanziario e filtro facoltativo per anno solare (`year`).
+
+### 3. Pipeline di Importazione a Due Fasi (Preview/Staging & Commit)
+La migrazione ha convertito il flusso legacy in un'architettura di staging asincrona e sicura:
+- **Fase 1: Anteprima e Validazione Staging (`POST /api/reports/import/preview`):**
+  - Riceve il file caricato (`.xlsx` o `.csv`).
+  - Rileva automaticamente i fogli tramite algoritmi di *sheet sniffing* case-insensitive (`riforniment`/`fuel`, `manutenzion`/`maint`).
+  - Normalizza le intestazioni con mappa di alias (`ALIAS_MAP`) e valida ciascuna riga rispetto ai dati già presenti a database.
+  - Assegna a ogni record uno stato semantico:
+    - `Nuovo`: record non presente nel DB, pronto per l'inserimento.
+    - `Modifica`: record con data e chilometraggio coincidenti, associato al `db_id` per aggiornamento selettivo.
+    - `Warning`: anomalie fisiche (es. consumo km/L fuori scala plausibile).
+    - `Errore`: discrepanze chilometriche bloccanti o formati data invalidi.
+  - Restituisce alla UI il payload completo con righe e sommari statistici (`fuel_summary`, `maintenance_summary`) per la visualizzazione nella griglia di controllo.
+- **Fase 2: Salvataggio Transazionale (`POST /api/reports/import/commit`):**
+  - Riceve l'array delle righe confermate dall'utente (`ImportCommitRequest`).
+  - Esegue gli inserimenti e gli aggiornamenti in sessione database protetta da transazione.
+  - Restituisce il conteggio atomico di record inseriti e modificati (`ImportCommitResponse`).
+
+---
+
+## 🗺️ 12. Roadmap Tecnica di Completamento V2
 
 | Fase | Titolo | Obiettivo Principale | Stato |
 | :--- | :--- | :--- | :--- |
@@ -470,8 +567,8 @@ flowchart TD
 | **Fase 2.2**| **Auth & Schemi Base** | Schemi Pydantic auth, Supabase Auth disaccoppiato, router `/api/auth` | ✅ **Completata** |
 | **Fase 2.3**| **Dominio Fuel & OCR** | Schemi e CRUD rifornimenti, calcoli consumo, pipeline OCR scontrini | ✅ **Completata** |
 | **Fase 2.4**| **Dashboard & Maintenance** | Endpoint aggregati KPI, grafici, gestione tagliandi e promemoria | ✅ **Completata** |
-| **Fase 2.5**| **Settings & Reports** | Preferenze utente, export PDF e fogli Excel | 🔄 **Prossima** |
-| **Fase 3** | **Bootstrap Frontend (React)** | Setup Vite, TailwindCSS, Shadcn/UI, routing SPA, TanStack Query | ⏳ Pianificata |
+| **Fase 2.5**| **Settings & Reports** | Preferenze utente, export PDF e fogli Excel, staging importazione | ✅ **Completata** |
+| **Fase 3** | **Bootstrap Frontend (React)** | Setup Vite, TailwindCSS, Shadcn/UI, routing SPA, TanStack Query | 🔄 **Prossima** |
 | **Fase 4** | **Ricostruzione Interfaccia UX** | Pagine React, cruscotti analitici, modal d'inserimento, responsive | ⏳ Pianificata |
 | **Fase 5** | **Deploy CI/CD & Dismissione V1** | Deploy Vercel (Frontend), Render (Backend), archiviazione branch V1 | ⏳ Pianificata |
 
