@@ -45,9 +45,12 @@ def get_current_user_id(
     auth_val = authorization if isinstance(authorization, str) else None
     uid_val = x_user_id if isinstance(x_user_id, str) else None
 
-    # 1. Verifica token Bearer (Supabase JWT)
+    # 1. Verifica token Bearer (Supabase JWT o token Demo)
     if auth_val and auth_val.lower().startswith("bearer "):
         token = auth_val.split(" ", 1)[1].strip()
+        if token == "demo-session-token" and (is_demo_mode() or is_local_sqlite() or DEMO_MODE):
+            return DEMO_USER_ID
+
         try:
             if SUPABASE_JWT_SECRET:
                 payload = jwt.decode(token, SUPABASE_JWT_SECRET, algorithms=["HS256"])
@@ -64,6 +67,8 @@ def get_current_user_id(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token di autenticazione non valido o scaduto.",
             ) from exc
+
+
 
     # 2. Header custom per test e ambienti di sviluppo
     if uid_val and uid_val.strip():

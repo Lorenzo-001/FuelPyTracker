@@ -1,8 +1,11 @@
 import sys
 from pathlib import Path
 import datetime
+# pyrefly: ignore [missing-import]
 from fastapi import FastAPI
+# pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
+# pyrefly: ignore [missing-import]
 from fastapi.responses import RedirectResponse
 
 # Assicura la presenza della cartella backend nel sys.path per importare src.*
@@ -28,8 +31,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from src.api.routers.auth import router as auth_router
+
+# Registra i router modulari dell'API
+app.include_router(auth_router, prefix="/api")
+
+
 
 @app.get("/", include_in_schema=False)
+
 def root():
     """Reindirizza alla documentazione Swagger interattiva."""
     return RedirectResponse(url="/docs")

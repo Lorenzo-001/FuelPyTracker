@@ -115,3 +115,5 @@ pypdf
 # API Server (V2)
 fastapi==0.110.0
 uvicorn==0.27.1
+email-validator>=2.0.0
+

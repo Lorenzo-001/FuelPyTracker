@@ -1,29 +1,79 @@
+import os
+from pathlib import Path
+# pyrefly: ignore [missing-import]
 import streamlit as st
+# pyrefly: ignore [missing-import]
 from supabase import create_client, Client
 
 from src.database.url import is_local_sqlite
 from src.demo import is_demo_mode
 
+
+def _get_supabase_credentials() -> tuple[str | None, str | None]:
+    """Recupera URL e Key di Supabase da env, st.secrets o file secrets.toml."""
+    url = os.environ.get("SUPABASE_URL", "").strip() or None
+    key = os.environ.get("SUPABASE_KEY", "").strip() or None
+    if url and key:
+        return url, key
+
+    # Prova da st.secrets se disponibile
+    try:
+        url = st.secrets["supabase"]["url"]
+        key = st.secrets["supabase"]["key"]
+        if url and key:
+            return str(url), str(key)
+    except Exception:
+        pass
+
+    # Prova da file secrets.toml locale
+    try:
+        import toml
+        candidates = [
+            Path(__file__).resolve().parents[3] / ".streamlit" / "secrets.toml",
+            Path.cwd() / "backend" / ".streamlit" / "secrets.toml",
+            Path.cwd() / ".streamlit" / "secrets.toml",
+        ]
+        for c in candidates:
+            if c.is_file():
+                data = toml.load(c)
+                sub = data.get("supabase", {})
+                if sub.get("url") and sub.get("key"):
+                    return str(sub["url"]), str(sub["key"])
+    except Exception:
+        pass
+
+    return None, None
+
+
 # 1. Inizializzazione Client Supabase (SESSION ISOLATED)
-def get_client() -> Client:
+def get_client() -> Client | None:
     """
-    Recupera o crea il client Supabase per la sessione corrente.
-    Assicura che ogni utente abbia la propria istanza isolata.
+    Recupera o crea il client Supabase.
+    In Streamlit isola la sessione via st.session_state; fuori da Streamlit crea il client autonomo.
     Con LOCAL_SQLITE + demo non serve Supabase (niente secrets).
     """
     if is_local_sqlite() and is_demo_mode():
         return None
 
-    if "supabase_client" not in st.session_state:
-        try:
-            url = st.secrets["supabase"]["url"]
-            key = st.secrets["supabase"]["key"]
-            st.session_state.supabase_client = create_client(url, key)
-        except Exception as e:
-            st.error(f"Errore configurazione Supabase: {e}")
-            return None
-            
-    return st.session_state.supabase_client
+    # Se Streamlit è attivo con session_state
+    try:
+        if hasattr(st, "session_state"):
+            if "supabase_client" not in st.session_state:
+                url, key = _get_supabase_credentials()
+                if not url or not key:
+                    st.error("Errore configurazione Supabase: credenziali mancanti")
+                    return None
+                st.session_state.supabase_client = create_client(url, key)
+            return st.session_state.supabase_client
+    except Exception:
+        pass
+
+    # Fuori da Streamlit (FastAPI / CLI / Worker)
+    url, key = _get_supabase_credentials()
+    if url and key:
+        return create_client(url, key)
+    return None
+
 
 # 2. Funzioni di Autenticazione
 
