@@ -373,7 +373,95 @@ Il modulo `src.services.ocr.engine` è stato disaccoppiato da Streamlit e ottimi
 
 ---
 
-## 🗺️ 10. Roadmap Tecnica di Completamento V2
+## 🛠️ 10. Fase 2.4: Dashboard & Maintenance (KPI Aggregati, Grafici, Tagliandi e Promemoria)
+
+La Fase 2.4 introduce il nucleo analitico e gestionale per il monitoraggio della salute del veicolo, le spese d'officina e le scadenze periodiche.
+
+```mermaid
+flowchart TD
+    subgraph Client [Frontend React / Swagger UI]
+        D_UI[Cruscotto Dashboard]
+        M_UI[Registro Manutenzioni]
+        R_UI[Promemoria & Routine]
+        T_UI[Trip Calculator Modal]
+    end
+
+    subgraph API [FastAPI Routers]
+        R_DASH[/api/dashboard/*]
+        R_MAINT[/api/maintenance/*]
+        R_REM[/api/reminders/*]
+    end
+
+    subgraph CoreEngine [Business Engine & Analytics]
+        G_SCORE[gamification.calculate_car_health_score]
+        P_PRED[prediction.predict_reach_date]
+        M_LOGIC[maintenance_logic]
+        F_STATS[calculations.calculate_stats]
+        P_ACCUM[calculations.check_partial_accumulation]
+    end
+
+    subgraph Storage [Database Layer]
+        M_TABLE[(maintenances)]
+        R_TABLE[(reminders)]
+        H_TABLE[(reminder_history)]
+        F_TABLE[(refuelings)]
+    end
+
+    D_UI -->|GET /summary, /charts| R_DASH
+    R_DASH --> G_SCORE
+    R_DASH --> P_ACCUM
+    R_DASH --> F_TABLE
+    R_DASH --> M_TABLE
+    R_DASH --> R_TABLE
+
+    T_UI -->|POST /trip-calculator| R_DASH
+
+    M_UI -->|CRUD & GET /deadlines| R_MAINT
+    R_MAINT --> P_PRED
+    R_MAINT --> M_TABLE
+
+    R_UI -->|CRUD & POST /complete| R_REM
+    R_REM --> R_TABLE
+    R_REM --> H_TABLE
+```
+
+### 1. Dominio Manutenzioni (`schemas/maintenance.py`, `routers/maintenance.py`)
+- **Contratti Dati e CRUD:** Registrazione completa delle spese di officina (tagliandi, gomme, revisioni, bollo) su tabella `maintenances` con isolamento per `user_id`.
+- **Filtri Annuali e Categoriali:** `GET /api/maintenance?year=YYYY&expense_type=Tagliando` permette un recupero selettivo ottimizzato per i report annuali.
+- **Manutenzione Predittiva (`GET /api/maintenance/deadlines`):**
+  - Analizza lo storico rifornimenti dell'utente per calcolare il rateo medio di percorrenza giornaliera (`km/giorno`).
+  - Se una spesa ha una scadenza chilometrica futura (es. prossimo tagliando a 80.000 Km), stima la **data solare prevista** di raggiungimento del target.
+  - Classifica l'urgenza secondo un semaforo visivo:
+    - **Priorità 1 (Rosso `#dc3545`):** Limite chilometrico o temporale già superato.
+    - **Priorità 2 (Giallo `#ffc107`):** Scadenza imminente ($\le 1000\text{ Km}$ o $\le 30\text{ giorni}$).
+    - **Priorità 3 (Verde `#28a745`):** Scadenza regolare.
+
+### 2. Dominio Promemoria & Routine (`schemas/reminders.py`, `routers/reminders.py`)
+- **Controlli Periodici Flessibili:** Supporta routine basate sui chilometri percorsi (es. controllo livello olio ogni 10.000 Km), sui giorni solari (es. pressione pneumatici ogni 30 giorni) o entrambi.
+- **Monitoraggio Dinamico Avanzamento:** Il DTO `ReminderResponse` restituisce alla UI la percentuale di avanzamento normalizzata (`progress: 0.0 - 1.0`), i chilometri/giorni residui e il flag `is_overdue`.
+- **Azione "Mark as Done" (`POST /api/reminders/{id}/complete`):**
+  - Crea una voce immutabile nello storico `reminder_history` con data, chilometraggio effettivo e note.
+  - Aggiorna contestualmente i campi `last_km_check` e `last_date_check` del promemoria padre, resettando la barra di avanzamento per il nuovo ciclo.
+
+### 3. Dominio Dashboard & Analytics (`schemas/dashboard.py`, `routers/dashboard.py`)
+- **Cruscotto di Sintesi (`GET /api/dashboard/summary`):**
+  - **Ultimo Rifornimento:** data, spesa, prezzo/L e litri erogati.
+  - **Metriche Finanziarie:** spesa totale carburante, spesa totale manutenzione e spesa aggregata veicolo.
+  - **Efficienza Storica:** consumo medio reale in Km/L ricavato dall'algoritmo Full-to-Full.
+  - **Car Health Score (0 - 100%):** indice sintetico dello stato di salute dell'auto, che applica penalità scalari per scadenze meccaniche non rispettate (-20 punti) o controlli di routine ignorati (-10/-5 punti).
+  - **Allarme Accumulo Parziali:** segnala se il costo cumulato dei rifornimenti parziali supera la soglia di guardia configurata dall'utente.
+- **Serie Temporali per Grafici (`GET /api/dashboard/charts`):**
+  - Riceve il parametro di intervallo temporale (`time_range: 1m, 3m, 6m, ytd, 1y, all`).
+  - Restituisce dati JSON puri ottimizzati per librerie grafiche moderne (Recharts / Chart.js):
+    1. *Price Trend:* andamento cronologico del prezzo al litro (€/L).
+    2. *Efficiency Trend:* andamento dell'efficienza energetica reale (Km/L).
+    3. *Monthly Spending:* spesa aggregata mese per mese (carburante vs officina vs totale).
+- **Simulatore Costi di Viaggio (`POST /api/dashboard/trip-calculator`):**
+  - Calcola preventivi istantanei per tragitti inseriti dall'utente (`trip_km`), determinando litri necessari, spesa stimata e costo chilometrico (€/km) sulla base della media storica reale o di parametri personalizzati.
+
+---
+
+## 🗺️ 11. Roadmap Tecnica di Completamento V2
 
 | Fase | Titolo | Obiettivo Principale | Stato |
 | :--- | :--- | :--- | :--- |
@@ -381,11 +469,12 @@ Il modulo `src.services.ocr.engine` è stato disaccoppiato da Streamlit e ottimi
 | **Fase 2.1**| **Fondamenta Core & Isolamento DB** | Disaccoppiamento database da Streamlit, `deps.py`, DI sessione, config | ✅ **Completata** |
 | **Fase 2.2**| **Auth & Schemi Base** | Schemi Pydantic auth, Supabase Auth disaccoppiato, router `/api/auth` | ✅ **Completata** |
 | **Fase 2.3**| **Dominio Fuel & OCR** | Schemi e CRUD rifornimenti, calcoli consumo, pipeline OCR scontrini | ✅ **Completata** |
-| **Fase 2.4**| **Dashboard & Maintenance** | Endpoint aggregati KPI, grafici, gestione tagliandi e promemoria | 🔄 **Prossima** |
-| **Fase 2.5**| **Settings & Reports** | Preferenze utente, export PDF e fogli Excel | ⏳ Pianificata |
+| **Fase 2.4**| **Dashboard & Maintenance** | Endpoint aggregati KPI, grafici, gestione tagliandi e promemoria | ✅ **Completata** |
+| **Fase 2.5**| **Settings & Reports** | Preferenze utente, export PDF e fogli Excel | 🔄 **Prossima** |
 | **Fase 3** | **Bootstrap Frontend (React)** | Setup Vite, TailwindCSS, Shadcn/UI, routing SPA, TanStack Query | ⏳ Pianificata |
 | **Fase 4** | **Ricostruzione Interfaccia UX** | Pagine React, cruscotti analitici, modal d'inserimento, responsive | ⏳ Pianificata |
 | **Fase 5** | **Deploy CI/CD & Dismissione V1** | Deploy Vercel (Frontend), Render (Backend), archiviazione branch V1 | ⏳ Pianificata |
+
 
 
 
