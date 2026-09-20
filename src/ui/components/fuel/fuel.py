@@ -7,7 +7,7 @@ from src.ui.components.fuel import grids, kpi, forms
 from src.services.business import fuel_logic
 from src.services.ocr import process_receipt_image
 from src.services.ocr.engine import is_openai_enabled
-from src.demo import is_demo_mode
+from src.demo import is_demo_mode, writes_disabled
 
 @st.fragment
 def render():
@@ -60,17 +60,16 @@ def render():
 
         # Bottone Grande invece di Expander annidato
         st.markdown("##### 📸 Vuoi velocizzare l'inserimento?")
-        if is_demo_mode():
-            # DEMO MODE: OCR disabilitato — la modalità demo non consente upload reali
+        if writes_disabled():
             st.button("🚀 SCANSIONA SCONTRINO CON AI (Demo)", disabled=True, width='stretch',
                       help="Funzionalità non disponibile in modalità Demo.")
             st.warning("🔒 Modalità Demo: Modifiche disabilitate per sicurezza.")
-        elif is_openai_enabled():
-            # CASO POSITIVO: Mostra il bottone normale
-            if st.button("🚀 SCANSIONA SCONTRINO CON AI", type="primary", width='stretch'):
+        elif is_openai_enabled() or is_demo_mode():
+            # OpenAI reale, oppure mock OCR in locale/demo
+            label = "🚀 SCANSIONA SCONTRINO CON AI (Demo)" if is_demo_mode() and not is_openai_enabled() else "🚀 SCANSIONA SCONTRINO CON AI"
+            if st.button(label, type="primary", width='stretch'):
                 _open_ocr_dialog()
         else:
-            # CASO NEGATIVO: Mostra bottone disabilitato o avviso
             st.button("🚀 SCANSIONA SCONTRINO (Non disponibile)", disabled=True, width='stretch', help="Funzionalità disabilitata: API Key OpenAI mancante.")
             st.caption("⚠️ Configura la chiave OpenAI nei settings per abilitare l'AI.")
 
@@ -99,7 +98,7 @@ def render():
                 key_suffix="add"
             )
             
-            if st.form_submit_button("Salva", type="primary", width="stretch", disabled=is_demo_mode(), help="Salvataggio disabilitato in modalità Demo" if is_demo_mode() else None):
+            if st.form_submit_button("Salva", type="primary", width="stretch", disabled=writes_disabled(), help="Salvataggio disabilitato in modalità Demo" if writes_disabled() else None):
                 # Validazione KM: deve essere > 0 e >= last_km
                 if new_data['km'] == 0:
                     st.error("⛔ Inserisci il valore dell'Odometro!")
@@ -307,11 +306,11 @@ def _render_management_tab(db, user, all_records, years, def_idx, settings):
     
     # Pulsanti Azione
     c1, c2 = st.columns(2)
-    if c1.button("✏️ Modifica", width="stretch", disabled=is_demo_mode()):
+    if c1.button("✏️ Modifica", width="stretch", disabled=writes_disabled()):
         st.session_state.active_operation = "edit"
         st.session_state.selected_record_id = target_id
         st.rerun()
-    if c2.button("❌ Elimina", type="primary", width="stretch", disabled=is_demo_mode()):
+    if c2.button("❌ Elimina", type="primary", width="stretch", disabled=writes_disabled()):
         st.session_state.active_operation = "delete"
         st.session_state.selected_record_id = target_id
         st.rerun()
@@ -347,7 +346,7 @@ def _handle_edit_flow(db, user_id, rec, settings):
             key_suffix="edit"
         )
         
-        if st.form_submit_button("Aggiorna", type="primary", width="stretch", disabled=is_demo_mode()):
+        if st.form_submit_button("Aggiorna", type="primary", width="stretch", disabled=writes_disabled()):
             # Nota: In edit non controlliamo "last_km" stretto come in insert per flessibilità
             new_liters = edit_data['cost'] / edit_data['price'] if edit_data['price'] > 0 else 0
             
@@ -377,7 +376,7 @@ def _handle_edit_flow(db, user_id, rec, settings):
 def _handle_delete_flow(db, user_id, record_id):
     st.error("Sei sicuro di voler eliminare definitivamente questo record?")
     cd1, cd2 = st.columns(2)
-    if cd1.button("Sì, Elimina", type="primary", width="stretch", disabled=is_demo_mode()):
+    if cd1.button("Sì, Elimina", type="primary", width="stretch", disabled=writes_disabled()):
         crud.delete_refueling(db, user_id, record_id)
         st.success("Eliminato."); st.session_state.active_operation = None; st.rerun()
     if cd2.button("No, Annulla", width="stretch"):

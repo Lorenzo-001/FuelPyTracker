@@ -17,6 +17,20 @@
 
 ---
 
+## ⚡ Bootstrap locale con SQLite (senza Supabase)
+
+Se vuoi solo far partire l’app in demo read-only sul PC:
+
+1. Copia `.env.example` → `.env`
+2. Imposta `LOCAL_SQLITE=True` e `DEMO_MODE=True` (i `DEMO_USER_*` di default vanno bene)
+3. Non serve `.streamlit/secrets.toml`
+4. Con Python 3.11: `pip install -r requirements.txt` poi `streamlit run main.py`
+5. Apri `http://localhost:8501`
+
+Il database è il file `data/local.db`. Per auth reale e Postgres continua con le fasi Supabase sotto.
+
+---
+
 ## Fase 1 — Prerequisiti (Gli attrezzi del mestiere)
 
 Prima ancora di toccare il codice, assicurati di avere i seguenti strumenti installati. Sono pochi, ma indispensabili. Clicca sui link per scaricare quello che manca.

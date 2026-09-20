@@ -66,6 +66,25 @@ Per la demo pubblica, l'app utilizza una variabile d'ambiente `DEMO_MODE=True` c
 Il risultato è un'applicazione identica nella UI ma completamente sicura da esporre pubblicamente.
 
 
+## ⚡ Quick Start — Locale senza Supabase (SQLite)
+
+Per provare l’UI subito (demo read-only, niente cloud):
+
+```bash
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env
+# Imposta nel .env: LOCAL_SQLITE=True e DEMO_MODE=True
+streamlit run main.py
+```
+
+Apri `http://localhost:8501`. I dati stanno in `data/local.db` (gitignored).
+
+Per Docker + Supabase (installazione completa) vedi sotto e `docs/SETUP_GUIDE.md`.
+
+---
+
 ## ⚡ Quick Start — Sviluppo Locale con Docker
 
 ### Prerequisiti

@@ -5,6 +5,8 @@ import time
 import random
 from unittest.mock import MagicMock
 
+import pytest
+
 # --- 1. CONFIGURAZIONE PATH DINAMICA ---
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_dir, "../../../"))
@@ -16,15 +18,17 @@ if project_root not in sys.path:
 secrets_path = os.path.join(project_root, ".streamlit", "secrets.toml")
 
 if not os.path.exists(secrets_path):
-    print(f"❌ ERRORE CRITICO: Non trovo il file secrets in: {secrets_path}")
-    sys.exit(1)
+    pytest.skip(
+        "Skipping live Supabase auth tests: .streamlit/secrets.toml not found "
+        "(use LOCAL_SQLITE bootstrap or add secrets for integration auth).",
+        allow_module_level=True,
+    )
 
 try:
     with open(secrets_path, "rb") as f:
         real_secrets = tomllib.load(f)
 except Exception as e:
-    print(f"❌ Errore lettura TOML: {e}")
-    sys.exit(1)
+    pytest.skip(f"Skipping live auth tests: cannot read secrets.toml ({e})", allow_module_level=True)
 
 # --- 3. MOCKING DI STREAMLIT ---
 mock_st = MagicMock()
