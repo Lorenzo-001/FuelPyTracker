@@ -558,7 +558,72 @@ La migrazione ha convertito il flusso legacy in un'architettura di staging asinc
 
 ---
 
-## 🗺️ 12. Roadmap Tecnica di Completamento V2
+---
+
+## 🧪 12. Fase 2.6: Collaudo E2E Globale & Validazione OpenAPI
+
+La Fase 2.6 rappresenta la validazione e certificazione conclusiva dell'intero stack backend V2.0 prima di procedere con lo sviluppo del frontend React. Introduce una suite di test end-to-end (`backend/tests/e2e/test_api_lifecycle.py`) che simula programmaticamente il ciclo di vita completo di un utente attraverso tutte le rotte API, verificando la consistenza dello stato del database, i contratti dati Pydantic e la conformità dello schema OpenAPI.
+
+```mermaid
+flowchart TD
+    subgraph E2E_Flow [Flusso Collaudo End-to-End]
+        SYS[1. Health & OpenAPI Spec] --> AUTH[2. Registrazione & Auth /me]
+        AUTH --> SETT[3. Configurazione & Categorie Custom]
+        SETT --> FUEL[4. Ciclo Fuel Full-to-Full & OCR]
+        FUEL --> DASH[5. Dashboard KPI, Grafici & Trip Calc]
+        DASH --> MAINT[6. Manutenzioni, Scadenze & Mark-as-Done]
+        MAINT --> REP[7. Export Excel/PDF & Staging Import]
+    end
+
+    subgraph Validation [Verifiche Effettuate]
+        V1[Validazione Schemi Pydantic & HTTP Status Codes]
+        V2[Isolamento Dati Multi-Tenant per user_id]
+        V3[Calcoli Matematici Real-time & Transazionalità DB]
+    end
+
+    E2E_Flow -.-> Validation
+```
+
+### 1. Copertura del Ciclo di Vita Software (`test_api_lifecycle.py`)
+Il test end-to-end copre in un'unica catena sequenziale tutti i domini operativi del sistema:
+1. **System & OpenAPI:**
+   - Verifica di `GET /health` (stato `ok`, timestamp ISO UTC).
+   - Reindirizzamento root `GET /` verso la documentazione interattiva `/docs`.
+   - Ispezione dello schema `GET /openapi.json` con accertamento di presenza per tutti i 25+ percorsi esposti dai router modulari.
+2. **Autenticazione & Profilazione:**
+   - Registrazione di un nuovo profilo utente (`POST /api/auth/register`).
+   - Autenticazione con credenziali (`POST /api/auth/login`) e riscontro del token JWT.
+   - Interrogazione del profilo protetto (`GET /api/auth/me`).
+3. **Preferenze Applicative:**
+   - Auto-provisioning iniziale (`GET /api/settings`).
+   - Aggiornamento parziale delle soglie di sicurezza e tolleranza (`PUT /api/settings`).
+   - Aggiunta e rimozione selettiva di categorie personalizzate per promemoria e manutenzioni con verifica anti-duplicazione.
+4. **Dominio Rifornimenti & Algoritmo di Consumo:**
+   - Validazione preventiva dei chilometri (`POST /api/fuel/validate`) a protezione da errori di digitazione.
+   - Creazione del primo pieno (ancora di partenza, consumo nullo).
+   - Registrazione di un rifornimento parziale intermedio (accumulo litri e spesa).
+   - Registrazione del secondo pieno (calcolo automatico Full-to-Full con km/L ed efficienza calcolata in tempo reale).
+   - Elaborazione OCR scontrino con simulazione fallback e precompilazione dati.
+5. **Dashboard Analytics & Trip Simulator:**
+   - Cruscotto di sintesi (`GET /api/dashboard/summary`): verifica ricalcolo istantaneo di spesa complessiva, spesa carburante, consumo medio ponderato e Car Health Score.
+   - Estrazione serie temporali (`GET /api/dashboard/charts?time_range=1y`) per andamento prezzi, consumi e spese mensili.
+   - Preventivo costi viaggio (`POST /api/dashboard/trip-calculator`) basato sulla media storica reale del veicolo.
+6. **Manutenzioni Meccaniche & Scadenze:**
+   - Registrazione fattura officina (`POST /api/maintenance`).
+   - Calcolo scadenze predittive (`GET /api/maintenance/deadlines`) con semafori di urgenza chilometrica/temporale.
+   - Creazione promemoria periodico (`POST /api/reminders`).
+   - Esecuzione azione atomica "Mark as Done" (`POST /api/reminders/{id}/complete`), con salvataggio riga immutabile in `reminder_history` e azzeramento percentuale d'avanzamento per il ciclo successivo.
+7. **Esportazioni, Libretto PDF & Pipeline Importazione:**
+   - Consultazione statistiche d'archivio (`GET /api/reports/stats`).
+   - Download template Excel vuoto pre-formattato (`GET /api/reports/template`).
+   - Download archivio Excel multi-sheet (`GET /api/reports/excel`) con verifica magic bytes `PK`.
+   - Generazione Libretto Manutenzione Digitale in PDF (`POST /api/reports/pdf`) con testata decorativa e firma `%PDF`.
+   - Caricamento file per staging preview (`POST /api/reports/import/preview`) con sheet sniffing automatico e semantica di riga.
+   - Esecuzione commit transazionale (`POST /api/reports/import/commit`) per persistenza definitiva a database.
+
+---
+
+## 🗺️ 13. Roadmap Tecnica di Completamento V2
 
 | Fase | Titolo | Obiettivo Principale | Stato |
 | :--- | :--- | :--- | :--- |
@@ -568,6 +633,7 @@ La migrazione ha convertito il flusso legacy in un'architettura di staging asinc
 | **Fase 2.3**| **Dominio Fuel & OCR** | Schemi e CRUD rifornimenti, calcoli consumo, pipeline OCR scontrini | ✅ **Completata** |
 | **Fase 2.4**| **Dashboard & Maintenance** | Endpoint aggregati KPI, grafici, gestione tagliandi e promemoria | ✅ **Completata** |
 | **Fase 2.5**| **Settings & Reports** | Preferenze utente, export PDF e fogli Excel, staging importazione | ✅ **Completata** |
+| **Fase 2.6**| **Collaudo E2E Globale** | Test sequenziale del ciclo di vita API, certificazione OpenAPI e Swagger | ✅ **Completata** |
 | **Fase 3** | **Bootstrap Frontend (React)** | Setup Vite, TailwindCSS, Shadcn/UI, routing SPA, TanStack Query | 🔄 **Prossima** |
 | **Fase 4** | **Ricostruzione Interfaccia UX** | Pagine React, cruscotti analitici, modal d'inserimento, responsive | ⏳ Pianificata |
 | **Fase 5** | **Deploy CI/CD & Dismissione V1** | Deploy Vercel (Frontend), Render (Backend), archiviazione branch V1 | ⏳ Pianificata |
