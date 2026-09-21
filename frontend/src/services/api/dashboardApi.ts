@@ -11,8 +11,10 @@ export const dashboardApi = {
     return apiClient.get<DashboardSummaryResponse>("/dashboard/summary")
   },
 
-  getCharts: (): Promise<DashboardChartsResponse> => {
-    return apiClient.get<DashboardChartsResponse>("/dashboard/charts")
+  getCharts: (time_range: string = "all"): Promise<DashboardChartsResponse> => {
+    return apiClient.get<DashboardChartsResponse>("/dashboard/charts", {
+      params: { time_range },
+    })
   },
 
   calculateTrip: (
