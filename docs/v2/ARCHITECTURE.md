@@ -647,7 +647,7 @@ L'intera architettura client-side del Monorepo (`frontend/`), comprendente:
 | **Fase 2.5**| **Settings & Reports** | Preferenze utente, export PDF e fogli Excel, staging importazione | ✅ **Completata** |
 | **Fase 2.6**| **Collaudo E2E Globale** | Test sequenziale del ciclo di vita API, certificazione OpenAPI e Swagger | ✅ **Completata** |
 | **Fase 3** | **Bootstrap Frontend (React)** | Setup Vite, TailwindCSS, Shadcn/UI, routing SPA, TanStack Query | ✅ **Completata** |
-| **Fase 4** | **Ricostruzione Interfaccia UX** | Pagine React, cruscotti analitici, modal d'inserimento, responsive | 🔄 **Prossima** |
+| **Fase 4** | **Ricostruzione Interfaccia UX** | Pagine React, cruscotti analitici, modal d'inserimento, responsive | 🔄 **In Corso** |
 | **Fase 5** | **Deploy CI/CD & Dismissione V1** | Deploy Vercel (Frontend), Render (Backend), archiviazione branch V1 | ⏳ Pianificata |
 
 

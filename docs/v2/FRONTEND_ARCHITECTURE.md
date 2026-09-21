@@ -130,7 +130,44 @@ La **Fase 4** trasforma lo scheletro in un'applicazione interattiva completa, fr
   - `src/components/ui/sonner.tsx`: wrapper Toaster integrato globalmente in `src/App.tsx`.
 - **Showcase Interattivo:**
   - Integrato in `src/pages/SettingsPage.tsx` un pannello di collaudo per testare in tempo reale notifiche toast, modali Dialog, cassetti Sheet e Tabs.
-- **Esito Collaudo:** `npm run lint` con 0 errori e 0 warning su 42 file; `npm run build` completato in 1.26s.
+### 🔹 Sotto-Fase 4.2: Shell Adattiva, Bottom Navigation Bar Mobile & Pulsante FAB Centrale ✅
+- **Bottom Navigation Bar (`src/components/layout/BottomBar.tsx`):**
+  - Barra di navigazione fissa a fondo schermo per dispositivi mobili (`md:hidden`) con effetto glassmorphism scuro e ombreggiatura superiore (`shadow-[0_-4px_20px_rgba(0,0,0,0.3)]`).
+  - Tab 1: **Dashboard** (`/`).
+  - Tab 2: **Pieni / Rifornimenti** (`/fuel`).
+  - **Pulsante FAB Centrale (+):** pulsante circolare sopraelevato ad alto contrasto smeraldo (`from-emerald-400 to-emerald-600`) con ring di stacco e micro-interazione al tocco (`active:scale-95`), per registrare un nuovo pieno comodamente con una mano.
+  - Tab 3: **Officina / Manutenzioni** (`/maintenance`).
+  - Tab 4: **Altro (Menu a cassetto):** apre un Bottom Sheet fluido che racchiude *Scadenze & Promemoria* (con badge notifiche), *Report & Esportazioni*, *Impostazioni Sistema*, *Profilo Utente* e la scheda del veicolo attivo (*BMW Serie 1*).
+- **Header Adattivo (`src/components/layout/Navbar.tsx`):**
+  - Mobile: compatto con icona brand smeraldo, titolo sintetico e badge FastAPI compatto con pulse verde.
+  - Desktop: breadcrumbs completi, pulsante rapido "+ Nuovo Rifornimento" e profilo utente.
+- **Layout Unificato (`src/components/layout/AppLayout.tsx`):**
+  - Aggiunto padding inferiore dinamico (`pb-24 md:pb-8`) al contenitore `<main>` per evitare qualsiasi sovrapposizione tra i contenuti e la barra inferiore su schermi touch.
+- **Esito Collaudo:** `npm run lint` 0 errori e 0 warning su 43 file; `npm run build` completato in 1.21s.
+
+### 🔹 Sotto-Fase 4.3: Dashboard Reattiva, KPI Live, Grafici Recharts, Car Health Score & Calcolatore Viaggio ✅
+- **4 KPI Card Dinamiche (`src/pages/DashboardPage.tsx`):**
+  - Consumo Medio Storico (`L/100km` e `km/L`) con badge trend efficienza.
+  - Spesa Carburante Totale (€) con conteggio dei rifornimenti registrati.
+  - Spesa Manutenzioni Totale (€) per ricambi e interventi d'officina.
+  - Allarme Rifornimenti Parziali condizionale (`partial_alert`) che si attiva con avviso dorato solo in caso di spesa parziale accumulata oltre soglia.
+- **Grafici Interattivi Recharts (`src/components/dashboard/DashboardCharts.tsx`):**
+  - Scheda 1: *Andamento Prezzi Carburante* (€/L nel tempo con AreaChart a gradiente smeraldo).
+  - Scheda 2: *Efficienza Energetica* (km/L per ogni pieno con AreaChart ciano e media storica tratteggiata).
+  - Scheda 3: *Spesa Mensile Comparata* (BarChart a barre affiancate/sovrapposte: Carburante vs Manutenzioni).
+  - Filtri Temporali Interattivi: selettore rapido `3M`, `6M`, `1A`, `Tutto` con ricaricamento reattivo.
+  - Custom Dark Tooltip: tooltip semitrasparente scuro con data localizzata in italiano (`date-fns/locale/it`).
+- **Car Health Widget Circolare (`src/components/dashboard/CarHealthWidget.tsx`):**
+  - Ring progressivo SVG animato con calcolo del perimetro (`strokeDashoffset`) e punteggio normalizzato 0-100.
+  - Colorazione semaforica reattiva: Verde Smeraldo (>= 80, Eccellente), Ambra (50-79, Attenzione), Rosso (< 50, Critico).
+  - Lista delle anomalie diagnostiche attive (es. allarmi consumo o scadenze manutenzione imminenti).
+- **Calcolatore Viaggio Istantaneo (`src/components/dashboard/TripCalculatorModal.tsx`):**
+  - Modale interattiva Dialog (`POST /api/dashboard/trip-calculator`) accessibile da pulsante dedicato nel cruscotto.
+  - Calcolo live dei litri stimati e della spesa totale in € inserendo la distanza pianificata in km.
+- **Hook & Servizi Dati:**
+  - Esteso `src/services/api/dashboardApi.ts` per supportare il parametro `time_range`.
+  - Creato hook `src/hooks/useDashboardCharts.ts` collegato a TanStack Query v5 con chiave di cache differenziata per range.
+- **Esito Collaudo:** `npm run lint` con 0 errori e 0 warning su 47 file; `npm run build` completato in 1.88s. Collaudo visivo browser superato con interazione su tutte le schede grafiche, filtri temporali e calcolatore simulazione viaggio.
 
 ---
 
@@ -139,9 +176,9 @@ La **Fase 4** trasforma lo scheletro in un'applicazione interattiva completa, fr
 | Step | Titolo | Obiettivo Principale | Stato |
 | :--- | :--- | :--- | :--- |
 | **Step 4.1** | **UI Kit Esteso & Librerie** | Recharts, Zod, Sonner, Dialog, Sheet, Tabs, Table | ✅ **Completato** |
-| **Step 4.2** | **Shell Adattiva & Mobile** | Bottom Navigation Bar per smartphone, pulsante FAB centrale `+` | 🔄 **In Corso** |
-| **Step 4.3** | **Dashboard Reattiva** | KPI dinamici, grafici Recharts (prezzi, km/L, spesa), Car Health Score | ⏳ Pianificato |
-| **Step 4.4** | **Dominio Rifornimenti & OCR** | Doppia vista tabella/schede, modale inserimento con validazione live, OCR | ⏳ Pianificato |
+| **Step 4.2** | **Shell Adattiva & Mobile** | Bottom Navigation Bar per smartphone, pulsante FAB centrale `+` | ✅ **Completato** |
+| **Step 4.3** | **Dashboard Reattiva** | KPI dinamici, grafici Recharts (prezzi, km/L, spesa), Car Health Score | ✅ **Completato** |
+| **Step 4.4** | **Dominio Rifornimenti & OCR** | Doppia vista tabella/schede, modale inserimento con validazione live, OCR | 🔄 **Prossimo** |
 | **Step 4.5** | **Manutenzioni & Promemoria** | Timeline cronologica, semaforo scadenze, azione atomica *Mark as Done* | ⏳ Pianificato |
 | **Step 4.6** | **Report & Staging Import** | Download center Excel/PDF, importatore drag&drop con anteprima a semafori | ⏳ Pianificato |
 | **Step 4.7** | **Impostazioni & Categorie** | Form soglie carburante, gestore categorie con tag interattivi | ⏳ Pianificato |
