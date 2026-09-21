@@ -11,6 +11,8 @@ import SettingsPage from "@/pages/SettingsPage"
 import LoginPage from "@/pages/LoginPage"
 import NotFoundPage from "@/pages/NotFoundPage"
 
+import { Toaster } from "@/components/ui/sonner"
+
 export default function App() {
   const [queryClient] = useState(
     () =>
@@ -41,6 +43,7 @@ export default function App() {
           </Route>
         </Routes>
       </BrowserRouter>
+      <Toaster position="bottom-right" richColors />
     </QueryClientProvider>
   )
 }
