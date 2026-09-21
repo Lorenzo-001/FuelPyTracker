@@ -623,7 +623,114 @@ Il test end-to-end copre in un'unica catena sequenziale tutti i domini operativi
 
 ---
 
-## 🗺️ 13. Roadmap Tecnica di Completamento V2
+## 🎨 13. Fase 3: Bootstrap Frontend (React + Vite + TailwindCSS + Shadcn/UI)
+
+La **Fase 3** introduce nel Monorepo il silos applicativo autonomo `frontend/`, fornendo un'architettura client-side moderna, performante e completamente disaccoppiata dall'infrastruttura backend Python.
+
+```mermaid
+graph TD
+    subgraph Browser_Client [Silos Frontend: React 19 + TypeScript]
+        ROUTER[React Router v6 SPA]
+        QUERY[TanStack Query v5 Cache]
+        DS[Design System: TailwindCSS + HSL Dark First]
+        API_CLI[ApiClient: Fetch + JWT Storage Interceptor]
+    end
+
+    subgraph Reverse_Proxy [Vite Dev Server Proxy]
+        PROXY["/api/* & /health"]
+    end
+
+    subgraph Backend_FastAPI [Silos Backend: FastAPI :8000]
+        CORE_API[FastAPI Modular Routers]
+        HEALTH[Health Probe /health]
+    end
+
+    ROUTER --> DS
+    ROUTER --> QUERY
+    QUERY --> API_CLI
+    API_CLI -->|HTTP requests| PROXY
+    PROXY -->|Transparent Forwarding| CORE_API
+    PROXY -->|Polling Pulse| HEALTH
+```
+
+### 1. Architettura del Silos Frontend (`frontend/`)
+Il frontend è collocato all'interno della cartella `frontend/` del repository con un proprio ciclo di vita delle dipendenze (`package.json`, `node_modules`, `tsconfig.json` e `vite.config.ts`), garantendo zero conflitti con l'ambiente Python del backend:
+
+```text
+frontend/
+├── index.html                # Entry HTML con meta-tag, SEO e Google Fonts (Outfit, Inter)
+├── package.json              # Script npm (dev, build, lint) e dipendenze
+├── tsconfig.app.json         # Alias @/* -> ./src/* con compatibilità TypeScript 6.0
+├── vite.config.ts            # Bundler Vite con reverse proxy per /api e /health -> :8000
+├── tailwind.config.js        # Design tokens HSL, breakpoint responsive e animazioni
+├── postcss.config.js         # Pipeline PostCSS + Autoprefixer
+└── src/
+    ├── main.tsx              # Entry point React
+    ├── App.tsx               # Root component con QueryClientProvider e BrowserRouter
+    ├── index.css             # Tailwind base/utilities e variabili CSS HSL (Dark Mode First)
+    ├── lib/
+    │   └── utils.ts          # Helper cn() per merging classi condizionali (clsx + twMerge)
+    ├── types/                # Contratti DTO TypeScript sincronizzati 1:1 con Pydantic
+    │   ├── auth.ts
+    │   ├── dashboard.ts
+    │   ├── fuel.ts
+    │   ├── maintenance.ts
+    │   ├── reminders.ts
+    │   ├── settings.ts
+    │   ├── reports.ts
+    │   ├── system.ts
+    │   └── index.ts          # Central re-export
+    ├── services/api/         # Livello di trasporto HTTP centralizzato
+    │   ├── client.ts         # Wrapper fetch con JWT Bearer e classe personalizzata ApiError
+    │   ├── systemApi.ts      # Health check probe
+    │   ├── dashboardApi.ts   # KPI summary, serie temporali e trip calculator
+    │   └── fuelApi.ts        # Operazioni CRUD e validazione pre-flight chilometrica
+    ├── hooks/                # Hook personalizzati TanStack Query
+    │   ├── useSystemHealth.ts# Polling live dello stato del server (15s)
+    │   └── useDashboardSummary.ts # Cache reattiva dati cruscotto
+    ├── components/
+    │   ├── ui/               # Primitive Shadcn/UI (Button, Card, Badge, Input, Skeleton)
+    │   └── layout/           # AppLayout, Sidebar (collassabile/responsive) e Navbar
+    └── pages/                # Viste di dominio pronte per la ricostruzione Fase 4
+        ├── DashboardPage.tsx
+        ├── FuelPage.tsx
+        ├── MaintenancePage.tsx
+        ├── RemindersPage.tsx
+        ├── ReportsPage.tsx
+        ├── SettingsPage.tsx
+        ├── LoginPage.tsx
+        └── NotFoundPage.tsx
+```
+
+### 2. Design System & Identità Visiva (Dark Mode First)
+- **Palette HSL:** Configurate variabili CSS semantiche con tema scuro di default (`--background: 222 47% 8%`, `--card: 222 47% 11%`, accenti smeraldo `--primary: 158 75% 48%`, ambra per avvisi e rosa per scadenze).
+- **Tipografia Moderna:** Caricamento font *Outfit* (titoli e brand) e *Inter* (corpo testo e tabelle ad alta leggibilità).
+- **Componenti UI Atomici:**
+  - `Button`: Supporto varianti semantiche (`default`, `emerald`, `secondary`, `outline`, `ghost`, `destructive`), taglie e rendering polimorfico `asChild`.
+  - `Card`: Primitives modulari (`CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter`).
+  - `Badge`: Pillole di stato (`success`, `warning`, `destructive`, `info`, `outline`).
+  - `Input`: Campi modulo accessibili con outline ring e sfondi traslucidi.
+  - `Skeleton`: Animazione a pulsazione (`animate-pulse`) per prevenire layout shifting durante il caricamento asincrono.
+
+### 3. Shell di Navigazione SPA & Reverse Proxy
+- **Layout Unificato (`AppLayout`):**
+  - **Sidebar:** Navigazione desktop collassabile tramite toggle button, icone Lucide, badge di notifica per scadenze attive e scheda veicolo attivo (*BMW Serie 1*); drawer mobile con backdrop oscurante animato.
+  - **Navbar:** Breadcrumb gerarchico dinamico sincronizzato con `useLocation()`, scorciatoia rapida ad alto contrasto (*Nuovo Rifornimento*) e indicatore in tempo reale dello stato del backend (*FastAPI Online* con pulse verde).
+- **Reverse Proxy Vite Locale:** Configurato in `vite.config.ts`, instrada trasparentemente ogni chiamata verso `/api/*` e `/health` all'istanza locale FastAPI (`127.0.0.1:8000`), eliminando qualsiasi problematica legata a policy CORS o porte multiple in fase di sviluppo.
+
+### 4. Integrazione API & TanStack Query v5
+- **Contratti Dati TypeScript:** Replicazione fedele di tutti i modelli Pydantic validati nella Fase 2.
+- **Client HTTP Unificato:** Classe `ApiClient` con gestione centralizzata dei token JWT (`Authorization: Bearer <token>`), serializzazione automatica e propagazione dettagliata degli errori backend tramite `ApiError`.
+- **Query Reattive:** `useSystemHealth` interroga periodicamente l'endpoint `/health` aggiornando dinamicamente il badge della Navbar; `useDashboardSummary` popola i KPI del cruscotto mantenendo la reattività in background.
+
+### 5. Esito Verifiche & Collaudo
+- **Linting (`oxlint`):** `0 errori e 0 warning` verificati su 37 file.
+- **Compilazione TypeScript & Bundle (`npm run build`):** `tsc -b && vite build` completato in **940 ms** senza errori.
+- **Collaudo Browser & Proxy:** Verifica visiva end-to-end con dev server Vite attivo e backend FastAPI in esecuzione: navigazione istantanea tra tutte le 8 rotte, assenza di reload del browser e riscontro positivo del badge *FastAPI Online*.
+
+---
+
+## 🗺️ 14. Roadmap Tecnica di Completamento V2
 
 | Fase | Titolo | Obiettivo Principale | Stato |
 | :--- | :--- | :--- | :--- |
@@ -634,8 +741,8 @@ Il test end-to-end copre in un'unica catena sequenziale tutti i domini operativi
 | **Fase 2.4**| **Dashboard & Maintenance** | Endpoint aggregati KPI, grafici, gestione tagliandi e promemoria | ✅ **Completata** |
 | **Fase 2.5**| **Settings & Reports** | Preferenze utente, export PDF e fogli Excel, staging importazione | ✅ **Completata** |
 | **Fase 2.6**| **Collaudo E2E Globale** | Test sequenziale del ciclo di vita API, certificazione OpenAPI e Swagger | ✅ **Completata** |
-| **Fase 3** | **Bootstrap Frontend (React)** | Setup Vite, TailwindCSS, Shadcn/UI, routing SPA, TanStack Query | 🔄 **Prossima** |
-| **Fase 4** | **Ricostruzione Interfaccia UX** | Pagine React, cruscotti analitici, modal d'inserimento, responsive | ⏳ Pianificata |
+| **Fase 3** | **Bootstrap Frontend (React)** | Setup Vite, TailwindCSS, Shadcn/UI, routing SPA, TanStack Query | ✅ **Completata** |
+| **Fase 4** | **Ricostruzione Interfaccia UX** | Pagine React, cruscotti analitici, modal d'inserimento, responsive | 🔄 **Prossima** |
 | **Fase 5** | **Deploy CI/CD & Dismissione V1** | Deploy Vercel (Frontend), Render (Backend), archiviazione branch V1 | ⏳ Pianificata |
 
 
