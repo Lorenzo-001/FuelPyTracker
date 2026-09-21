@@ -7,7 +7,7 @@ from __future__ import annotations
 import io
 from datetime import datetime
 from typing import Dict, Any, List
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Response, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response, status
 from sqlalchemy.orm import Session
 
 from src.database import crud

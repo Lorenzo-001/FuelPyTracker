@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+# pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
 
 # Carica .env cercando prima nella cartella backend, poi nella root
