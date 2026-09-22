@@ -211,7 +211,7 @@ La **Fase 4** trasforma lo scheletro in un'applicazione interattiva completa, fr
   - `src/services/api/remindersApi.ts` & `src/hooks/useReminders.ts`: gestione promemoria ciclici, esecuzione atomica `completeReminder` e cronologia esecuzioni.
 - **Esito Collaudo:** `npm run lint` 0 errori; `npm run build` completato in 2.19s con 0 errori.
 
-### 🔹 Sotto-Fase 4.6: Report, Libretto PDF & Staging Importazione con Rettifica Live (Opzione B) 🔄
+### 🔹 Sotto-Fase 4.6: Report, Libretto PDF & Staging Importazione con Rettifica Live (Opzione B) ✅
 - **Pagina Report & Esportazioni Unificata (`src/pages/ReportsPage.tsx`):**
   - **Switcher a Schede Coordinato:** navigazione a due viste principali (*Download & Documenti* vs *Importazione Staging*).
   - **Quick Archive KPI Ribbon:** visualizzazione dinamica dei conteggi di rifornimenti censiti, interventi officina e copertura temporale in anni.
@@ -226,16 +226,43 @@ La **Fase 4** trasforma lo scheletro in un'applicazione interattiva completa, fr
   - **Zona di Rilascio Attiva:** drag-and-drop file `.xlsx` o `.csv` con animazione border highlight, supporto sfoglia file ed euristica di rilevamento automatico fogli (*Sheet Sniffing*).
   - **Tabella di Anteprima Live Pre-Commit:**
     - Schede dedicate per foglio (*Rifornimenti* e *Manutenzioni*).
-    - Semaforo di stato su ogni riga: 🟢 *Nuovo*, 🔵 *Modifica*, 🟡 *Warning*, 🔴 *Errore*.
-    - Banner di sintesi conteggi aggregati (*Nuovi*, *Modifiche*, *Avvisi*, *Errori bloccanti*).
+    - Semaforo di stato su ogni riga: 🟢 *Nuovo*, 🔵 *Modifica*, 🟡 *Warning*, 🔴 *Errore*, ⚪ *Invariato*.
+    - Banner di sintesi conteggi aggregati (*Nuovi*, *Modifiche*, *Invariati*, *Avvisi*, *Errori bloccanti*).
   - **Flusso di Rettifica In-Place (Opzione B):**
     - Pulsante **"✏️ Correggi"** su ciascuna riga della tabella per aprire la mini-modale `ImportRowEditModal`.
     - Modifica assistita dei dati anomali (es. correzione da 500€ a 50€ con ricalcolo litri bidirezionale istantaneo).
     - Azione **"Rivalida"** collegata all'endpoint `POST /api/reports/import/revalidate`: riesegue il motore di validazione e converte istantaneamente le righe sanate in 🟢 *Nuovo*.
-    - **Strict Gatekeeper:** pulsante di commit a database disabilitato finché permangono record con errori bloccanti non sanati.
+    - **Strict Gatekeeper:** pulsante di commit a database disabilitato finché permangono record con errori bloccanti non sanati con elenco puntuale degli errori residui.
 - **Client & Hook Dati (`src/services/api/reportsApi.ts` & `src/hooks/useReports.ts`):**
   - Estensione di `ApiClient` (`client.ts`) con metodi dedicati per download binari Blob (`getBlob`, `postBlob`, `triggerFileDownload`).
   - Query `useExportStats` e mutazioni `useDownloadExcel`, `useDownloadTemplate`, `useGeneratePdf`, `usePreviewImport`, `useRevalidateImport`, `useCommitImport` con invalidazione coordinata di tutte le cache di dominio (`fuel`, `maintenance`, `dashboard`, `reports`, `reminders`).
+
+### 🔹 Sotto-Fase 4.7: Impostazioni, Categorie Tag & Profilo Utente ✅
+- **Rinnovamento Pagina Impostazioni (`src/pages/SettingsPage.tsx`):**
+  - Navigazione moderna a 3 schede (*Soglie & Carburante*, *Categorie & Tag*, *Profilo & Diagnostica*) con skeleton loading asincrono.
+- **Card Soglie di Sicurezza & Limiti Operativi (`src/components/settings/FuelThresholdsCard.tsx`):**
+  - Form interattivo validato con Zod e React Hook Form per la regolazione di:
+    - *Tetto massimo singolo pieno* (`max_total_cost`, €)
+    - *Allarme parziali accumulati* (`max_accumulated_partial_cost`, €)
+    - *Tolleranza oscillazione prezzo carburante* (`price_fluctuation_cents`, €/L)
+    - *Sanity check importatore* (consumo minimo/massimo/errore in km/L, percorrenza massima in km/giorno)
+  - Salvataggio transazionale con `PUT /api/settings` e pulsante di ripristino valori iniziali.
+- **Card Tag Manager Categorie Interattive (`src/components/settings/CategoryManagerCard.tsx`):**
+  - Tag cloud a pillola/chip semantici rimovibili con un click (`✕`) e mutazione asincrona.
+  - Gestione tipologie manutenzione (`POST /api/settings/maintenance-categories` e `DELETE /api/settings/maintenance-categories/{name}`).
+  - Gestione controlli periodici promemoria (`POST /api/settings/reminder-categories` e `DELETE /api/settings/reminder-categories/{name}`).
+  - **Sincronizzazione Reattiva:** le categorie create o rimosse si riflettono istantaneamente nelle pillole di scelta rapida dei form modali `MaintenanceFormModal` e `ReminderFormModal`.
+- **Card Preferenze OCR Note (`src/components/settings/OcrPreferencesCard.tsx`):**
+  - Switch animati per abilitare/disabilitare l'inclusione automatica del nome distributore e dei litri erogati nelle note generate da Vision AI.
+- **Card Profilo Utente & Sessione (`src/components/settings/UserProfileCard.tsx`):**
+  - Visualizzazione identità autenticata da `GET /api/auth/me`, identificativo utente univoco e badge semantico (*Modalità Demo Sandbox* vs *Account Autenticato*).
+  - Azione di disconnessione e reindirizzamento alla schermata di login.
+- **Card Diagnostica Backend & Database (`src/components/settings/ApiDiagnosticsCard.tsx`):**
+  - Monitoraggio in tempo reale dell'heartbeat `/api/health`, motore SQLite (`fuel_tracker.db`), proxy Vite e pulsante di refresh diagnostico.
+- **Riconciliazione Pagina di Login (`src/pages/LoginPage.tsx`):**
+  - Form di autenticazione collegato a `POST /api/auth/login`, supporto rapido per accesso Sandbox Demo con un solo click e salvataggio token JWT Bearer in `localStorage`.
+- **Servizi API & Hook (`settingsApi.ts`, `authApi.ts`, `useSettings.ts`, `useAuth.ts`):**
+  - Integrazione completa React Query con invalidazione incrociata delle cache.
 
 ---
 
@@ -249,5 +276,5 @@ La **Fase 4** trasforma lo scheletro in un'applicazione interattiva completa, fr
 | **Step 4.4** | **Dominio Rifornimenti & OCR** | Doppia vista tabella/schede, modale inserimento con validazione live, OCR | ✅ **Completato** |
 | **Step 4.5** | **Manutenzioni & Promemoria** | Timeline cronologica, semaforo scadenze, azione atomica *Mark as Done* | ✅ **Completato** |
 | **Step 4.6** | **Report & Staging Import** | Download center Excel/PDF, importatore drag&drop con anteprima a semafori | ✅ **Completato** |
-| **Step 4.7** | **Impostazioni & Categorie** | Form soglie carburante, gestore categorie con tag interattivi | 🔄 **Prossimo** |
-| **Step 4.8** | **Collaudo Globale E2E UX** | Certificazione browser end-to-end e documentazione conclusiva | ⏳ Pianificato |
+| **Step 4.7** | **Impostazioni & Categorie** | Form soglie carburante, gestore categorie con tag interattivi, profilo & diagnostica | ✅ **Completato** |
+| **Step 4.8** | **Collaudo Globale E2E UX** | Certificazione browser end-to-end e documentazione conclusiva | 🔄 **Prossimo** |
