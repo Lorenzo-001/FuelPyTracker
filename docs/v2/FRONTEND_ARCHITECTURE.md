@@ -211,6 +211,32 @@ La **Fase 4** trasforma lo scheletro in un'applicazione interattiva completa, fr
   - `src/services/api/remindersApi.ts` & `src/hooks/useReminders.ts`: gestione promemoria ciclici, esecuzione atomica `completeReminder` e cronologia esecuzioni.
 - **Esito Collaudo:** `npm run lint` 0 errori; `npm run build` completato in 2.19s con 0 errori.
 
+### 🔹 Sotto-Fase 4.6: Report, Libretto PDF & Staging Importazione con Rettifica Live (Opzione B) 🔄
+- **Pagina Report & Esportazioni Unificata (`src/pages/ReportsPage.tsx`):**
+  - **Switcher a Schede Coordinato:** navigazione a due viste principali (*Download & Documenti* vs *Importazione Staging*).
+  - **Quick Archive KPI Ribbon:** visualizzazione dinamica dei conteggi di rifornimenti censiti, interventi officina e copertura temporale in anni.
+- **Centro Download Documenti (`src/components/reports/ExportCenter.tsx`):**
+  - **Archivio Excel Completo (.xlsx Multi-Foglio):** download asincrono tramite streaming binario Blob del backup completo dell'utente (foglio *Rifornimenti Full-to-Full* e foglio *Manutenzioni & Scadenze*) con stili professionali, formule e formattazione numerica.
+  - **Modello Excel Vuoto Pre-Compilato:** download del template ufficiale con le intestazioni standard per l'inserimento dati offline.
+  - **Generazione Libretto Manutenzione Digitale in PDF:** trigger della modale di anagrafica veicolo.
+- **Modale Libretto Manutenzione PDF (`src/components/reports/PdfBookletModal.tsx`):**
+  - Form con validazione Zod per dati intestatario (*Nome e Cognome*), targa (*AB123CD* con uppercase automatico), modello veicolo e selezione del periodo di riferimento (*Tutto lo storico* o anno specifico).
+  - Download stream del documento PDF formale stampabile con scheda tecnica, registro storico interventi e timbro digitale.
+- **Staging Importazione Drag-and-Drop con Rettifica Live (`src/components/reports/ImportStagingZone.tsx`):**
+  - **Zona di Rilascio Attiva:** drag-and-drop file `.xlsx` o `.csv` con animazione border highlight, supporto sfoglia file ed euristica di rilevamento automatico fogli (*Sheet Sniffing*).
+  - **Tabella di Anteprima Live Pre-Commit:**
+    - Schede dedicate per foglio (*Rifornimenti* e *Manutenzioni*).
+    - Semaforo di stato su ogni riga: 🟢 *Nuovo*, 🔵 *Modifica*, 🟡 *Warning*, 🔴 *Errore*.
+    - Banner di sintesi conteggi aggregati (*Nuovi*, *Modifiche*, *Avvisi*, *Errori bloccanti*).
+  - **Flusso di Rettifica In-Place (Opzione B):**
+    - Pulsante **"✏️ Correggi"** su ciascuna riga della tabella per aprire la mini-modale `ImportRowEditModal`.
+    - Modifica assistita dei dati anomali (es. correzione da 500€ a 50€ con ricalcolo litri bidirezionale istantaneo).
+    - Azione **"Rivalida"** collegata all'endpoint `POST /api/reports/import/revalidate`: riesegue il motore di validazione e converte istantaneamente le righe sanate in 🟢 *Nuovo*.
+    - **Strict Gatekeeper:** pulsante di commit a database disabilitato finché permangono record con errori bloccanti non sanati.
+- **Client & Hook Dati (`src/services/api/reportsApi.ts` & `src/hooks/useReports.ts`):**
+  - Estensione di `ApiClient` (`client.ts`) con metodi dedicati per download binari Blob (`getBlob`, `postBlob`, `triggerFileDownload`).
+  - Query `useExportStats` e mutazioni `useDownloadExcel`, `useDownloadTemplate`, `useGeneratePdf`, `usePreviewImport`, `useRevalidateImport`, `useCommitImport` con invalidazione coordinata di tutte le cache di dominio (`fuel`, `maintenance`, `dashboard`, `reports`, `reminders`).
+
 ---
 
 ## 🗺️ 4. Roadmap di Avanzamento Fase 4
@@ -222,6 +248,6 @@ La **Fase 4** trasforma lo scheletro in un'applicazione interattiva completa, fr
 | **Step 4.3** | **Dashboard Reattiva** | KPI dinamici, grafici Recharts (prezzi, km/L, spesa), Car Health Score | ✅ **Completato** |
 | **Step 4.4** | **Dominio Rifornimenti & OCR** | Doppia vista tabella/schede, modale inserimento con validazione live, OCR | ✅ **Completato** |
 | **Step 4.5** | **Manutenzioni & Promemoria** | Timeline cronologica, semaforo scadenze, azione atomica *Mark as Done* | ✅ **Completato** |
-| **Step 4.6** | **Report & Staging Import** | Download center Excel/PDF, importatore drag&drop con anteprima a semafori | 🔄 **Prossimo** |
-| **Step 4.7** | **Impostazioni & Categorie** | Form soglie carburante, gestore categorie con tag interattivi | ⏳ Pianificato |
+| **Step 4.6** | **Report & Staging Import** | Download center Excel/PDF, importatore drag&drop con anteprima a semafori | ✅ **Completato** |
+| **Step 4.7** | **Impostazioni & Categorie** | Form soglie carburante, gestore categorie con tag interattivi | 🔄 **Prossimo** |
 | **Step 4.8** | **Collaudo Globale E2E UX** | Certificazione browser end-to-end e documentazione conclusiva | ⏳ Pianificato |
