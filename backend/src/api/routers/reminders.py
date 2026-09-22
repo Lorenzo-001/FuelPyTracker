@@ -98,7 +98,12 @@ def get_reminders(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ) -> List[ReminderResponse]:
-    reminders = crud.get_active_reminders(db, user_id)
+    reminders = (
+        db.query(Reminder)
+        .filter(Reminder.user_id == user_id, Reminder.is_active == True)
+        .order_by(Reminder.id.asc())
+        .all()
+    )
     refuelings = crud.get_all_refuelings(db, user_id)
     current_km = max((r.total_km for r in refuelings), default=0)
     return [_enrich_reminder(rem, current_km) for rem in reminders]
@@ -195,6 +200,12 @@ def update_reminder(
     db.commit()
     db.refresh(rem)
 
+    try:
+        import streamlit as st
+        st.cache_data.clear()
+    except Exception:
+        pass
+
     refuelings = crud.get_all_refuelings(db, user_id)
     current_km = max((r.total_km for r in refuelings), default=0)
     return _enrich_reminder(rem, current_km)
@@ -231,14 +242,18 @@ def complete_reminder(
     if not rem:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Promemoria non trovato")
 
+    refuelings = crud.get_all_refuelings(db, user_id)
+    last_known_km = max((r.total_km for r in refuelings), default=rem.last_km_check or 0)
+    effective_km = payload.check_km if payload.check_km is not None else last_known_km
+
     crud.log_reminder_execution(
         db=db,
         user_id=user_id,
         reminder_id=record_id,
         check_date=payload.check_date,
-        check_km=payload.check_km,
+        check_km=effective_km,
         notes=payload.notes or "",
     )
 
     db.refresh(rem)
-    return _enrich_reminder(rem, payload.check_km)
+    return _enrich_reminder(rem, effective_km)

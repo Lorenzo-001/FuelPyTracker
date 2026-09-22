@@ -60,7 +60,7 @@ class ReminderResponse(ReminderBase):
 class ReminderExecutionRequest(BaseModel):
     """Payload per l'azione 'Mark as Done' di completamento del controllo di routine."""
     check_date: dt.date = Field(default_factory=dt.date.today, description="Data effettiva in cui è stato eseguito il controllo")
-    check_km: int = Field(..., gt=0, description="Chilometri del veicolo al momento dell'esecuzione")
+    check_km: Optional[int] = Field(None, gt=0, description="Chilometri del veicolo al momento dell'esecuzione (default ultimo noto)")
     notes: Optional[str] = Field("", description="Note o riscontri sul controllo effettuato")
 
 
