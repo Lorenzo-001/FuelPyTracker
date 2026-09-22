@@ -195,6 +195,22 @@ La **Fase 4** trasforma lo scheletro in un'applicazione interattiva completa, fr
   - Client HTTP con fallback trasparente a tenant ID demo in ambiente locale.
 - **Esito Collaudo:** `npm run lint` 0 errori; `npm run build` completato in 2.06s. Collaudo browser superato: commutazione Tabella/Schede, apertura Side Inspector, inserimento form con calcolo automatico dei litri e verifica preflight.
 
+### 🔹 Sotto-Fase 4.5: Dominio Manutenzioni, Scadenze Predittive & Promemoria ✅
+- **Pagina Manutenzioni & Officina (`src/pages/MaintenancePage.tsx`):**
+  - **Quick Stats Ribbon:** Spesa Complessiva Officina (€), Conteggio Interventi Svolti, Data Ultimo Intervento e Chilometri dell'ultimo controllo.
+  - **Banner Semaforico Scadenze (`src/components/maintenance/DeadlineBanner.tsx`):** raggruppamento per priorità (🔴 Scaduto, 🟡 Imminente, 🟢 In Regola) con stima predittiva della data di raggiungimento basata sul ritmo d'uso medio dell'auto.
+  - **Timeline Cronologica Interventi (`src/components/maintenance/MaintenanceTimeline.tsx`):** binario visivo verticale con indicatori circolari colorati per categoria (Tagliando, Freni, Gomme, Revisione, Batteria), card dettagliate con spesa, ricambi e badge promemoria successivo.
+  - **Form Manutenzione (`src/components/maintenance/MaintenanceFormModal.tsx`):** modale Dialog con pillole di selezione rapida categoria, validazione Zod e sezione collassabile per impostare scadenze future chilometriche (`expiry_km`) o temporali (`expiry_date`).
+- **Pagina Scadenze & Promemoria di Routine (`src/pages/RemindersPage.tsx`):**
+  - **Card a Progresso Visuale (`src/components/reminders/ReminderCard.tsx`):** barra orizzontale a colorazione reattiva (Verde <70%, Ambra 70-99%, Rosso >=100% o scaduto), messaggio di stato dinamico ("Mancano X giorni/km") e dettagli ultimo controllo.
+  - **Azione Atomica "Segna come Eseguito" (Mark as Done):** pulsante ad azione singola che azzera istantaneamente la barra di progresso, aggiorna la data/km dell'ultimo controllo e registra l'avvenuta esecuzione nel log persistente con notifica toast Sonner.
+  - **Form Promemoria (`src/components/reminders/ReminderFormModal.tsx`):** modale con suggerimenti veloci (Pressione Gomme, Olio Motore, Liquido Tergicristalli, Liquido Refrigerante, Lavaggio) e frequenza a scelta temporale o chilometrica.
+  - **Storico Esecuzioni (`src/components/reminders/ReminderHistoryModal.tsx`):** consultazione del log immutabile delle verifiche effettuate nel tempo.
+- **Hook & Client Dati:**
+  - `src/services/api/maintenanceApi.ts` & `src/hooks/useMaintenance.ts`: gestione CRUD interventi, categorie distinte e scadenze predittive.
+  - `src/services/api/remindersApi.ts` & `src/hooks/useReminders.ts`: gestione promemoria ciclici, esecuzione atomica `completeReminder` e cronologia esecuzioni.
+- **Esito Collaudo:** `npm run lint` 0 errori; `npm run build` completato in 2.19s con 0 errori.
+
 ---
 
 ## 🗺️ 4. Roadmap di Avanzamento Fase 4
@@ -205,7 +221,7 @@ La **Fase 4** trasforma lo scheletro in un'applicazione interattiva completa, fr
 | **Step 4.2** | **Shell Adattiva & Mobile** | Bottom Navigation Bar per smartphone, pulsante FAB centrale `+` | ✅ **Completato** |
 | **Step 4.3** | **Dashboard Reattiva** | KPI dinamici, grafici Recharts (prezzi, km/L, spesa), Car Health Score | ✅ **Completato** |
 | **Step 4.4** | **Dominio Rifornimenti & OCR** | Doppia vista tabella/schede, modale inserimento con validazione live, OCR | ✅ **Completato** |
-| **Step 4.5** | **Manutenzioni & Promemoria** | Timeline cronologica, semaforo scadenze, azione atomica *Mark as Done* | 🔄 **Prossimo** |
-| **Step 4.6** | **Report & Staging Import** | Download center Excel/PDF, importatore drag&drop con anteprima a semafori | ⏳ Pianificato |
+| **Step 4.5** | **Manutenzioni & Promemoria** | Timeline cronologica, semaforo scadenze, azione atomica *Mark as Done* | ✅ **Completato** |
+| **Step 4.6** | **Report & Staging Import** | Download center Excel/PDF, importatore drag&drop con anteprima a semafori | 🔄 **Prossimo** |
 | **Step 4.7** | **Impostazioni & Categorie** | Form soglie carburante, gestore categorie con tag interattivi | ⏳ Pianificato |
 | **Step 4.8** | **Collaudo Globale E2E UX** | Certificazione browser end-to-end e documentazione conclusiva | ⏳ Pianificato |
