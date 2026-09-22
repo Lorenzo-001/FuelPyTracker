@@ -10,6 +10,7 @@ from typing import Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response, status
 from sqlalchemy.orm import Session
 
+import pandas as pd
 from src.database import crud
 from src.api.deps import get_db, get_current_user_id
 from src.api.schemas.reports import (
@@ -18,9 +19,10 @@ from src.api.schemas.reports import (
     ImportPreviewResponse,
     ImportCommitRequest,
     ImportCommitResponse,
+    ImportRevalidateRequest,
 )
 from src.services.data.exporters import reports, templates, pdf_generator
-from src.services.data.importers import manager
+from src.services.data.importers import manager, fuel, maintenance
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
@@ -182,6 +184,55 @@ async def preview_import_file(
                 df_maint_clean["Scadenza Data"] = df_maint_clean["Scadenza Data"].astype(str)
             maint_records = df_maint_clean.to_dict(orient="records")
             maint_summary = df_maint["Stato"].value_counts().to_dict() if "Stato" in df_maint else {}
+
+    return ImportPreviewResponse(
+        success=True,
+        fuel_rows=fuel_records,
+        fuel_summary=fuel_summary,
+        maintenance_rows=maint_records,
+        maintenance_summary=maint_summary,
+    )
+
+
+@router.post(
+    "/import/revalidate",
+    response_model=ImportPreviewResponse,
+    summary="Ri-validazione asincrona righe staging modificate",
+    description="Rivaluta logicamente le righe corrette dall'utente (confrontandole con il DB esistente) e aggiorna stati e log.",
+)
+def revalidate_imported_rows(
+    payload: ImportRevalidateRequest,
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+) -> ImportPreviewResponse:
+    fuel_records: List[Dict[str, Any]] = []
+    fuel_summary: Dict[str, int] = {}
+    maint_records: List[Dict[str, Any]] = []
+    maint_summary: Dict[str, int] = {}
+
+    # 1. Rivalidazione Rifornimenti
+    if payload.fuel_rows:
+        df_raw = pd.DataFrame(payload.fuel_rows)
+        df_validated = fuel.validate_fuel_logic(db, user_id, df_raw)
+        if not df_validated.empty:
+            df_clean = df_validated.copy()
+            if "Data" in df_clean.columns:
+                df_clean["Data"] = df_clean["Data"].astype(str)
+            fuel_records = df_clean.to_dict(orient="records")
+            fuel_summary = df_validated["Stato"].value_counts().to_dict() if "Stato" in df_validated else {}
+
+    # 2. Rivalidazione Manutenzioni
+    if payload.maintenance_rows:
+        df_raw = pd.DataFrame(payload.maintenance_rows)
+        df_validated = maintenance.validate_maintenance_logic(db, user_id, df_raw)
+        if not df_validated.empty:
+            df_clean = df_validated.copy()
+            if "Data" in df_clean.columns:
+                df_clean["Data"] = df_clean["Data"].astype(str)
+            if "Scadenza Data" in df_clean.columns:
+                df_clean["Scadenza Data"] = df_clean["Scadenza Data"].astype(str)
+            maint_records = df_clean.to_dict(orient="records")
+            maint_summary = df_validated["Stato"].value_counts().to_dict() if "Stato" in df_validated else {}
 
     return ImportPreviewResponse(
         success=True,

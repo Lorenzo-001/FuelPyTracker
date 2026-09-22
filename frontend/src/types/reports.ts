@@ -58,6 +58,11 @@ export interface ImportCommitPayload {
   maintenance_rows: ImportCommitRowMaintenance[]
 }
 
+export interface ImportRevalidatePayload {
+  fuel_rows: Record<string, unknown>[]
+  maintenance_rows: Record<string, unknown>[]
+}
+
 export interface ImportCommitResponse {
   success: boolean
   fuel_inserted: number

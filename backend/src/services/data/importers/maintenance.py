@@ -146,6 +146,7 @@ def _parse_single_row(row, ref_map, id_map, file_keys, sorted_history):
                 notes = [f"Cambia: {', '.join(diffs)}"]
             else:
                 status = "Invariato"
+                notes = ["Record identico già presente nel database (verrà ignorato)"]
 
         # Strategia B: Match per Chiave Logica (Data + Km + Tipo)
         elif not found_match:
@@ -164,14 +165,15 @@ def _parse_single_row(row, ref_map, id_map, file_keys, sorted_history):
                     notes = [f"Aggiornamenti: {', '.join(diffs)}"]
                 else:
                     status = "Invariato"
+                    notes = ["Record identico già presente nel database (verrà ignorato)"]
 
     # 3. Controlli di Congruità (SANDWICH CHECK)
     # Applicabile solo se stiamo inserendo o modificando (potenziale alterazione sequenza km)
     if status in ["Nuovo", "Modifica"]:
         
         # Check Valori Negativi
-        if d_cost < 0: status, notes = "Errore", ["Costo negativo"]
-        if d_km <= 0: status, notes = "Errore", ["Km <= 0"]
+        if d_cost < 0: status, notes = "Errore", ["Costo intervento non valido (< 0 €)"]
+        if d_km <= 0: status, notes = "Errore", ["Chilometri totali non validi (<= 0)"]
 
         # Sandwich Logic
         prev_rec = None

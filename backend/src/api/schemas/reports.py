@@ -75,3 +75,10 @@ class ImportCommitResponse(BaseModel):
     maintenance_inserted: int = 0
     maintenance_updated: int = 0
     message: str = ""
+
+
+class ImportRevalidateRequest(BaseModel):
+    """Payload per la ri-validazione asincrona delle righe modificate in staging."""
+    fuel_rows: List[Dict[str, Any]] = Field(default_factory=list, description="Righe rifornimenti correnti/modificate")
+    maintenance_rows: List[Dict[str, Any]] = Field(default_factory=list, description="Righe manutenzioni correnti/modificate")
+

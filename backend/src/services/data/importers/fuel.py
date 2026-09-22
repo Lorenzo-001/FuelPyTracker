@@ -168,7 +168,13 @@ def validate_fuel_logic(db: Session, user_id: str, df: pd.DataFrame) -> pd.DataF
         # --- Check km/L Tiered ---
         km_per_liter = delta_km / row['Litri']
 
-        if km_per_liter > kml_error:
+        if km_per_liter < 3.0:
+            row['Stato'] = 'Errore'
+            row['Note'] = (
+                row['Note'] + f' | Consumo impossibile: {km_per_liter:.1f} km/L '
+                f'(sotto il limite fisico minimo di 3.0 km/L)'
+            ).strip(' | ')
+        elif km_per_liter > kml_error:
             row['Stato'] = 'Errore'
             row['Note'] = (
                 row['Note'] + f' | Consumo impossibile: {km_per_liter:.1f} km/L '
@@ -213,7 +219,15 @@ def _parse_single_row(row, settings, ref_map, date_map, sorted_history, file_key
     if d_price > 0 and d_cost > 0: 
         d_liters = d_cost / d_price
     
-    d_notes_user = str(row.get('note', '')).strip()
+    raw_user_note = row.get('note')
+    if pd.isna(raw_user_note) or raw_user_note is None or str(raw_user_note).strip() in ['None', 'nan', 'NaN']:
+        d_notes_user = ""
+    else:
+        d_notes_user = str(raw_user_note).strip()
+    
+    # Protezione fondamentale: evita che la nota diagnostica di sistema venga scambiata per nota utente
+    if "verrà ignorato" in d_notes_user or "Record identico" in d_notes_user:
+        d_notes_user = ""
     
     # Normalizzazione booleano 'Pieno'
     raw_pieno = row.get('pieno')
@@ -243,26 +257,42 @@ def _parse_single_row(row, settings, ref_map, date_map, sorted_history, file_key
             if abs(db_rec.total_cost - d_cost) > 0.01: diffs.append(f"Costo")
             if abs(db_rec.price_per_liter - d_price) > 0.001: diffs.append(f"Prezzo")
             if bool(db_rec.is_full_tank) is not d_full: diffs.append(f"Pieno")
-            if (db_rec.notes or "").strip() != d_notes_user: diffs.append("Note")
+            
+            db_note = "" if (not db_rec.notes or pd.isna(db_rec.notes) or str(db_rec.notes).strip() in ['None', 'nan', 'NaN']) else str(db_rec.notes).strip()
+            if db_note != d_notes_user: diffs.append("Note")
             
             if diffs: 
                 status = "Modifica"
                 notes = [f"Cambia: {', '.join(diffs)}"]
             else: 
                 status = "Invariato" # Record identico già presente
+                notes = ["Record identico già presente nel database (verrà ignorato)"]
         else:
             # B. Controllo Nuovi Inserimenti
             if d_date in date_map:
                 # Blocca più rifornimenti nello stesso giorno (vincolo di business semplificato)
-                status, notes = "Errore", [f"Data già presente (ID: {date_map[d_date].id})"]
+                status, notes = "Errore", [f"Data già presente nel database (ID: {date_map[d_date].id})"]
             else:
                 # Verifica coerenza chilometrica temporale
                 status = _sandwich_check(d_date, d_km, sorted_history, notes, status)
 
     # 3. Check Valori Assoluti
     if status in ["Nuovo", "Modifica"]:
-        if d_km <= 0: status, notes = "Errore", ["Km zero o negativi"]
-        if d_cost > settings.max_total_cost: status, notes = "Warning", [f"Spesa > {settings.max_total_cost}"]
+        if d_km <= 0:
+            status, notes = "Errore", ["Chilometri totali non validi (<= 0)"]
+        elif d_cost <= 0:
+            status, notes = "Errore", ["Spesa totale non valida (<= 0 €)"]
+        elif d_price <= 0:
+            status, notes = "Errore", ["Prezzo al litro non valido (<= 0 €/L)"]
+        elif d_liters <= 0:
+            status, notes = "Errore", ["Litri carburante non validi (<= 0 L)"]
+        elif d_liters > 120.0:
+            status, notes = "Errore", [f"Litri ({d_liters:.1f} L) eccedono la capacità massima del serbatoio (max 120 L)"]
+        elif d_cost > settings.max_total_cost * 2.5:
+            status, notes = "Errore", [f"Spesa ({d_cost:.2f} €) oltre 2.5x la soglia massima consentita ({settings.max_total_cost:.2f} €)"]
+        elif d_cost > settings.max_total_cost:
+            status, notes = "Warning", [f"Spesa elevata ({d_cost:.2f} €) superiore alla soglia ({settings.max_total_cost:.2f} €)"]
+
         if pieno_assumed:
             notes.append("Colonna 'pieno' assente nel file: impostato come pieno per default")
 
