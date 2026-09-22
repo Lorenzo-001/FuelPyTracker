@@ -169,6 +169,32 @@ La **Fase 4** trasforma lo scheletro in un'applicazione interattiva completa, fr
   - Creato hook `src/hooks/useDashboardCharts.ts` collegato a TanStack Query v5 con chiave di cache differenziata per range.
 - **Esito Collaudo:** `npm run lint` con 0 errori e 0 warning su 47 file; `npm run build` completato in 1.88s. Collaudo visivo browser superato con interazione su tutte le schede grafiche, filtri temporali e calcolatore simulazione viaggio.
 
+### 🔹 Sotto-Fase 4.4: Dominio Rifornimenti, Form con Validazione Live, OCR & Side Inspector ✅
+- **Pagina Rifornimenti Unificata (`src/pages/FuelPage.tsx`):**
+  - **Quick Stats Ribbon:** 4 metriche aggregate in tempo reale (*Pieni Registrati*, *Spesa Totale €*, *Carburante Immesso L*, *Consumo Medio Reale km/L*).
+  - **Barra Filtri & Switcher Viste:** ricerca testuale libera (stazione, date, note, km), filtri rapidi (*Tutti*, *Solo Pieni*, *Solo Parziali*), selettore per anno solare e commutatore istantaneo tra vista Tabella ad alta densità e vista Schede responsive.
+  - **Integrazione FAB / Header Globale:** intercetta l'evento personalizzato `open-new-refueling` e il parametro `?action=new` per aprire la modale di inserimento da qualsiasi schermata dell'app.
+- **Doppia Visualizzazione Dati:**
+  - `src/components/fuel/FuelTable.tsx`: tabella con intestazioni semantiche, delta km evidenziato in smeraldo (`+650 km`), consumo tratta con badge e freccia per ispezione.
+  - `src/components/fuel/FuelCardList.tsx`: card responsive con visualizzazione ad alto contrasto di prezzo, litri, km contachilometri, badge distributore e tocco rapido.
+- **Form con Validazione Live & Calcolo Bidirezionale (`src/components/fuel/FuelFormModal.tsx`):**
+  - Validazione schema client con `react-hook-form` e `zod`.
+  - **Calcolo Bidirezionale:** digitando Prezzo/L e Totale Spesa, il campo Litri si autocompila; analogamente modificando i Litri si adegua il totale in Euro.
+  - **Pre-flight Check Asincrono (`POST /api/fuel/validate`):** verifica in tempo reale sul blur dei chilometri con banner semaforico (Verde se coerente, Ambra/Rosso con messaggio esplicativo sui chilometri precedenti o successivi).
+  - Toggle intuitivo per distinguere *Pieno Completo (Full-to-Full)* da *Rifornimento Parziale*.
+  - Gestione combinata di inserimento nuovo record o modifica record esistente con feedback toast Sonner.
+- **Side Inspector Dettagli (`src/components/fuel/FuelInspectorSheet.tsx`):**
+  - Pannello laterale a scorrimento (Sheet) con metrica di rendimento in evidenza, costo chilometrico (`€/km`), intervallo di giorni dall'ultimo pieno e note.
+  - Azioni protette: pulsante *Modifica* e pulsante *Elimina* con dialogo di conferma e avviso di ricalcolo a catena dei consumi.
+- **Scanner OCR Scontrini (`src/components/fuel/ReceiptOcrModal.tsx`):**
+  - Area drag-and-drop per upload immagini ricevute scontrino (JPEG, PNG, WebP) con supporto alla fotocamera da smartphone.
+  - Inoltro a `POST /api/fuel/ocr` con elaborazione OpenAI GPT-4o Vision, riassunto dati estratti e pulsante di precompilazione istantanea nel form rifornimento.
+- **Hook & Client Dati (`src/hooks/useRefuelings.ts` & `src/services/api/fuelApi.ts`):**
+  - `useRefuelings(year)`: caching TanStack Query v5 e invalidazione coordinata di `["fuel"]` e `["dashboard"]`.
+  - Mutazioni: `useCreateRefueling`, `useUpdateRefueling`, `useDeleteRefueling`, `useValidateRefueling`, `useScanReceiptOcr`.
+  - Client HTTP con fallback trasparente a tenant ID demo in ambiente locale.
+- **Esito Collaudo:** `npm run lint` 0 errori; `npm run build` completato in 2.06s. Collaudo browser superato: commutazione Tabella/Schede, apertura Side Inspector, inserimento form con calcolo automatico dei litri e verifica preflight.
+
 ---
 
 ## 🗺️ 4. Roadmap di Avanzamento Fase 4
@@ -178,8 +204,8 @@ La **Fase 4** trasforma lo scheletro in un'applicazione interattiva completa, fr
 | **Step 4.1** | **UI Kit Esteso & Librerie** | Recharts, Zod, Sonner, Dialog, Sheet, Tabs, Table | ✅ **Completato** |
 | **Step 4.2** | **Shell Adattiva & Mobile** | Bottom Navigation Bar per smartphone, pulsante FAB centrale `+` | ✅ **Completato** |
 | **Step 4.3** | **Dashboard Reattiva** | KPI dinamici, grafici Recharts (prezzi, km/L, spesa), Car Health Score | ✅ **Completato** |
-| **Step 4.4** | **Dominio Rifornimenti & OCR** | Doppia vista tabella/schede, modale inserimento con validazione live, OCR | 🔄 **Prossimo** |
-| **Step 4.5** | **Manutenzioni & Promemoria** | Timeline cronologica, semaforo scadenze, azione atomica *Mark as Done* | ⏳ Pianificato |
+| **Step 4.4** | **Dominio Rifornimenti & OCR** | Doppia vista tabella/schede, modale inserimento con validazione live, OCR | ✅ **Completato** |
+| **Step 4.5** | **Manutenzioni & Promemoria** | Timeline cronologica, semaforo scadenze, azione atomica *Mark as Done* | 🔄 **Prossimo** |
 | **Step 4.6** | **Report & Staging Import** | Download center Excel/PDF, importatore drag&drop con anteprima a semafori | ⏳ Pianificato |
 | **Step 4.7** | **Impostazioni & Categorie** | Form soglie carburante, gestore categorie con tag interattivi | ⏳ Pianificato |
 | **Step 4.8** | **Collaudo Globale E2E UX** | Certificazione browser end-to-end e documentazione conclusiva | ⏳ Pianificato |
