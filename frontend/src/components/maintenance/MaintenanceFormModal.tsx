@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Wrench, Calendar, Gauge, Wallet, Clock, Loader2, Sparkles } from "lucide-react"
 import { useCreateMaintenance, useUpdateMaintenance } from "@/hooks/useMaintenance"
+import { useSettings } from "@/hooks/useSettings"
 import type { MaintenanceResponse } from "@/types"
 import { toast } from "sonner"
 
@@ -65,6 +66,12 @@ export function MaintenanceFormModal({
   const isEditing = !!initialData
   const createMutation = useCreateMaintenance()
   const updateMutation = useUpdateMaintenance()
+  const { data: settings } = useSettings()
+
+  const availableCategories =
+    settings?.maintenance_types && settings.maintenance_types.length > 0
+      ? settings.maintenance_types
+      : CATEGORY_PRESETS
 
   const [showDeadlines, setShowDeadlines] = useState(false)
   const todayStr = new Date().toISOString().split("T")[0]
@@ -178,7 +185,7 @@ export function MaintenanceFormModal({
               Categoria Intervento
             </Label>
             <div className="flex flex-wrap gap-1.5">
-              {CATEGORY_PRESETS.map((cat) => (
+              {availableCategories.map((cat) => (
                 <Badge
                   key={cat}
                   variant="outline"

@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { CalendarClock, Gauge, Clock, Loader2, Sparkles } from "lucide-react"
 import { useCreateReminder, useUpdateReminder } from "@/hooks/useReminders"
+import { useSettings } from "@/hooks/useSettings"
 import type { ReminderResponse } from "@/types"
 import { toast } from "sonner"
 
@@ -59,6 +60,7 @@ export function ReminderFormModal({
   const isEditing = !!initialData
   const createMutation = useCreateReminder()
   const updateMutation = useUpdateReminder()
+  const { data: settings } = useSettings()
 
   const {
     register,
@@ -163,7 +165,7 @@ export function ReminderFormModal({
           {!isEditing && (
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-muted-foreground">
-                Suggerimenti Rapidi
+                Suggerimenti Rapidi & Categorie
               </Label>
               <div className="flex flex-wrap gap-1.5">
                 {PRESETS.map((p) => (
@@ -176,6 +178,18 @@ export function ReminderFormModal({
                     {p.title}
                   </Badge>
                 ))}
+                {settings?.reminder_types
+                  ?.filter((t) => !PRESETS.some((p) => p.title.toLowerCase() === t.toLowerCase()))
+                  .map((customType) => (
+                    <Badge
+                      key={customType}
+                      variant="outline"
+                      onClick={() => setValue("title", customType, { shouldValidate: true })}
+                      className="cursor-pointer hover:bg-cyan-500/20 text-cyan-300 border-cyan-500/30 transition-all text-xs py-1"
+                    >
+                      {customType}
+                    </Badge>
+                  ))}
               </div>
             </div>
           )}

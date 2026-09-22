@@ -1,25 +1,35 @@
 import React, { useState } from "react"
-import { useNavigate, Link } from "react-router-dom"
-import { Fuel, Lock, User, ArrowRight, ArrowLeft } from "lucide-react"
+import { Link } from "react-router-dom"
+import { Fuel, Lock, Mail, ArrowRight, ArrowLeft, Loader2, Sparkles, ShieldCheck } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useLogin } from "@/hooks/useAuth"
 
 export default function LoginPage() {
-  const navigate = useNavigate()
-  const [username, setUsername] = useState("admin")
-  const [password, setPassword] = useState("password")
+  const loginMutation = useLogin()
+  const [email, setEmail] = useState("utente@fuelpytracker.com")
+  const [password, setPassword] = useState("password123")
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    // Simulated login for bootstrap shell
-    navigate("/")
+    loginMutation.mutate({
+      email: email.trim(),
+      password,
+    })
+  }
+
+  const handleDemoLogin = () => {
+    loginMutation.mutate({
+      email: "demo@fuelpytracker.com",
+      password: "demo",
+    })
   }
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
-        {/* Back Link */}
+        {/* Torna alla Dashboard */}
         <Link
           to="/"
           className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -36,8 +46,8 @@ export default function LoginPage() {
             <CardTitle className="text-2xl font-bold tracking-tight">
               FuelPyTracker
             </CardTitle>
-            <CardDescription>
-              Inserisci le tue credenziali per accedere alla piattaforma di gestione.
+            <CardDescription className="text-xs text-muted-foreground">
+              Accedi alla tua area personale per gestire consumi, scadenze e costi veicolo.
             </CardDescription>
           </CardHeader>
 
@@ -45,20 +55,23 @@ export default function LoginPage() {
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                  <User className="h-3.5 w-3.5" />
-                  Nome Utente o Email
+                  <Mail className="h-3.5 w-3.5 text-emerald-400" />
+                  Email Utente
                 </label>
                 <Input
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="admin"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="nome@dominio.it"
                   required
+                  disabled={loginMutation.isPending}
+                  className="text-xs"
                 />
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                  <Lock className="h-3.5 w-3.5" />
+                  <Lock className="h-3.5 w-3.5 text-emerald-400" />
                   Password
                 </label>
                 <Input
@@ -67,18 +80,57 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
+                  disabled={loginMutation.isPending}
+                  className="text-xs"
                 />
               </div>
             </CardContent>
 
             <CardFooter className="flex flex-col gap-3 pt-2">
-              <Button type="submit" variant="emerald" className="w-full gap-2 font-semibold">
-                <span>Accedi alla Piattaforma</span>
-                <ArrowRight className="h-4 w-4" />
+              <Button
+                type="submit"
+                variant="emerald"
+                className="w-full gap-2 font-semibold"
+                disabled={loginMutation.isPending}
+              >
+                {loginMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Autenticazione in corso...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Accedi alla Piattaforma</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
               </Button>
-              <p className="text-[11px] text-center text-muted-foreground">
-                Integrazione completa con <code>/api/auth/token</code> (Fase 4).
-              </p>
+
+              <div className="relative w-full my-1">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border/60" />
+                </div>
+                <div className="relative flex justify-center text-[10px] uppercase">
+                  <span className="bg-card px-2 text-muted-foreground font-semibold">oppure</span>
+                </div>
+              </div>
+
+              {/* Accesso Rapido Sandbox Demo */}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDemoLogin}
+                disabled={loginMutation.isPending}
+                className="w-full gap-2 text-xs border-emerald-500/30 hover:bg-emerald-950/20 text-emerald-300"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Accedi in Modalità Demo Sandbox</span>
+              </Button>
+
+              <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground mt-2">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Sessione protetta con token Bearer JWT</span>
+              </div>
             </CardFooter>
           </form>
         </Card>
