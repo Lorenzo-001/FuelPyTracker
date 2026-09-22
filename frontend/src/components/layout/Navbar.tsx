@@ -96,7 +96,7 @@ export function Navbar() {
           size="sm"
           className="hidden md:inline-flex h-9 text-xs font-semibold gap-1.5 shadow-sm shadow-emerald-500/20"
         >
-          <Link to="/fuel">
+          <Link to="/fuel?action=new">
             <Plus className="h-3.5 w-3.5" />
             <span>Nuovo Rifornimento</span>
           </Link>

@@ -5,12 +5,13 @@ import type {
   RefuelingUpdate,
   RefuelingValidationRequest,
   RefuelingValidationResponse,
+  OCRScanResponse,
 } from "@/types"
 
 export const fuelApi = {
-  getRefuelings: (limit: number = 50, offset: number = 0): Promise<RefuelingResponse[]> => {
-    return apiClient.get<RefuelingResponse[]>("/fuel/", {
-      params: { limit, offset },
+  getRefuelings: (year?: number): Promise<RefuelingResponse[]> => {
+    return apiClient.get<RefuelingResponse[]>("/fuel", {
+      params: year ? { year } : undefined,
     })
   },
 
@@ -19,7 +20,7 @@ export const fuelApi = {
   },
 
   createRefueling: (data: RefuelingCreate): Promise<RefuelingResponse> => {
-    return apiClient.post<RefuelingResponse>("/fuel/", data)
+    return apiClient.post<RefuelingResponse>("/fuel", data)
   },
 
   updateRefueling: (id: number, data: RefuelingUpdate): Promise<RefuelingResponse> => {
@@ -35,4 +36,11 @@ export const fuelApi = {
   ): Promise<RefuelingValidationResponse> => {
     return apiClient.post<RefuelingValidationResponse>("/fuel/validate", data)
   },
+
+  scanReceiptOcr: (file: File): Promise<OCRScanResponse> => {
+    const formData = new FormData()
+    formData.append("file", file)
+    return apiClient.post<OCRScanResponse>("/fuel/ocr", formData)
+  },
 }
+

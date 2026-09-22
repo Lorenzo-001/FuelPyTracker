@@ -33,8 +33,11 @@ export function BottomBar() {
   )
 
   const handleQuickAdd = () => {
-    // Navigate to fuel section with intent to add new refueling
-    navigate("/fuel")
+    if (location.pathname === "/fuel") {
+      window.dispatchEvent(new CustomEvent("open-new-refueling"))
+    } else {
+      navigate("/fuel?action=new")
+    }
   }
 
   return (

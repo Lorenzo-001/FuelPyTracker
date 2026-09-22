@@ -89,6 +89,9 @@ class ApiClient {
 
     if (token) {
       defaultHeaders["Authorization"] = `Bearer ${token}`
+    } else {
+      // In dev/demo environment without login, use default demo user
+      defaultHeaders["X-User-Id"] = "00000000-0000-4000-8000-000000000001"
     }
 
     const config: RequestInit = {
