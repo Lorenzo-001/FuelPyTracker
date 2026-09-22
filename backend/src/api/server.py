@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 import datetime
+import logging
+from contextlib import asynccontextmanager
 # pyrefly: ignore [missing-import]
 from fastapi import FastAPI
 # pyrefly: ignore [missing-import]
@@ -14,12 +16,27 @@ if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
 from src.api.config import API_TITLE, API_DESCRIPTION, API_VERSION, CORS_ORIGINS
+from src.api.logging_config import configure_api_logging
+
+# Inizializza filtri e livelli di logging all'avvio del modulo
+configure_api_logging()
+logger = logging.getLogger("fuelpytracker.api")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Gestisce il ciclo di vita dell'applicazione, assicurando logger puliti anche post-inizializzazione Uvicorn."""
+    configure_api_logging()
+    logger.info("FuelPyTracker API v%s avviata (Health checks silenziati)", API_VERSION)
+    yield
+
 
 # Inizializza l'applicazione FastAPI
 app = FastAPI(
     title=API_TITLE,
     description=API_DESCRIPTION,
     version=API_VERSION,
+    lifespan=lifespan,
 )
 
 # Configura CORS per consentire chiamate dal frontend React

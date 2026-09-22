@@ -201,6 +201,7 @@ def update_reminder(
     db.refresh(rem)
 
     try:
+        # pyrefly: ignore [missing-import]
         import streamlit as st
         st.cache_data.clear()
     except Exception:

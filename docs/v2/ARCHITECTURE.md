@@ -150,6 +150,44 @@ def health_check():
 **Come funziona la mitigazione:**
 Un servizio di monitoraggio uptime esterno e gratuito (es. **UptimeRobot**, cron-job di GitHub Actions o BetterStack) invia una richiesta HTTP leggera a `/health` ogni 10 minuti. Questo "battito cardiaco" costante impedisce al server di addormentarsi, azzerando i tempi di attesa per l'utente finale a costo zero.
 
+### 5.1 Il Risvolto del Polling: Gestione del Log Noise & Endpoint Filtering
+
+L'introduzione di probe periodici ad alta frequenza (UptimeRobot ogni 10 min, unito al polling continuo del client React tramite `useSystemHealth` ogni 15 secondi per verificare lo stato di connessione) comporta un rischio architetturale noto: la **Log Fatigue** (inquinamento da log di routine).
+
+Senza un'adeguata configurazione, il server ASGI (Uvicorn) produce un flusso ininterrotto di righe di accesso (`INFO: "GET /health HTTP/1.1" 200 OK`), rendendo quasi impossibile per lo sviluppatore individuare a colpo d'occhio eccezioni reali, slow query o errori `500`.
+
+Per risolvere alla radice questo problema, abbiamo implementato un'architettura di logging centralizzata in [`backend/src/api/logging_config.py`](file:///c:/Progetti/git/FuelPyTracker/backend/src/api/logging_config.py):
+
+1. **`EndpointFilter` su `uvicorn.access`:**
+   Un filtro personalizzato che intercetta i log HTTP di Uvicorn e sopprime le richieste verso percorsi di diagnostica frequente (`/health`, `/favicon.ico`). Le chiamate operative di business (`/api/fuel`, `/api/reminders`, `/api/maintenance`) e tutti gli errori di rete rimangono invece perfettamente visibili nel terminale.
+   ```python
+   class EndpointFilter(logging.Filter):
+       def __init__(self, excluded_endpoints=("/health", "/favicon.ico")):
+           super().__init__()
+           self.excluded_endpoints = tuple(excluded_endpoints)
+
+       def filter(self, record: logging.LogRecord) -> bool:
+           message = record.getMessage()
+           if any(ep in message for ep in self.excluded_endpoints):
+               return False
+           if record.args:
+               args_str = " ".join(str(a) for a in record.args)
+               if any(ep in args_str for ep in self.excluded_endpoints):
+                   return False
+           return True
+   ```
+
+2. **Silenziamento dei Warning Legacy di Streamlit (`cda._LOGGER.disabled`):**
+   Durante la migrazione ibrida (Strangler Fig), l'importazione di moduli condivisi come `crud.py` da parte dei router FastAPI faceva scattare il logger interno di Streamlit (`No runtime found, using MemoryCacheStorageManager`), che veniva emesso per ciascuna delle funzioni decorate con `@st.cache_data`.
+   Nel modulo `logging_config.py` disabilitiamo questo logger specifico all'avvio:
+   ```python
+   import streamlit.runtime.caching.cache_data_api as cda
+   cda._LOGGER.disabled = True
+   ```
+
+3. **Integrazione con il Lifespan di FastAPI (`server.py`):**
+   Uvicorn spesso riconfigura i propri handler di logging durante lo spawn del processo worker. Attraverso il context manager asincrono `lifespan(app: FastAPI)` introdotto in `server.py`, la funzione `configure_api_logging()` viene riapplicata durante l'evento di startup, garantendo che i filtri rimangano attivi per l'intero ciclo di vita dell'applicazione.
+
 ---
 
 ## 📖 6. Documentazione Interattiva e Developer Experience (Swagger UI)

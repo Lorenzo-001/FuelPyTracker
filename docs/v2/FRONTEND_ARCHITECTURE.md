@@ -68,7 +68,7 @@ frontend/
     │   ├── dashboardApi.ts   # KPI summary, serie temporali e trip calculator
     │   └── fuelApi.ts        # Operazioni CRUD e validazione pre-flight chilometrica
     ├── hooks/                # Hook personalizzati TanStack Query
-    │   ├── useSystemHealth.ts# Polling live dello stato del server (15s)
+    │   ├── useSystemHealth.ts# Polling live dello stato del server (15s, filtrato lato backend per zero noise)
     │   └── useDashboardSummary.ts # Cache reattiva dati cruscotto
     ├── components/
     │   ├── ui/               # Primitive Shadcn/UI (Button, Card, Badge, Input, Skeleton, Dialog, Sheet, Tabs, Table, Toaster)
