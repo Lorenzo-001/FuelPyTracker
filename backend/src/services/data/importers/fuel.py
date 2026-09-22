@@ -1,5 +1,6 @@
 import pandas as pd
 from datetime import date as date_type
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 from src.database import crud
 from .utils import clean_column_names, parse_date, parse_float, parse_int
@@ -279,7 +280,7 @@ def _parse_single_row(row, settings, ref_map, date_map, sorted_history, file_key
     # 3. Check Valori Assoluti
     if status in ["Nuovo", "Modifica"]:
         if d_km <= 0:
-            status, notes = "Errore", ["Chilometri totali non validi (<= 0)"]
+            status, notes = "Errore", ["Chilometri totali non validi (zero o negativi)"]
         elif d_cost <= 0:
             status, notes = "Errore", ["Spesa totale non valida (<= 0 €)"]
         elif d_price <= 0:

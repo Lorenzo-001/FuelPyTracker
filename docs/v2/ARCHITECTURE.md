@@ -685,8 +685,84 @@ L'intera architettura client-side del Monorepo (`frontend/`), comprendente:
 | **Fase 2.5**| **Settings & Reports** | Preferenze utente, export PDF e fogli Excel, staging importazione | ✅ **Completata** |
 | **Fase 2.6**| **Collaudo E2E Globale** | Test sequenziale del ciclo di vita API, certificazione OpenAPI e Swagger | ✅ **Completata** |
 | **Fase 3** | **Bootstrap Frontend (React)** | Setup Vite, TailwindCSS, Shadcn/UI, routing SPA, TanStack Query | ✅ **Completata** |
-| **Fase 4** | **Ricostruzione Interfaccia UX** | Pagine React, cruscotti analitici, modal d'inserimento, responsive | 🔄 **In Corso** |
-| **Fase 5** | **Deploy CI/CD & Dismissione V1** | Deploy Vercel (Frontend), Render (Backend), archiviazione branch V1 | ⏳ Pianificata |
+| **Fase 4** | **Ricostruzione Interfaccia UX** | Pagine React, cruscotti analitici, modal d'inserimento, responsive | ✅ **Completata** |
+| **Fase 5** | **Deploy CI/CD & Dismissione V1** | Deploy Vercel (Frontend), Render (Backend), archiviazione branch V1 | 🔄 **Prossima** |
+
+---
+
+## 🚀 15. Fase 4: Ricostruzione Interfaccia UX & Collaudo Globale
+
+La **Fase 4** ha portato a compimento la totale reingegnerizzazione della User Experience di FuelPyTracker, trasformando l'applicazione originaria Streamlit in una moderna Single Page Application (SPA) reattiva, ad alte prestazioni ed ergonomica su qualsiasi dispositivo (desktop e mobile).
+
+```mermaid
+flowchart TD
+    subgraph UI_Modules [Moduli UX Completati - Fase 4]
+        M1[Step 4.1: UI Kit Esteso & Tooling] --> M2[Step 4.2: Shell Adattiva & Bottom Bar Mobile]
+        M2 --> M3[Step 4.3: Dashboard Reattiva, Recharts & Car Health Score]
+        M3 --> M4[Step 4.4: Rifornimenti, Validazione Live & OCR Scontrini]
+        M4 --> M5[Step 4.5: Manutenzioni, Scadenze Predittive & Mark-as-Done]
+        M5 --> M6[Step 4.6: Report, Libretto PDF & Staging Import con Rettifica Live]
+        M6 --> M7[Step 4.7: Impostazioni, Tag Manager Categorie & Profilo Utente]
+        M7 --> M8[Step 4.8: Collaudo Globale E2E Frontend & Documentazione]
+    end
+
+    subgraph Tech_Stack [Frontend Architecture Stack]
+        TS1[React 19 + TypeScript + Vite 8]
+        TS2[TailwindCSS + Shadcn/UI + Dark Mode HSL]
+        TS3[TanStack React Query + Cache Invalidation]
+        TS4[React Hook Form + Zod Client Validation]
+        TS5[Sonner Toasts + Recharts Responsive Engine]
+    end
+
+    UI_Modules -.-> Tech_Stack
+```
+
+### 1. Riepilogo Funzionale dei Domini Implementati
+
+1. **Shell Adattiva ed Ergonomia Multi-Device (Step 4.1 & 4.2):**
+   - Header unificato desktop con status badge FastAPI sincronizzato con `/api/health` e selettore veicolo.
+   - Bottom Navigation Bar mobile con pulsante centrale Floating Action Button (FAB) `+` (*Nuovo Pieno*) per inserimenti immediati su touch screen.
+   - Dialog modali accessibili, drawer laterale (*Sheet*) che si converte in bottom sheet su smartphone e notifiche globali non bloccanti con Sonner.
+
+2. **Dashboard Analitica & Simulatore Viaggio (Step 4.3):**
+   - 4 card KPI reattive collegate a `GET /api/dashboard/summary` (consumo medio ponderato, spesa carburante, spesa officina, alert rifornimenti parziali).
+   - Grafici a serie temporali interattivi con Recharts e selettore temporale (`3M`, `6M`, `1A`, `Tutto`): andamento prezzo carburante (€/L), resa energetica (km/L) e spesa mensile comparata.
+   - Widget *Car Health Score* circolare animato SVG con indicatore semaforico di integrità ed elenco delle anomalie attive.
+   - Modale *Calcolatore Costi Viaggio* (`POST /api/dashboard/trip-calculator`) con stima in tempo reale di litri necessari e budget spesa basata sullo storico d'uso effettivo dell'auto.
+
+3. **Dominio Rifornimenti & Scansione OCR Scontrini (Step 4.4):**
+   - Doppia modalità di visualizzazione (*View Switcher*): tabella dati densa con sorting e vista a schede informative per consultazione rapida.
+   - Ribbon delle statistiche aggregate live (costo al km, km percorsi, spesa totale filtrata).
+   - Form di registrazione (*FuelFormModal*) con validazione preventiva client-side Zod, pre-flight check asincrono su `/api/fuel/validate` e calcolo bidirezionale automatico prezzo/spesa/litri.
+   - Scanner ottico scontrini (*ReceiptOcrModal*) con area drag-and-drop e precompilazione guidata dei campi.
+   - Side Inspector per consultazione immediata dei dettagli del pieno, rendimento della tratta e cancellazione protetta.
+
+4. **Dominio Manutenzioni Meccaniche & Promemoria di Routine (Step 4.5):**
+   - Timeline cronologica interventi a binario verticale con marker semantici per tipologia spesa (*Tagliando, Freni, Gomme, Revisione, Batteria, Ricambi*).
+   - Banner predittivo delle scadenze (*DeadlineBanner*) con semaforo di urgenza (🔴 Scaduto, 🟡 Imminente, 🟢 In Regola) e stima predittiva basata sulla percorrenza chilometrica reale.
+   - Gestione verifiche periodiche ricorrenti (*RemindersPage*) con card a barra progressiva reattiva (olio, pressione gomme, liquidi).
+   - Azione atomica con un click **"Segna come Eseguito"** (*Mark as Done*): azzera la percentuale di avanzamento, aggiorna il ciclo operativo e archivia l'evento nel log immutabile consultabile via *ReminderHistoryModal*.
+
+5. **Report, Libretto Tecnico PDF & Staging Importazione con Rettifica Live (Step 4.6):**
+   - Download Center con esportazione istantanea archivio completo Excel `.xlsx` multi-foglio (*Rifornimenti*, *Manutenzioni*) e modello vuoto pre-compilato.
+   - Generazione Libretto Manutenzione Digitale in formato PDF stampabile con scheda anagrafica veicolo, storico dettagliato e timbro di convalida.
+   - Pipeline di Staging Drag-and-Drop per file Excel e CSV con sheet sniffing automatico e tabella preliminare con semaforo a 5 stati (🟢 Nuovo, 🔵 Modifica, 🟡 Warning, 🔴 Errore, ⚪ Invariato).
+   - Flusso di Rettifica In-Place (Opzione B): mini-modale mirata `ImportRowEditModal` con ricalcolo litri/spesa bidirezionale e re-validazione asincrona in tempo reale (`POST /api/reports/import/revalidate`).
+   - Regole avanzate di Sanity Check (soglia capienza serbatoio max 120 L, zero-floor consumo < 3.0 km/L ed errore spesa estrema > 2.5x massimale).
+   - Strict Safety Gatekeeper: blocco del commit transazionale a database finché permangono errori non sanati con itemizzazione degli alert.
+
+6. **Impostazioni Sistema, Tag Manager Categorie & Profilo Utente (Step 4.7):**
+   - Form impostazioni avanzate (`FuelThresholdsCard`) con React Hook Form e Zod per calibrare massimali pieno (€), allarme parziali (€), oscillazione prezzi (€/L) e limiti di tolleranza dell'importatore.
+   - Tag Manager categorie interattivo (`CategoryManagerCard`) a chip rimovibili con un click (`✕`) e inserimento rapido per tipologie di officina e promemoria.
+   - Sincronizzazione automatica tramite React Query: le categorie aggiunte o eliminate in Impostazioni si riflettono istantaneamente nelle pillole di scelta rapida dei form modali di tutta l'applicazione.
+   - Switch preferenze per note OCR (`OcrPreferencesCard`), profilo utente autenticato/demo con logout (`UserProfileCard`), monitor diagnostico backend e SQLite locale (`ApiDiagnosticsCard`), e pagina di login (`LoginPage`).
+
+### 2. Certificazione di Qualità & Suite di Test (Step 4.8)
+
+- **Backend Test Suite (Pytest):** `272 test superati al 100%` (`backend/tests/` unitari ed end-to-end), con zero fallimenti e tempi di esecuzione ottimali (~11s).
+- **Frontend Linter (Oxlint):** `0 errori` su 79 file sorgente.
+- **Frontend Type-Check & Production Bundle (TypeScript + Vite):** compilazione con zero errori di tipo e bundle minificato generato in `1.90s`.
+
 
 
 

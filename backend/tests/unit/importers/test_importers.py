@@ -5,6 +5,7 @@ Copertura: utils, fuel importer, maintenance importer, manager.
 Esecuzione: pytest tests/unit/importers/test_importers.py -v
 """
 
+# pyrefly: ignore [missing-import]
 import pytest
 import pandas as pd
 from datetime import date, datetime
@@ -311,7 +312,7 @@ class TestFuelValidation:
     def test_cost_above_threshold_is_warning(self):
         """Costo superiore al limite impostato deve essere Warning."""
         result = self._run({"data": ["2024-01-15"], "km": [50000],
-                            "prezzo": [1.75], "costo": [250.0]},
+                            "prezzo": [2.50], "costo": [220.0]},
                            max_cost=200.0)
         assert result.iloc[0]["Stato"] == "Warning"
 
@@ -629,12 +630,14 @@ class TestManager:
 class TestNewValidations:
     """Test per le validazioni aggiunte: data futura e consumo km/L anomalo."""
 
-    def _run(self, rows_data, db_refuelings=None, max_cost=200.0):
+    def _run(self, rows_data, db_refuelings=None, max_cost=200.0, kml_min=3.0):
         from unittest.mock import MagicMock, patch
         db = MagicMock()
         df = pd.DataFrame(rows_data)
+        settings = _make_settings(max_cost)
+        settings.import_kml_min = kml_min
         with patch('src.services.data.importers.fuel.crud') as mock_crud:
-            mock_crud.get_settings.return_value = _make_settings(max_cost)
+            mock_crud.get_settings.return_value = settings
             mock_crud.get_all_refuelings.return_value = db_refuelings or []
             result = fuel_importer.validate_fuel_logic(db, USER_ID, df)
         return result
@@ -690,15 +693,27 @@ class TestNewValidations:
         assert "velocit" in result.iloc[0]["Note"].lower()
 
     def test_anomalous_kml_low_too_is_warning(self):
-        """km/L troppo basso (< 3) deve diventare Warning."""
+        """km/L anomalo ma fisicamente plausibile (es. 5.0 km/L con range 8-30) deve diventare Warning."""
         prev = _make_refueling(1, date(2024, 1, 1), 50000)
-        # 50100 km - 50000 km = 100 delta, ma 1000 litri => 0.1 km/L
+        # 50250 km - 50000 km = 250 delta, 50 litri => 5.0 km/L (tra 3.0 e kml_min=8.0)
         result = self._run(
-            {"data": ["2024-06-01"], "km": [50100],
-             "prezzo": [0.10], "costo": [100.0], "litri": [1000.0]},
-            db_refuelings=[prev]
+            {"data": ["2024-06-01"], "km": [50250],
+             "prezzo": [1.75], "costo": [87.5], "litri": [50.0]},
+            db_refuelings=[prev],
+            kml_min=8.0
         )
         assert result.iloc[0]["Stato"] == "Warning"
+
+    def test_extreme_low_kml_below_3_is_error(self):
+        """km/L impossibile (< 3.0) deve diventare Errore bloccante."""
+        prev = _make_refueling(1, date(2024, 1, 1), 50000)
+        # 50100 km - 50000 km = 100 delta, 50 litri => 2.0 km/L (< 3.0)
+        result = self._run(
+            {"data": ["2024-06-01"], "km": [50100],
+             "prezzo": [1.75], "costo": [87.5], "litri": [50.0]},
+            db_refuelings=[prev]
+        )
+        assert result.iloc[0]["Stato"] == "Errore"
 
     def test_plausible_kml_stays_nuovo(self):
         """km/L plausibile (es. 15 km/L) deve rimanere Nuovo."""
