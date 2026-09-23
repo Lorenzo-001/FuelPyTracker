@@ -258,11 +258,11 @@ export function ImportRowEditModal({
             <div className={`p-2 rounded-xl ${type === "fuel" ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"}`}>
               {type === "fuel" ? <Fuel className="h-5 w-5" /> : <Wrench className="h-5 w-5" />}
             </div>
-            <span>Rettifica Record in Staging (Riga #{rowIndex !== null ? rowIndex + 1 : 1})</span>
+            <span>Modifica Record prima dell&apos;Importazione (Riga #{rowIndex !== null ? rowIndex + 1 : 1})</span>
           </DialogTitle>
           <DialogDescription>
             Correggi i valori digitati erroneamente prima del salvataggio. Le modifiche verranno
-            immediatamente rivalutate dal motore di sicurezza.
+            immediatamente rivalutate dai controlli di sicurezza.
           </DialogDescription>
         </DialogHeader>
 

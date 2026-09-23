@@ -33,7 +33,7 @@ export default function ReportsPage() {
           </TabsTrigger>
           <TabsTrigger value="import" className="gap-2 text-xs font-semibold">
             <Upload className="h-4 w-4 text-sky-400" />
-            <span>Importazione Staging</span>
+            <span>Importazione & Verifica</span>
           </TabsTrigger>
         </TabsList>
 

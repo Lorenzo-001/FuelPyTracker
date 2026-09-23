@@ -22,24 +22,24 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const { data: summary, isLoading } = useDashboardSummary()
 
-  const avgKml = summary?.avg_km_per_liter || 18.45
-  const avgL100km = avgKml > 0 ? (100 / avgKml).toFixed(2) : "5.42"
+  const avgKml = summary?.avg_km_per_liter ?? 0
+  const avgL100km = avgKml > 0 ? (100 / avgKml).toFixed(2) : "—"
   const fuelCost =
     summary?.total_fuel_cost != null
       ? summary.total_fuel_cost.toFixed(2).replace(".", ",")
-      : "284,50"
+      : "0,00"
   const maintenanceCost =
     summary?.total_maintenance_cost != null
       ? summary.total_maintenance_cost.toFixed(2).replace(".", ",")
-      : "140,00"
+      : "0,00"
   const totalSpent =
     summary?.total_spent != null
       ? summary.total_spent.toFixed(2).replace(".", ",")
-      : "424,50"
+      : "0,00"
   const currentKm =
     summary?.current_km != null
       ? summary.current_km.toLocaleString("it-IT")
-      : "114.500"
+      : "0"
 
   const hasPartialAlert = summary?.partial_alert?.is_warning
 
@@ -123,7 +123,7 @@ export default function DashboardPage() {
                 <Skeleton className="h-8 w-28" />
                 <Skeleton className="h-4 w-36" />
               </div>
-            ) : (
+            ) : avgKml > 0 ? (
               <>
                 <div className="text-2xl font-bold tracking-tight">
                   {avgL100km} <span className="text-sm font-normal text-muted-foreground">L/100km</span>
@@ -131,6 +131,15 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
                   <TrendingUp className="h-3.5 w-3.5" />
                   <span>{avgKml.toFixed(2)} km/L (Full-to-Full)</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-bold tracking-tight text-muted-foreground">
+                  — <span className="text-sm font-normal text-muted-foreground/60">L/100km</span>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  In attesa di rifornimenti pieni
                 </div>
               </>
             )}
@@ -157,7 +166,7 @@ export default function DashboardPage() {
                 <div className="text-xs text-muted-foreground">
                   {summary?.last_refueling?.date
                     ? `Ultimo pieno: ${summary.last_refueling.date}`
-                    : "Archivio rifornimenti registrato"}
+                    : "Nessun rifornimento registrato"}
                 </div>
               </>
             )}

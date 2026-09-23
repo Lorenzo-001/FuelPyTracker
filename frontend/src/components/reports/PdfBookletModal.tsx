@@ -13,18 +13,18 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { FileText, Loader2, CheckCircle2, ShieldCheck, Sparkles } from "lucide-react"
+import { FileText, Loader2, CheckCircle2, ShieldCheck, Sparkles, AlertTriangle } from "lucide-react"
 import { useGeneratePdf } from "@/hooks/useReports"
 import { toast } from "sonner"
 
 const pdfSchema = z.object({
-  owner_name: z.string().min(2, "Inserisci nome e cognome dell'intestatario"),
+  owner_name: z.string().trim().min(2, "Inserisci nome e cognome dell'intestatario"),
   plate: z
     .string()
-    .min(3, "La targa deve contenere almeno 3 caratteri")
-    .max(20)
-    .toUpperCase(),
-  car_model: z.string().min(2, "Specifica marca e modello del veicolo"),
+    .trim()
+    .min(3, "La targa è obbligatoria")
+    .regex(/^[A-Z]{2}[0-9]{3}[A-Z]{2}$|^[A-Z0-9]{4,8}$/, "Formato targa non valido (es. AB123CD)"),
+  car_model: z.string().trim().min(2, "Specifica marca e modello del veicolo"),
   year: z.string().optional(),
 })
 
@@ -34,12 +34,14 @@ interface PdfBookletModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   yearsAvailable?: number[]
+  maintenancesCount?: number
 }
 
 export function PdfBookletModal({
   open,
   onOpenChange,
   yearsAvailable = [],
+  maintenancesCount = 0,
 }: PdfBookletModalProps) {
   const generatePdfMutation = useGeneratePdf()
   const [downloadSuccess, setDownloadSuccess] = useState(false)
@@ -47,19 +49,25 @@ export function PdfBookletModal({
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
     reset,
   } = useForm<PdfFormData>({
     resolver: zodResolver(pdfSchema),
     defaultValues: {
-      owner_name: "Proprietario Veicolo",
-      plate: "AB123CD",
-      car_model: "Auto Principale",
-      year: "",
+      owner_name: "",
+      plate: "",
+      car_model: "",
+      year: "all",
     },
   })
 
   const onSubmit = async (data: PdfFormData) => {
+    if (maintenancesCount === 0) {
+      toast.error("Nessun intervento registrato da esportare nel libretto.")
+      return
+    }
+
     try {
       const yearVal = data.year && data.year !== "all" ? parseInt(data.year, 10) : null
       await generatePdfMutation.mutateAsync({
@@ -117,11 +125,20 @@ export function PdfBookletModal({
           </p>
         </div>
 
+        {maintenancesCount === 0 && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-300 flex items-start gap-2.5 animate-in fade-in">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
+            <div>
+              <strong>Nessun intervento registrato:</strong> Non sono presenti tagliandi o riparazioni da inserire nel libretto. Registra prima un intervento per scaricare il documento.
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
           {/* Owner Name */}
           <div className="space-y-1.5">
             <Label htmlFor="owner_name" className="text-xs font-semibold">
-              Intestatario del Veicolo
+              Intestatario del Veicolo *
             </Label>
             <Input
               id="owner_name"
@@ -138,12 +155,16 @@ export function PdfBookletModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="plate" className="text-xs font-semibold">
-                Targa Veicolo
+                Targa Veicolo *
               </Label>
               <Input
                 id="plate"
                 placeholder="Es. AB123CD"
                 {...register("plate")}
+                onChange={(e) => {
+                  const cleaned = e.target.value.toUpperCase().replace(/\s+/g, "")
+                  setValue("plate", cleaned, { shouldValidate: true })
+                }}
                 className="font-mono uppercase text-sm tracking-wider"
               />
               {errors.plate && (
@@ -153,11 +174,11 @@ export function PdfBookletModal({
 
             <div className="space-y-1.5">
               <Label htmlFor="car_model" className="text-xs font-semibold">
-                Marca & Modello
+                Marca & Modello *
               </Label>
               <Input
                 id="car_model"
-                placeholder="Es. Fiat Panda 1.2 Lounge"
+                placeholder="Es. Volkswagen Golf 8"
                 {...register("car_model")}
                 className="text-sm"
               />
@@ -201,7 +222,7 @@ export function PdfBookletModal({
             <Button
               type="submit"
               variant="emerald"
-              disabled={isSubmitting || generatePdfMutation.isPending}
+              disabled={isSubmitting || generatePdfMutation.isPending || maintenancesCount === 0}
               className="gap-2"
             >
               {generatePdfMutation.isPending ? (

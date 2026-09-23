@@ -222,15 +222,14 @@ def generate_maintenance_report(
     cols_w = [22, 22, 35, 30, 56, 25] 
     headers = ["DATA", "KM", "TIPO", "SCADENZA", "DESCRIZIONE", "COSTO"]
     
-    # Rendering Header Tabella
+    # Rendering Header Tabella (Tutte le intestazioni centrate orizzontalmente)
     pdf.set_font('Helvetica', 'B', 8)
     pdf.set_fill_color(44, 62, 80)
     pdf.set_text_color(255, 255, 255)
     pdf.set_line_width(0.3)
     
     for i, h in enumerate(headers):
-        align = 'R' if i == 5 else 'C' if i < 2 else 'L'
-        pdf.cell(cols_w[i], 8, h, 1, 0, align, True)
+        pdf.cell(cols_w[i], 8, h, 1, align='C', fill=True)
     pdf.ln()
 
     # Rendering Corpo Tabella
@@ -242,56 +241,82 @@ def generate_maintenance_report(
     if not maintenances:
         pdf.ln(5)
         pdf.set_font('Helvetica', 'I', 10)
-        pdf.cell(0, 10, "Nessun intervento registrato nel periodo selezionato.", 0, 1, 'C')
+        pdf.cell(0, 10, "Nessun intervento registrato nel periodo selezionato.", 0, align='C')
     
     # Iterazione Righe
     for m in maintenances:
-        pdf.set_fill_color(245, 245, 245) # Grigio alternato
-        
         date_str = m.date.strftime("%d/%m/%Y")
-        km_str = str(m.total_km)
+        km_str = f"{m.total_km:,}".replace(',', '.')
         
         # Logica stringa scadenza
         scad_str = "-"
         if m.expiry_km:
-            scad_str = f"{m.expiry_km} km"
+            scad_str = f"{m.expiry_km:,} km".replace(',', '.')
         elif m.expiry_date:
             scad_str = m.expiry_date.strftime("%d/%m/%y")
         
-        # Truncate stringhe lunghe per layout fisso
-        note = safe_text(m.description or "")
-        if len(note) > 35: note = note[:32] + "..."
-        
+        note = safe_text(m.description or "-")
         tipo = safe_text(m.expense_type)
-        if len(tipo) > 20: tipo = tipo[:18] + ".."
-
         cost_str = f"{m.cost:.2f}".replace('.', ',')
 
-        # Stampa celle
-        pdf.cell(cols_w[0], 7, date_str, 'LRB', 0, 'C', fill)
-        pdf.cell(cols_w[1], 7, km_str, 'LRB', 0, 'C', fill)
-        
-        # Cambio font per evidenziare il tipo spesa
-        current_font = pdf.font_style
-        pdf.set_font('Helvetica', 'B', 8)
-        pdf.cell(cols_w[2], 7, tipo, 'LRB', 0, 'L', fill)
+        # Calcolo righe necessarie per la descrizione
         pdf.set_font('Helvetica', '', 8)
-        
-        # Cella Scadenza
-        pdf.cell(cols_w[3], 7, scad_str, 'LRB', 0, 'C', fill)
+        lines = pdf.multi_cell(cols_w[4], 4.5, note, dry_run=True, output="LINES")
+        num_lines = max(1, len(lines))
+        row_h = max(7.0, num_lines * 4.5 + 2.0)
 
-        pdf.cell(cols_w[4], 7, note, 'LRB', 0, 'L', fill)
-        pdf.cell(cols_w[5], 7, cost_str, 'LRB', 0, 'R', fill)
-        
-        pdf.ln()
+        # Gestione automatica del salto pagina prima della riga
+        if pdf.get_y() + row_h > pdf.page_break_trigger:
+            pdf.add_page()
+            pdf.set_font('Helvetica', 'B', 8)
+            pdf.set_fill_color(44, 62, 80)
+            pdf.set_text_color(255, 255, 255)
+            for i, h in enumerate(headers):
+                pdf.cell(cols_w[i], 8, h, 1, align='C', fill=True)
+            pdf.ln()
+            pdf.set_font('Helvetica', '', 8)
+            pdf.set_text_color(0, 0, 0)
+
+        curr_x = pdf.get_x()
+        curr_y = pdf.get_y()
+
+        if fill:
+            pdf.set_fill_color(245, 245, 245)
+        else:
+            pdf.set_fill_color(255, 255, 255)
+
+        # Stampa celle con altezza coordinata row_h
+        pdf.cell(cols_w[0], row_h, date_str, 'LRB', align='C', fill=fill)
+        pdf.cell(cols_w[1], row_h, km_str, 'LRB', align='C', fill=fill)
+
+        # Cella Tipo (grassetto)
+        pdf.set_font('Helvetica', 'B', 8)
+        pdf.cell(cols_w[2], row_h, tipo, 'LRB', align='L', fill=fill)
+        pdf.set_font('Helvetica', '', 8)
+
+        # Cella Scadenza
+        pdf.cell(cols_w[3], row_h, scad_str, 'LRB', align='C', fill=fill)
+
+        # Cella Descrizione Multilinea
+        x_desc = pdf.get_x()
+        y_desc = pdf.get_y()
+        pdf.rect(x_desc, y_desc, cols_w[4], row_h, 'DF' if fill else 'D')
+        pad_y = (row_h - (num_lines * 4.5)) / 2
+        pdf.set_xy(x_desc, y_desc + pad_y)
+        pdf.multi_cell(cols_w[4], 4.5, note, border=0, align='L')
+        pdf.set_xy(x_desc + cols_w[4], y_desc)
+
+        # Cella Costo (allineata a destra)
+        pdf.cell(cols_w[5], row_h, cost_str, 'LRB', align='R', fill=fill)
+
+        pdf.set_xy(10, curr_y + row_h)
         fill = not fill # Toggle colore riga
 
     # 6. Rendering Totale Finale
     if maintenances:
         pdf.set_font('Helvetica', 'B', 8)
-        # Somma larghezze tutte colonne tranne l'ultima
         total_width_labels = sum(cols_w[:-1])
-        pdf.cell(total_width_labels, 7, "TOTALE PERIODO", 1, 0, 'R')
-        pdf.cell(cols_w[-1], 7, f"{total_spent:,.2f}".replace('.', ','), 1, 0, 'R', True)
+        pdf.cell(total_width_labels, 7, "TOTALE PERIODO", 1, align='R')
+        pdf.cell(cols_w[-1], 7, f"{total_spent:,.2f}".replace('.', ','), 1, align='R', fill=True)
 
     return bytes(pdf.output())

@@ -115,7 +115,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Accesso Rapido Sandbox Demo */}
+              {/* Accesso Rapido Dimostrativo */}
               <Button
                 type="button"
                 variant="outline"
@@ -124,12 +124,12 @@ export default function LoginPage() {
                 className="w-full gap-2 text-xs border-emerald-500/30 hover:bg-emerald-950/20 text-emerald-300"
               >
                 <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
-                <span>Accedi in Modalità Demo Sandbox</span>
+                <span>Accedi in Modalità Dimostrativa</span>
               </Button>
 
               <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground mt-2">
                 <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-                <span>Sessione protetta con token Bearer JWT</span>
+                <span>Accesso protetto e crittografato</span>
               </div>
             </CardFooter>
           </form>

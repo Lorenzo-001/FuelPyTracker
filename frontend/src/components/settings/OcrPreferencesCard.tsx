@@ -33,16 +33,16 @@ export function OcrPreferencesCard({ settings }: OcrPreferencesCardProps) {
             </div>
             <div>
               <CardTitle className="text-base font-bold">
-                Preferenze OCR & Acquisizione Scontrini
+                Riconoscimento Automatico Scontrini
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                Controlla la composizione automatica delle note generate dall&apos;analisi ottica dello scontrino.
+                Controlla i dati da inserire in automatico nelle note quando scansioni una ricevuta o scontrino.
               </CardDescription>
             </div>
           </div>
           <Badge variant="outline" className="text-xs gap-1 border-border/80">
             <Sparkles className="h-3 w-3 text-emerald-400" />
-            Vision AI
+            Scansione Ricevute
           </Badge>
         </div>
       </CardHeader>

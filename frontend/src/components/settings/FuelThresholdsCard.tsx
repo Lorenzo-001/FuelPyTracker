@@ -313,7 +313,7 @@ export function FuelThresholdsCard({ settings }: FuelThresholdsCardProps) {
           <div className="p-3 rounded-lg bg-muted/20 border border-border/50 flex items-start gap-2.5 text-xs text-muted-foreground">
             <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
             <span>
-              Questi parametri vengono applicati in tempo reale sia nella modale di validazione preventiva dei rifornimenti, sia nello staging pre-commit durante l&apos;importazione dei file Excel/CSV.
+              Questi parametri vengono applicati in tempo reale sia durante l&apos;inserimento manuale dei rifornimenti, sia durante la verifica e l&apos;importazione dei file Excel o CSV.
             </span>
           </div>
         </CardContent>

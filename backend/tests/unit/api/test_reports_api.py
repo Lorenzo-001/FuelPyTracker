@@ -182,6 +182,20 @@ def test_generate_pdf_booklet_filtered_year(client_with_db, db_session):
     assert res.content.startswith(b"%PDF")
 
 
+def test_generate_pdf_booklet_empty_raises_400(client_with_db):
+    """Verifica che la richiesta di generazione PDF senza interventi sollevi un errore 400."""
+    headers = {"X-User-Id": "user-pdf-empty"}
+    payload = {
+        "owner_name": "Utente Vuoto",
+        "plate": "XX000YY",
+        "car_model": "Auto Test",
+        "year": None,
+    }
+    res = client_with_db.post("/api/reports/pdf", json=payload, headers=headers)
+    assert res.status_code == 400
+    assert "Nessun intervento di manutenzione" in res.json()["detail"]
+
+
 # =============================================================================
 # TEST: Anteprima Importazione (Staging)
 # =============================================================================

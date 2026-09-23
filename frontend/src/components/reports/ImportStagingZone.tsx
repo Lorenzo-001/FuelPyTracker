@@ -258,11 +258,11 @@ export function ImportStagingZone() {
             </div>
             <div>
               <CardTitle className="text-base font-bold">
-                Staging Importazione Massiva Dati
+                Verifica e Importazione Dati
               </CardTitle>
               <CardDescription className="text-xs">
-                Carica file Excel (.xlsx multi-foglio) o CSV per visualizzare l&apos;anteprima
-                e convalidare le righe prima dell&apos;inserimento a database.
+                Carica un file Excel (.xlsx) o CSV per visualizzare l&apos;anteprima
+                e verificare i dati prima del salvataggio nel registro.
               </CardDescription>
             </div>
           </div>
@@ -792,7 +792,7 @@ export function ImportStagingZone() {
                   ) : (
                     <>
                       <Check className="h-4 w-4" />
-                      Conferma ed Importa nel Database
+                      Salva e Importa nel Registro
                     </>
                   )}
                 </Button>

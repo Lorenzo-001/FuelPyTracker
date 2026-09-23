@@ -80,7 +80,7 @@ export function ReceiptOcrModal({
         toast.warning(res.raw_text || "Dati parziali rilevati dallo scontrino.")
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Errore durante l'analisi OCR"
+      const msg = err instanceof Error ? err.message : "Impossibile leggere i dati dallo scontrino"
       toast.error(msg)
     }
   }
@@ -124,11 +124,11 @@ export function ReceiptOcrModal({
             <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
               <Camera className="h-5 w-5" />
             </div>
-            Scansione OCR Scontrino
+            Scansione Ricevuta o Scontrino
           </DialogTitle>
           <DialogDescription>
             Carica la foto o la scansione del tuo scontrino di rifornimento.
-            L&apos;IA estrarrà data, litri erogati, prezzo al litro e importo totale.
+            Il sistema rileverà automaticamente data, litri erogati, prezzo al litro e importo totale.
           </DialogDescription>
         </DialogHeader>
 
@@ -219,12 +219,12 @@ export function ReceiptOcrModal({
               {scanMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Analisi multimodale GPT-4o in corso...
+                  Lettura scontrino in corso...
                 </>
               ) : (
                 <>
                   <Sparkles className="h-4 w-4" />
-                  Estrai Dati con IA
+                  Leggi Dati Scontrino
                 </>
               )}
             </Button>

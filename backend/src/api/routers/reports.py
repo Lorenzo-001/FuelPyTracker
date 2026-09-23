@@ -105,6 +105,16 @@ def generate_pdf_booklet(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
+    maints = crud.get_all_maintenances(db, user_id)
+    if payload.year:
+        maints = [m for m in maints if m.date.year == payload.year]
+
+    if not maints:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nessun intervento di manutenzione registrato da esportare nel periodo selezionato.",
+        )
+
     pdf_bytes = pdf_generator.generate_maintenance_report(
         db=db,
         user_id=user_id,

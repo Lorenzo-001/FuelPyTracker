@@ -174,7 +174,7 @@ export default function FuelPage() {
             onClick={() => setIsOcrOpen(true)}
           >
             <Camera className="h-4 w-4 text-emerald-400" />
-            <span>Scansione OCR</span>
+            <span>Scansiona Scontrino</span>
           </Button>
 
           <Button

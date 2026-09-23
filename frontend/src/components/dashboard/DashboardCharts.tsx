@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import {
   ResponsiveContainer,
   AreaChart,
@@ -11,39 +12,12 @@ import {
   Tooltip,
   Legend,
 } from "recharts"
-import { TrendingUp, Fuel, BarChart3 } from "lucide-react"
+import { TrendingUp, Fuel, BarChart3, Plus, UploadCloud } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useDashboardCharts } from "@/hooks/useDashboardCharts"
-
-// Sample fallback points for pristine visual showcase if database has < 2 records
-const FALLBACK_PRICE_DATA = [
-  { date: "Mag 25", price_per_liter: 1.789 },
-  { date: "Giu 25", price_per_liter: 1.815 },
-  { date: "Lug 25", price_per_liter: 1.849 },
-  { date: "Ago 25", price_per_liter: 1.832 },
-  { date: "Set 25", price_per_liter: 1.799 },
-  { date: "Ott 25", price_per_liter: 1.819 },
-]
-
-const FALLBACK_EFFICIENCY_DATA = [
-  { date: "Mag 25", km_per_liter: 17.8 },
-  { date: "Giu 25", km_per_liter: 18.2 },
-  { date: "Lug 25", km_per_liter: 18.9 },
-  { date: "Ago 25", km_per_liter: 18.1 },
-  { date: "Set 25", km_per_liter: 18.6 },
-  { date: "Ott 25", km_per_liter: 19.1 },
-]
-
-const FALLBACK_SPENDING_DATA = [
-  { label: "Mag", fuel_cost: 165.0, maintenance_cost: 0, total_cost: 165.0 },
-  { label: "Giu", fuel_cost: 190.5, maintenance_cost: 85.0, total_cost: 275.5 },
-  { label: "Lug", fuel_cost: 220.0, maintenance_cost: 0, total_cost: 220.0 },
-  { label: "Ago", fuel_cost: 280.0, maintenance_cost: 140.0, total_cost: 420.0 },
-  { label: "Set", fuel_cost: 175.2, maintenance_cost: 0, total_cost: 175.2 },
-  { label: "Ott", fuel_cost: 184.5, maintenance_cost: 50.0, total_cost: 234.5 },
-]
 
 interface CustomTooltipProps {
   active?: boolean
@@ -75,25 +49,15 @@ function CustomTooltip({ active, payload, label, suffix = "" }: CustomTooltipPro
 }
 
 export function DashboardCharts() {
+  const navigate = useNavigate()
   const [timeRange, setTimeRange] = useState("all")
   const [activeTab, setActiveTab] = useState<"price" | "efficiency" | "spending">("price")
 
   const { data: chartsData, isLoading } = useDashboardCharts(timeRange)
 
-  const priceData =
-    chartsData?.price_trend && chartsData.price_trend.length > 1
-      ? chartsData.price_trend
-      : FALLBACK_PRICE_DATA
-
-  const efficiencyData =
-    chartsData?.efficiency && chartsData.efficiency.length > 1
-      ? chartsData.efficiency
-      : FALLBACK_EFFICIENCY_DATA
-
-  const spendingData =
-    chartsData?.monthly_spending && chartsData.monthly_spending.length > 0
-      ? chartsData.monthly_spending
-      : FALLBACK_SPENDING_DATA
+  const priceData = chartsData?.price_trend ?? []
+  const efficiencyData = chartsData?.efficiency ?? []
+  const spendingData = chartsData?.monthly_spending ?? []
 
   return (
     <Card className="lg:col-span-2 shadow-sm hover:border-border transition-all">
@@ -101,7 +65,7 @@ export function DashboardCharts() {
         <div>
           <CardTitle className="text-base font-bold flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-emerald-400" />
-            Analisi Temporale Flotta
+            Analisi Temporale
           </CardTitle>
           <p className="text-xs text-muted-foreground mt-0.5">
             Monitoraggio storico dei prezzi, efficienza Full-to-Full e ripartizione spese mensili.
@@ -120,11 +84,10 @@ export function DashboardCharts() {
               key={t.id}
               type="button"
               onClick={() => setTimeRange(t.id)}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
-                timeRange === t.id
+              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${timeRange === t.id
                   ? "bg-card text-emerald-400 shadow-xs border border-border/60"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+                }`}
             >
               {t.label}
             </button>
@@ -162,66 +125,108 @@ export function DashboardCharts() {
               <Skeleton className="h-full w-full rounded-xl" />
             </div>
           ) : activeTab === "price" ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={priceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                <XAxis dataKey="date" stroke="#71717a" fontSize={11} tickLine={false} />
-                <YAxis
-                  stroke="#71717a"
-                  fontSize={11}
-                  domain={["dataMin - 0.05", "dataMax + 0.05"]}
-                  tickFormatter={(v) => `€${v.toFixed(2)}`}
-                  tickLine={false}
-                />
-                <Tooltip content={<CustomTooltip suffix="€/L" />} />
-                <Area
-                  type="monotone"
-                  dataKey="price_per_liter"
-                  name="Prezzo al Litro"
-                  stroke="#10b981"
-                  strokeWidth={2.5}
-                  fillOpacity={1}
-                  fill="url(#priceGradient)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            priceData.length >= 2 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={priceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                  <XAxis dataKey="date" stroke="#71717a" fontSize={11} tickLine={false} />
+                  <YAxis
+                    stroke="#71717a"
+                    fontSize={11}
+                    domain={["dataMin - 0.05", "dataMax + 0.05"]}
+                    tickFormatter={(v) => `€${v.toFixed(2)}`}
+                    tickLine={false}
+                  />
+                  <Tooltip content={<CustomTooltip suffix="€/L" />} />
+                  <Area
+                    type="monotone"
+                    dataKey="price_per_liter"
+                    name="Prezzo al Litro"
+                    stroke="#10b981"
+                    strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#priceGradient)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full flex flex-col items-center justify-center text-center p-6 rounded-xl border border-dashed border-border/80 bg-muted/10">
+                <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center mb-2.5">
+                  <Fuel className="h-5 w-5 text-emerald-400" />
+                </div>
+                <h4 className="text-sm font-semibold text-foreground">Dati Prezzo Insufficienti</h4>
+                <p className="text-xs text-muted-foreground max-w-sm mt-1 mb-3">
+                  Registra almeno due rifornimenti con prezzo al litro per generare il grafico dell'andamento storico.
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => navigate("/fuel")}
+                  className="gap-1.5 text-xs border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Registra Rifornimento
+                </Button>
+              </div>
+            )
           ) : activeTab === "efficiency" ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={efficiencyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="effGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                <XAxis dataKey="date" stroke="#71717a" fontSize={11} tickLine={false} />
-                <YAxis
-                  stroke="#71717a"
-                  fontSize={11}
-                  domain={["dataMin - 1", "dataMax + 1"]}
-                  tickFormatter={(v) => `${v}`}
-                  tickLine={false}
-                />
-                <Tooltip content={<CustomTooltip suffix="km/L" />} />
-                <Area
-                  type="monotone"
-                  dataKey="km_per_liter"
-                  name="Consumo Tratta"
-                  stroke="#06b6d4"
-                  strokeWidth={2.5}
-                  fillOpacity={1}
-                  fill="url(#effGradient)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
+            efficiencyData.length >= 2 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={efficiencyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="effGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                  <XAxis dataKey="date" stroke="#71717a" fontSize={11} tickLine={false} />
+                  <YAxis
+                    stroke="#71717a"
+                    fontSize={11}
+                    domain={["dataMin - 1", "dataMax + 1"]}
+                    tickFormatter={(v) => `${v}`}
+                    tickLine={false}
+                  />
+                  <Tooltip content={<CustomTooltip suffix="km/L" />} />
+                  <Area
+                    type="monotone"
+                    dataKey="km_per_liter"
+                    name="Consumo Tratta"
+                    stroke="#06b6d4"
+                    strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#effGradient)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full flex flex-col items-center justify-center text-center p-6 rounded-xl border border-dashed border-border/80 bg-muted/10">
+                <div className="h-10 w-10 rounded-full bg-cyan-500/10 flex items-center justify-center mb-2.5">
+                  <TrendingUp className="h-5 w-5 text-cyan-400" />
+                </div>
+                <h4 className="text-sm font-semibold text-foreground">Nessun Consumo Calcolato</h4>
+                <p className="text-xs text-muted-foreground max-w-sm mt-1 mb-3">
+                  L'algoritmo Full-to-Full calcola i km/L confrontando due rifornimenti pieni consecutivi.
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => navigate("/fuel")}
+                  className="gap-1.5 text-xs border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Registra Rifornimento
+                </Button>
+              </div>
+            )
+          ) : spendingData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={spendingData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
@@ -255,6 +260,25 @@ export function DashboardCharts() {
                 />
               </BarChart>
             </ResponsiveContainer>
+          ) : (
+            <div className="h-full w-full flex flex-col items-center justify-center text-center p-6 rounded-xl border border-dashed border-border/80 bg-muted/10">
+              <div className="h-10 w-10 rounded-full bg-indigo-500/10 flex items-center justify-center mb-2.5">
+                <BarChart3 className="h-5 w-5 text-indigo-400" />
+              </div>
+              <h4 className="text-sm font-semibold text-foreground">Nessuna Spesa Registrata</h4>
+              <p className="text-xs text-muted-foreground max-w-sm mt-1 mb-3">
+                Non sono presenti spese carburante o interventi officina registrati per il periodo selezionato.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => navigate("/reports")}
+                className="gap-1.5 text-xs border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10"
+              >
+                <UploadCloud className="h-3.5 w-3.5" />
+                Importa Archivio Excel
+              </Button>
+            </div>
           )}
         </div>
       </CardContent>

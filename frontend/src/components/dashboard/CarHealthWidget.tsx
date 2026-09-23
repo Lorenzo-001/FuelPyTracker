@@ -99,7 +99,7 @@ export function CarHealthWidget({ healthScore, currentKm }: CarHealthWidgetProps
           <div className="space-y-1 text-xs">
             <div className="font-semibold text-foreground flex items-center gap-1.5">
               <ShieldCheck className="h-4 w-4 text-emerald-400" />
-              <span>Algoritmo di Gamification V2</span>
+              <span>Stato di Salute del Veicolo</span>
             </div>
             <p className="text-muted-foreground leading-relaxed">
               Il punteggio calcola l'usura stimata, le scadenze temporali e la regolarità dei tagliandi su {currentKm ? `${currentKm.toLocaleString("it-IT")} km` : "chilometraggio totale"}.

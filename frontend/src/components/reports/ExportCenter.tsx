@@ -189,12 +189,18 @@ export function ExportCenter() {
             </div>
             <Button
               variant="outline"
-              className="w-full gap-2 border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 text-xs"
+              className="w-full gap-2 border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 text-xs disabled:opacity-50"
               onClick={() => setPdfModalOpen(true)}
+              disabled={!stats?.maintenances_count || stats.maintenances_count === 0}
             >
               <Sparkles className="h-4 w-4" />
               Compila & Scarica Libretto
             </Button>
+            {(!stats?.maintenances_count || stats.maintenances_count === 0) && (
+              <p className="text-[11px] text-amber-400/90 text-center font-medium">
+                Nessun intervento registrato. Registra almeno una manutenzione per generare il libretto.
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -253,6 +259,7 @@ export function ExportCenter() {
         open={pdfModalOpen}
         onOpenChange={setPdfModalOpen}
         yearsAvailable={stats?.years_available || []}
+        maintenancesCount={stats?.maintenances_count || 0}
       />
     </div>
   )
