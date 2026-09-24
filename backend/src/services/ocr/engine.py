@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 import base64
 import json
+import toml
 # pyrefly: ignore [missing-import]
 import streamlit as st
 from datetime import datetime
@@ -30,7 +31,6 @@ def _get_openai_key() -> str | None:
         pass
 
     try:
-        import toml
         candidates = [
             Path(__file__).resolve().parents[3] / ".streamlit" / "secrets.toml",
             Path.cwd() / "backend" / ".streamlit" / "secrets.toml",

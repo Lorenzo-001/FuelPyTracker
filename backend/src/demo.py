@@ -25,6 +25,12 @@ from types import SimpleNamespace
 
 from src.database.url import is_local_sqlite
 
+# Supporto opzionale per runtime Streamlit (legacy V1)
+try:
+    import streamlit as st
+except Exception:
+    st = None  # type: ignore
+
 
 # =============================================================================
 # FLAG HELPER
@@ -49,11 +55,12 @@ def is_demo_mode() -> bool:
         return True
 
     # 3. Streamlit Secrets (Streamlit Cloud) — solo se env var non è settata
-    try:
-        import streamlit as st
-        return bool(st.secrets.get("demo", {}).get("enabled", False))
-    except Exception:
-        return False
+    if st is not None:
+        try:
+            return bool(st.secrets.get("demo", {}).get("enabled", False))
+        except Exception:
+            pass
+    return False
 
 
 def writes_disabled() -> bool:
@@ -69,11 +76,12 @@ def _get_demo_credential(env_key: str, secrets_key: str) -> str | None:
     val = os.environ.get(env_key, "").strip()
     if val:
         return val
-    try:
-        import streamlit as st
-        return st.secrets.get("demo", {}).get(secrets_key) or None
-    except Exception:
-        return None
+    if st is not None:
+        try:
+            return st.secrets.get("demo", {}).get(secrets_key) or None
+        except Exception:
+            pass
+    return None
 
 
 # =============================================================================
@@ -141,7 +149,7 @@ def mock_analyze_receipt():
     Returns:
         ReceiptData: DTO con dati di rifornimento fittizi ma coerenti.
     """
-    from src.services.ocr.models import ReceiptData  # import locale per evitare circoli
+    from src.services.ocr.models import ReceiptData  # Lazy import per prevenire import circolare con services.ocr
 
     time.sleep(2)  # Latenza verosimile (≈ GPT-4o Vision)
 

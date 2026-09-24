@@ -235,13 +235,6 @@ def update_reminder(
     db.commit()
     db.refresh(rem)
 
-    try:
-        # pyrefly: ignore [missing-import]
-        import streamlit as st
-        st.cache_data.clear()
-    except Exception:
-        pass
-
     current_km = _get_current_km(db, user_id)
     return _enrich_reminder(rem, current_km)
 

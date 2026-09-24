@@ -7,6 +7,17 @@ from __future__ import annotations
 import logging
 from typing import Sequence
 
+# Fallback opzionale a livello di modulo per silenziamento Streamlit legacy
+try:
+    import streamlit.runtime.caching.cache_data_api as cda
+except Exception:
+    cda = None  # type: ignore
+
+try:
+    import streamlit.logger as st_logger
+except Exception:
+    st_logger = None  # type: ignore
+
 
 class EndpointFilter(logging.Filter):
     """Filtro di logging che esclude richieste verso specifici endpoint ad alto volume (es. /health)."""
@@ -29,21 +40,17 @@ class EndpointFilter(logging.Filter):
 def configure_api_logging() -> None:
     """Configura filtri e livelli di log per un ambiente console pulito e focalizzato."""
     # 1. Disabilita warning interni di Streamlit quando i moduli DB vengono invocati da FastAPI
-    try:
-        # pyrefly: ignore [missing-import]
-        import streamlit.runtime.caching.cache_data_api as cda
+    if cda is not None:
+        try:
+            cda._LOGGER.disabled = True
+        except Exception:
+            pass
 
-        cda._LOGGER.disabled = True
-    except Exception:
-        pass
-
-    try:
-        # pyrefly: ignore [missing-import]
-        import streamlit.logger as st_logger
-
-        st_logger.set_log_level("error")
-    except Exception:
-        pass
+    if st_logger is not None:
+        try:
+            st_logger.set_log_level("error")
+        except Exception:
+            pass
 
     # 2. Applica EndpointFilter al logger access di Uvicorn e ai suoi handler
     endpoint_filter = EndpointFilter(("/health", "/favicon.ico"))

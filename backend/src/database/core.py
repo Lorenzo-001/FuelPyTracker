@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+import toml
 # pyrefly: ignore [missing-import]
 from sqlalchemy import create_engine, text
 # pyrefly: ignore [missing-import]
@@ -11,6 +12,17 @@ from sqlalchemy.exc import OperationalError
 from src.database.models import Base, Refueling, Maintenance, AppSettings, Reminder, ReminderHistory
 from src.database.url import resolve_database_url, engine_kwargs_for_url, is_local_sqlite
 
+# Supporto opzionale per runtime Streamlit (legacy V1)
+try:
+    from streamlit.runtime.scriptrunner import get_script_run_ctx
+except Exception:
+    get_script_run_ctx = None  # type: ignore
+
+try:
+    import streamlit as st
+except Exception:
+    st = None  # type: ignore
+
 logger = logging.getLogger(__name__)
 
 # =============================================================================
@@ -19,27 +31,25 @@ logger = logging.getLogger(__name__)
 
 def _is_streamlit_running() -> bool:
     """Rileva se il codice è in esecuzione all'interno del runtime Streamlit."""
-    try:
-        # pyrefly: ignore [missing-import]
-        from streamlit.runtime.scriptrunner import get_script_run_ctx
-        return get_script_run_ctx() is not None
-    except Exception:
-        return False
+    if get_script_run_ctx is not None:
+        try:
+            return get_script_run_ctx() is not None
+        except Exception:
+            return False
+    return False
 
 
 def _secrets_database_url() -> str | None:
     """Estrae l'URL da st.secrets se disponibile, oppure direttamente dal file secrets.toml."""
-    try:
-        # pyrefly: ignore [missing-import]
-        import streamlit as st
-        url = st.secrets["database"]["url"]
-        if url:
-            return str(url)
-    except Exception:
-        pass
+    if st is not None:
+        try:
+            url = st.secrets["database"]["url"]
+            if url:
+                return str(url)
+        except Exception:
+            pass
 
     try:
-        import toml
         candidates = [
             Path(__file__).resolve().parents[2] / ".streamlit" / "secrets.toml",
             Path.cwd() / "backend" / ".streamlit" / "secrets.toml",
@@ -60,9 +70,7 @@ def _secrets_database_url() -> str | None:
 try:
     DATABASE_URL = resolve_database_url(_secrets_database_url())
 except ValueError as exc:
-    if _is_streamlit_running():
-        # pyrefly: ignore [missing-import]
-        import streamlit as st
+    if _is_streamlit_running() and st is not None:
         st.error(
             """
             ❌ **Errore Critico: Configurazione Database Mancante**
@@ -110,9 +118,7 @@ def init_db():
             conn.execute(text("SELECT 1"))
         Base.metadata.create_all(bind=engine)
     except OperationalError as exc:
-        if _is_streamlit_running():
-            # pyrefly: ignore [missing-import]
-            import streamlit as st
+        if _is_streamlit_running() and st is not None:
             hint = (
                 "Verifica i permessi sulla cartella `data/`."
                 if is_local_sqlite()
@@ -146,9 +152,7 @@ def get_db():
     try:
         yield db
     except OperationalError as exc:
-        if _is_streamlit_running():
-            # pyrefly: ignore [missing-import]
-            import streamlit as st
+        if _is_streamlit_running() and st is not None:
             st.error(
                 """
                 🔴 **Connessione al database persa**

@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import toml
 # pyrefly: ignore [missing-import]
 import streamlit as st
 # pyrefly: ignore [missing-import]
@@ -27,7 +28,6 @@ def _get_supabase_credentials() -> tuple[str | None, str | None]:
 
     # Prova da file secrets.toml locale
     try:
-        import toml
         candidates = [
             Path(__file__).resolve().parents[3] / ".streamlit" / "secrets.toml",
             Path.cwd() / "backend" / ".streamlit" / "secrets.toml",
