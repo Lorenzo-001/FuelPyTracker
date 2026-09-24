@@ -19,31 +19,39 @@ export default function MaintenancePage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingRecord, setEditingRecord] = useState<MaintenanceResponse | null>(null)
 
+  const currentYear = new Date().getFullYear()
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("")
-  const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined)
+  const [selectedYear, setSelectedYear] = useState<number | undefined>(currentYear)
 
   const { data: maintenances, isLoading, isError, refetch } = useMaintenances(
-    selectedYear,
+    undefined,
     selectedCategory || undefined
   )
   const { data: categories } = useMaintenanceCategories()
 
-  // Available years
+  // Available years from full dataset (never collapses when a specific year is selected)
   const availableYears = useMemo(() => {
-    if (!maintenances) return []
     const years = new Set<number>()
-    maintenances.forEach((m) => {
-      const y = parseInt(m.date.split("-")[0], 10)
-      if (!isNaN(y)) years.add(y)
-    })
+    years.add(currentYear)
+    if (maintenances) {
+      maintenances.forEach((m) => {
+        const y = parseInt(m.date.split("-")[0], 10)
+        if (!isNaN(y)) years.add(y)
+      })
+    }
     return Array.from(years).sort((a, b) => b - a)
-  }, [maintenances])
+  }, [maintenances, currentYear])
 
   // Filtered dataset
   const filteredRecords = useMemo(() => {
     if (!maintenances) return []
     return maintenances.filter((m) => {
+      // Year filter
+      if (selectedYear !== undefined) {
+        if (!m.date.startsWith(String(selectedYear))) return false
+      }
+
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase()
         const matchDesc = m.description?.toLowerCase().includes(q) || false
@@ -54,16 +62,16 @@ export default function MaintenancePage() {
       }
       return true
     })
-  }, [maintenances, searchQuery])
+  }, [maintenances, selectedYear, searchQuery])
 
-  // Quick stats
+  // Quick stats computed on filtered dataset
   const stats = useMemo(() => {
-    if (!maintenances || !maintenances.length) {
+    if (!filteredRecords || !filteredRecords.length) {
       return { totalCost: 0, count: 0, lastDate: "—", lastKm: "—" }
     }
-    const totalCost = maintenances.reduce((sum, m) => sum + m.cost, 0)
-    const count = maintenances.length
-    const sorted = [...maintenances].sort((a, b) => b.date.localeCompare(a.date))
+    const totalCost = filteredRecords.reduce((sum, m) => sum + m.cost, 0)
+    const count = filteredRecords.length
+    const sorted = [...filteredRecords].sort((a, b) => b.date.localeCompare(a.date))
     const last = sorted[0]
     return {
       totalCost,
@@ -71,7 +79,7 @@ export default function MaintenancePage() {
       lastDate: last.date,
       lastKm: last.total_km.toLocaleString("it-IT"),
     }
-  }, [maintenances])
+  }, [filteredRecords])
 
   const handleStartCreate = () => {
     setEditingRecord(null)

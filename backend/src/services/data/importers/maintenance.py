@@ -15,7 +15,10 @@ ALIAS_MAP = {
     'km': 'km', 'chilometri': 'km', 'kilometri': 'km',
     'tipo': 'tipo', 'type': 'tipo', 'intervento': 'tipo',
     'costo': 'costo', 'spesa': 'costo',
-    'descrizione': 'descrizione', 'note': 'descrizione', 'dettagli': 'descrizione'
+    'descrizione': 'descrizione', 'note': 'descrizione', 'dettagli': 'descrizione',
+    'scadenza_km': 'scadenza_km', 'scadenza km': 'scadenza_km',
+    'scadenza_data': 'scadenza_data', 'scadenza data': 'scadenza_data',
+    'prossima scadenza (km)': 'scadenza_km', 'prossima scadenza (data)': 'scadenza_data'
 }
 
 UI_REVERSE_MAP = {
@@ -23,7 +26,11 @@ UI_REVERSE_MAP = {
     'km': 'km',
     'tipo': 'tipo',
     'costo': 'costo',
-    'descrizione': 'descrizione'
+    'descrizione': 'descrizione',
+    'scadenza km': 'scadenza_km',
+    'scadenza_km': 'scadenza_km',
+    'scadenza data': 'scadenza_data',
+    'scadenza_data': 'scadenza_data'
 }
 
 # =============================================================================
@@ -90,7 +97,56 @@ def validate_maintenance_logic(db: Session, user_id: str, df: pd.DataFrame) -> p
                 res['Note'] = 'Record duplicato nel file'
                 processed_rows.append(res)
 
-    # 4. Formattazione Finale Output
+    # 4. Controllo Coerenza Cronologica su Timeline Combinata (DB + File)
+    db_pts = [(m.date, m.total_km, m.id) for m in db_recs]
+    file_pts = [
+        (r['Data'], r['Km'], r.get('db_id')) for r in processed_rows
+        if r['Stato'] not in ('Errore',) and r.get('Data') and r.get('Km', 0) > 0
+    ]
+    combined = sorted(
+        [(dt, km, mid) for dt, km, mid in (db_pts + file_pts) if dt and km > 0],
+        key=lambda x: (x[0], x[1])
+    )
+
+    for row in processed_rows:
+        if row['Stato'] == 'Errore' or not row.get('Data') or not row.get('Km'):
+            continue
+        d_km = row['Km']
+        d_date = row['Data']
+        row_db_id = row.get('db_id')
+
+        # Predecessore
+        prev_pt = None
+        for dt, km, mid in combined:
+            if row_db_id and mid == row_db_id:
+                continue
+            if dt < d_date:
+                prev_pt = (dt, km)
+
+        if prev_pt and d_km < prev_pt[1]:
+            row['Stato'] = 'Errore'
+            p_str = prev_pt[0].strftime('%d/%m/%Y') if hasattr(prev_pt[0], 'strftime') else str(prev_pt[0])
+            err_msg = f"Km ({d_km}) inferiori al {p_str} ({prev_pt[1]})"
+            row['Note'] = (row['Note'] + f" | {err_msg}").strip(' | ')
+            continue
+
+        # Successore
+        next_pt = None
+        for dt, km, mid in combined:
+            if row_db_id and mid == row_db_id:
+                continue
+            if dt > d_date:
+                next_pt = (dt, km)
+                break
+
+        if next_pt and d_km > next_pt[1]:
+            row['Stato'] = 'Errore'
+            n_str = next_pt[0].strftime('%d/%m/%Y') if hasattr(next_pt[0], 'strftime') else str(next_pt[0])
+            err_msg = f"Km ({d_km}) superiori al {n_str} ({next_pt[1]})"
+            row['Note'] = (row['Note'] + f" | {err_msg}").strip(' | ')
+            continue
+
+    # 5. Formattazione Finale Output
     res_df = pd.DataFrame(processed_rows)
     if not res_df.empty:
         res_df['Data'] = pd.to_datetime(res_df['Data'])
@@ -117,6 +173,15 @@ def _parse_single_row(row, ref_map, id_map, file_keys, sorted_history):
     d_cost = parse_float(row.get('costo'))
     d_type = str(row.get('tipo', 'Altro')).strip()
     d_desc = str(row.get('descrizione', '')).strip()
+
+    # Parsing Scadenza Km & Scadenza Data
+    raw_exp_km = row.get('scadenza_km') if 'scadenza_km' in row else row.get('scadenza km')
+    d_expiry_km = parse_int(raw_exp_km) if pd.notna(raw_exp_km) and str(raw_exp_km).strip() not in ('', 'None', 'nan') else None
+    if d_expiry_km == 0:
+        d_expiry_km = None
+
+    raw_exp_date = row.get('scadenza_data') if 'scadenza_data' in row else row.get('scadenza data')
+    d_expiry_date = parse_date(raw_exp_date) if pd.notna(raw_exp_date) and str(raw_exp_date).strip() not in ('', 'None', 'nan') else None
     
     raw_id = row.get('db_id')
     raw_id = int(float(raw_id)) if pd.notna(raw_id) else None
@@ -140,6 +205,8 @@ def _parse_single_row(row, ref_map, id_map, file_keys, sorted_history):
             if db_rec.expense_type != d_type: diffs.append(f"Tipo: {db_rec.expense_type} -> {d_type}")
             if abs(db_rec.cost - d_cost) > 0.01: diffs.append(f"Costo")
             if (db_rec.description or "").strip() != d_desc: diffs.append("Descrizione")
+            if (db_rec.expiry_km or None) != (d_expiry_km or None): diffs.append("Scadenza Km")
+            if (db_rec.expiry_date or None) != (d_expiry_date or None): diffs.append("Scadenza Data")
             
             if diffs:
                 status = "Modifica"
@@ -159,6 +226,8 @@ def _parse_single_row(row, ref_map, id_map, file_keys, sorted_history):
                 diffs = []
                 if abs(db_rec.cost - d_cost) > 0.01: diffs.append("Costo")
                 if (db_rec.description or "").strip() != d_desc: diffs.append("Descrizione")
+                if (db_rec.expiry_km or None) != (d_expiry_km or None): diffs.append("Scadenza Km")
+                if (db_rec.expiry_date or None) != (d_expiry_date or None): diffs.append("Scadenza Data")
                 
                 if diffs:
                     status = "Modifica"
@@ -171,9 +240,15 @@ def _parse_single_row(row, ref_map, id_map, file_keys, sorted_history):
     # Applicabile solo se stiamo inserendo o modificando (potenziale alterazione sequenza km)
     if status in ["Nuovo", "Modifica"]:
         
-        # Check Valori Negativi
-        if d_cost < 0: status, notes = "Errore", ["Costo intervento non valido (< 0 €)"]
-        if d_km <= 0: status, notes = "Errore", ["Chilometri totali non validi (<= 0)"]
+        # Check Valori Negativi e Plausibilità
+        if d_cost < 0:
+            status, notes = "Errore", ["Costo intervento non valido (< 0 €)"]
+        elif d_cost > 0 and d_cost < 15.0 and d_type.lower() in ["tagliando", "gomme", "freni", "frizione", "distribuzione", "revisione"]:
+            if status == "Nuovo":
+                status = "Warning"
+            notes.append(f"Importo insolitamente basso per {d_type} ({d_cost:.2f} €)")
+        if d_km <= 0:
+            status, notes = "Errore", ["Chilometri totali non validi (<= 0)"]
 
         # Sandwich Logic
         prev_rec = None
@@ -204,8 +279,13 @@ def _parse_single_row(row, ref_map, id_map, file_keys, sorted_history):
         "db_id": db_id,
         "Stato": status,
         "Note": " | ".join(notes),
-        "Data": d_date, "Km": d_km, "Tipo": d_type, 
-        "Costo": d_cost, "Descrizione": d_desc
+        "Data": d_date,
+        "Km": d_km,
+        "Tipo": d_type, 
+        "Costo": d_cost,
+        "Descrizione": d_desc,
+        "Scadenza Km": d_expiry_km,
+        "Scadenza Data": d_expiry_date
     }
 
 
@@ -214,6 +294,12 @@ def save_row(db: Session, user_id: str, row):
     if row['Stato'] in ["Errore", "Invariato"]: return
 
     try:
+        raw_exp_km = row.get('Scadenza Km')
+        exp_km = int(raw_exp_km) if pd.notna(raw_exp_km) and str(raw_exp_km).strip() not in ('', 'None', 'nan') and int(raw_exp_km) > 0 else None
+
+        raw_exp_date = row.get('Scadenza Data')
+        exp_date = parse_date(raw_exp_date) if pd.notna(raw_exp_date) and str(raw_exp_date).strip() not in ('', 'None', 'nan') else None
+
         # LOGICA UPDATE
         if row['Stato'] == "Modifica" and pd.notna(row['db_id']):
             crud.update_maintenance(db, user_id, int(row['db_id']), {
@@ -221,15 +307,23 @@ def save_row(db: Session, user_id: str, row):
                 "total_km": int(row['Km']),
                 "expense_type": row['Tipo'],
                 "cost": float(row['Costo']),
-                "description": row['Descrizione']
+                "description": row['Descrizione'],
+                "expiry_km": exp_km,
+                "expiry_date": exp_date
             })
             
         # LOGICA INSERT
-        elif row['Stato'] in ["Nuovo", "OK"]:
+        elif row['Stato'] in ["Nuovo", "OK", "Warning"]:
             crud.create_maintenance(
-                db, user_id, 
-                row['Data'], int(row['Km']), row['Tipo'], 
-                float(row['Costo']), row['Descrizione']
+                db=db,
+                user_id=user_id, 
+                date_obj=row['Data'],
+                total_km=int(row['Km']),
+                expense_type=row['Tipo'], 
+                cost=float(row['Costo']),
+                description=row['Descrizione'],
+                expiry_km=exp_km,
+                expiry_date=exp_date
             )
     except Exception as e:
         print(f"[Maintenance Import Error] Riga fallita: {e}")

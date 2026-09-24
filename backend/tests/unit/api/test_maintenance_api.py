@@ -123,6 +123,40 @@ def test_get_categories(client_with_db):
     assert "Tagliando" in cats
 
 
+def test_create_custom_maintenance_category_and_filter(client_with_db):
+    """Verifica la creazione di un intervento con categoria personalizzata ('Altro' specificato),
+    la sua inclusione nelle categorie distinte e il filtraggio esatto via query param."""
+    headers = {"X-User-Id": "user-custom-category"}
+
+    # Registra una manutenzione con tipologia custom (max 20 caratteri)
+    custom_type = "Tergicristalli"
+    res_create = client_with_db.post("/api/maintenance", json={
+        "date": "2026-09-24",
+        "total_km": 125000,
+        "expense_type": custom_type,
+        "cost": 35.0,
+        "description": "Sostituzione spazzole tergicristallo Bosch Aerotwin",
+    }, headers=headers)
+    assert res_create.status_code == 201
+    created_data = res_create.json()
+    assert created_data["expense_type"] == "Tergicristalli"
+    assert created_data["cost"] == 35.0
+
+    # Verifica che la categoria personalizzata appaia nell'elenco categorie dell'utente
+    res_cats = client_with_db.get("/api/maintenance/categories", headers=headers)
+    assert res_cats.status_code == 200
+    assert "Tergicristalli" in res_cats.json()
+
+    # Verifica il filtraggio esatto per categoria custom
+    res_filter = client_with_db.get(f"/api/maintenance?expense_type={custom_type}", headers=headers)
+    assert res_filter.status_code == 200
+    records = res_filter.json()
+    assert len(records) == 1
+    assert records[0]["expense_type"] == "Tergicristalli"
+    assert records[0]["description"] == "Sostituzione spazzole tergicristallo Bosch Aerotwin"
+
+
+
 # =============================================================================
 # TEST: Scadenze Predittive (Deadlines)
 # =============================================================================

@@ -38,13 +38,14 @@ export default function FuelPage() {
   } | null>(null)
 
   // State: View and Filters
+  const currentYear = new Date().getFullYear()
   const [viewMode, setViewMode] = useState<"table" | "cards">("table")
   const [searchQuery, setSearchQuery] = useState("")
   const [typeFilter, setTypeFilter] = useState<"all" | "full" | "partial">("all")
-  const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined)
+  const [selectedYear, setSelectedYear] = useState<number | undefined>(currentYear)
 
-  // Data fetching via React Query
-  const { data: refuelings, isLoading, isError, refetch } = useRefuelings(selectedYear)
+  // Data fetching via React Query: fetch all refuelings once and filter in memory
+  const { data: refuelings, isLoading, isError, refetch } = useRefuelings()
 
   // Handle ?action=new query param (e.g. from FAB or Header)
   useEffect(() => {
@@ -77,21 +78,28 @@ export default function FuelPage() {
     return () => window.removeEventListener("open-new-refueling", handleGlobalNew)
   }, [])
 
-  // Calculate available years for dropdown
+  // Calculate available years from full dataset (never collapses when a specific year is selected)
   const availableYears = useMemo(() => {
-    if (!refuelings) return []
     const years = new Set<number>()
-    refuelings.forEach((r) => {
-      const y = parseInt(r.date.split("-")[0], 10)
-      if (!isNaN(y)) years.add(y)
-    })
+    years.add(currentYear)
+    if (refuelings) {
+      refuelings.forEach((r) => {
+        const y = parseInt(r.date.split("-")[0], 10)
+        if (!isNaN(y)) years.add(y)
+      })
+    }
     return Array.from(years).sort((a, b) => b - a)
-  }, [refuelings])
+  }, [refuelings, currentYear])
 
   // Filtered dataset
   const filteredRefuelings = useMemo(() => {
     if (!refuelings) return []
     return refuelings.filter((r) => {
+      // Year filter
+      if (selectedYear !== undefined) {
+        if (!r.date.startsWith(String(selectedYear))) return false
+      }
+
       // Type filter
       if (typeFilter === "full" && !r.is_full_tank) return false
       if (typeFilter === "partial" && r.is_full_tank) return false
@@ -107,7 +115,7 @@ export default function FuelPage() {
 
       return true
     })
-  }, [refuelings, typeFilter, searchQuery])
+  }, [refuelings, selectedYear, typeFilter, searchQuery])
 
   // Quick statistics on filtered set
   const stats = useMemo(() => {

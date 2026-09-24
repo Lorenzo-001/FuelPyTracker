@@ -147,6 +147,55 @@ def test_complete_reminder_mark_as_done(client_with_db):
     assert logs[0]["notes"] == "Rabboccato con antigelo"
 
 
+def test_complete_overdue_reminder_resets_cycle(client_with_db):
+    """Verifica che l'azione 'Mark as Done' su un promemoria con limite superato (is_overdue=True)
+    azzeri correttamente il ciclo calcolando il nuovo target a partire dal chilometraggio attuale del veicolo."""
+    headers = {"X-User-Id": "user-rem-overdue-reset"}
+
+    # 1. Crea promemoria chilometrico con check a 50.000 Km ogni 5.000 Km (scadenza prevista a 55.000)
+    created = client_with_db.post("/api/reminders", json={
+        "title": "Controllo Pastiglie Freni",
+        "frequency_km": 5000,
+        "current_km": 50000,
+    }, headers=headers).json()
+    rem_id = created["id"]
+
+    # 2. Registra rifornimento a 57.000 Km (il limite di 55.000 è superato da 2.000 Km)
+    client_with_db.post("/api/fuel", json={
+        "date": "2026-09-20",
+        "total_km": 57000,
+        "price_per_liter": 1.80,
+        "total_cost": 60.0,
+        "liters": 33.33,
+        "is_full_tank": True,
+    }, headers=headers)
+
+    # 3. Verifica che il promemoria sia attualmente SCADUTO
+    res_before = client_with_db.get("/api/reminders", headers=headers)
+    assert res_before.status_code == 200
+    rem_before = [r for r in res_before.json() if r["id"] == rem_id][0]
+    assert rem_before["is_overdue"] is True
+    assert rem_before["remaining_km"] == -2000
+    assert rem_before["progress"] == 1.0
+
+    # 4. Esegue il completamento senza specificare check_km (il pulsante rapido dell'UI azzera al km attuale)
+    comp_res = client_with_db.post(
+        f"/api/reminders/{rem_id}/complete",
+        json={"check_date": "2026-09-24", "notes": "Eseguito controllo freni"},
+        headers=headers,
+    )
+    assert comp_res.status_code == 200
+    rem_after = comp_res.json()
+
+    # 5. Verifica che il ciclo sia AZZERATO con successo partendo da 57.000 Km
+    assert rem_after["last_km_check"] == 57000
+    assert rem_after["target_km"] == 62000  # 57.000 + 5.000
+    assert rem_after["remaining_km"] == 5000
+    assert rem_after["progress"] == 0.0
+    assert rem_after["is_overdue"] is False
+
+
+
 # =============================================================================
 # TEST: Update, Delete & Tenant Isolation
 # =============================================================================

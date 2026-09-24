@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
+import { useReminders } from "@/hooks/useReminders"
 import {
   Sheet,
   SheetContent,
@@ -27,6 +28,12 @@ export function BottomBar() {
   const [moreOpen, setMoreOpen] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
+
+  const { data: reminders } = useReminders()
+  const overdueCount = reminders?.filter((r) => r.is_overdue).length || 0
+  const urgentCount =
+    reminders?.filter((r) => r.progress >= 0.7 && !r.is_overdue).length || 0
+  const totalAlerts = overdueCount + urgentCount
 
   const isMoreActive = ["/reminders", "/reports", "/settings", "/login"].includes(
     location.pathname
@@ -134,7 +141,14 @@ export function BottomBar() {
           <div className="relative">
             <Grid className={cn("h-5 w-5 mb-0.5", isMoreActive && "text-emerald-400")} />
             {/* Notification dot for active reminders */}
-            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-amber-400 ring-2 ring-background" />
+            {totalAlerts > 0 && (
+              <span
+                className={cn(
+                  "absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full ring-2 ring-background",
+                  overdueCount > 0 ? "bg-rose-500 animate-pulse" : "bg-amber-400"
+                )}
+              />
+            )}
           </div>
           <span>Altro</span>
         </button>
@@ -187,7 +201,21 @@ export function BottomBar() {
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
-                <Badge variant="warning" className="text-[10px] px-1.5 py-0 h-4">2 Scadenze</Badge>
+                {totalAlerts > 0 ? (
+                  <Badge
+                    variant={overdueCount > 0 ? "destructive" : "warning"}
+                    className="text-[10px] px-1.5 py-0 h-4"
+                  >
+                    {totalAlerts} {totalAlerts === 1 ? "Scadenza" : "Scadenze"}
+                  </Badge>
+                ) : (
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] px-1.5 py-0 h-4 text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
+                  >
+                    In regola
+                  </Badge>
+                )}
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </div>
             </button>

@@ -42,7 +42,6 @@ export function ReminderCard({ reminder, onEdit }: ReminderCardProps) {
         id: reminder.id,
         data: {
           check_date: new Date().toISOString().split("T")[0],
-          check_km: reminder.last_km_check || reminder.target_km || undefined,
           notes: "Eseguito manualmente dall'interfaccia",
         },
       })

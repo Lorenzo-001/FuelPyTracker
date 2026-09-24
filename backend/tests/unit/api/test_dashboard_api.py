@@ -156,3 +156,58 @@ def test_trip_calculator(client_with_db):
     }, headers=headers)
     assert fallback_res.status_code == 200
     assert fallback_res.json()["estimated_cost"] > 0
+
+
+def test_dashboard_summary_time_range_filtering(client_with_db):
+    """Verifica che il filtro time_range calcoli correttamente spese e consumi per periodo (YTD, 3A, ALL)."""
+    from datetime import date
+    headers = {"X-User-Id": "user-dash-tr"}
+    current_year = date.today().year
+
+    # Record dell'anno corrente (YTD)
+    client_with_db.post("/api/fuel", json={
+        "date": f"{current_year}-02-01", "total_km": 100000, "price_per_liter": 1.80, "total_cost": 50.0, "liters": 27.78, "is_full_tank": True
+    }, headers=headers)
+    client_with_db.post("/api/fuel", json={
+        "date": f"{current_year}-02-15", "total_km": 100500, "price_per_liter": 1.80, "total_cost": 45.0, "liters": 25.0, "is_full_tank": True
+    }, headers=headers)
+    client_with_db.post("/api/maintenance", json={
+        "date": f"{current_year}-02-10", "total_km": 100200, "expense_type": "Tagliando", "cost": 150.0
+    }, headers=headers)
+
+    # Record di 4 anni fa (fuori da YTD e fuori da 3A)
+    client_with_db.post("/api/fuel", json={
+        "date": f"{current_year - 4}-01-15", "total_km": 50000, "price_per_liter": 1.50, "total_cost": 60.0, "liters": 40.0, "is_full_tank": True
+    }, headers=headers)
+    client_with_db.post("/api/maintenance", json={
+        "date": f"{current_year - 4}-01-20", "total_km": 50200, "expense_type": "Gomme", "cost": 400.0
+    }, headers=headers)
+
+    # 1. Filtro YTD: deve considerare solo l'anno corrente (50 + 45 = 95 fuel, 150 maint)
+    res_ytd = client_with_db.get("/api/dashboard/summary?time_range=ytd", headers=headers)
+    assert res_ytd.status_code == 200
+    data_ytd = res_ytd.json()
+    assert data_ytd["total_fuel_cost"] == 95.0
+    assert data_ytd["total_maintenance_cost"] == 150.0
+    assert data_ytd["total_spent"] == 245.0
+    assert data_ytd["current_km"] == 100500  # Orometro complessivo sempre globale
+
+    # 2. Filtro ALL: deve considerare tutti i record (95 + 60 = 155 fuel, 150 + 400 = 550 maint)
+    res_all = client_with_db.get("/api/dashboard/summary?time_range=all", headers=headers)
+    assert res_all.status_code == 200
+    data_all = res_all.json()
+    assert data_all["total_fuel_cost"] == 155.0
+    assert data_all["total_maintenance_cost"] == 550.0
+    assert data_all["total_spent"] == 705.0
+
+
+def test_dashboard_charts_3y(client_with_db):
+    """Verifica che l'endpoint charts accetti time_range=3y senza errori."""
+    headers = {"X-User-Id": "user-dash-3y"}
+    response = client_with_db.get("/api/dashboard/charts?time_range=3y", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert "price_trend" in data
+    assert "efficiency" in data
+    assert "monthly_spending" in data
+

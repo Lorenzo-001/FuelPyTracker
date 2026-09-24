@@ -431,35 +431,38 @@ export function ImportStagingZone() {
               {/* Fuel Table */}
               <TabsContent value="fuel" className="border rounded-xl overflow-hidden bg-card/40">
                 {previewData.fuel_rows?.length > 0 ? (
-                  <div className="max-h-[360px] overflow-y-auto">
-                    <Table>
-                      <TableHeader className="sticky top-0 bg-card z-10">
-                        <TableRow>
-                          <TableHead className="w-24 text-xs">Stato</TableHead>
-                          <TableHead className="text-xs">Data</TableHead>
-                          <TableHead className="text-xs text-right">KM</TableHead>
-                          <TableHead className="text-xs text-right">Litri</TableHead>
-                          <TableHead className="text-xs text-right">Prezzo/L</TableHead>
-                          <TableHead className="text-xs text-right">Spesa</TableHead>
-                          <TableHead className="text-xs text-center">Pieno</TableHead>
-                          <TableHead className="text-xs min-w-[220px]">Esito Validazione & Motivo</TableHead>
-                          <TableHead className="w-16 text-center text-xs">Azioni</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {previewData.fuel_rows.map((row, idx) => {
-                          const isErr = String(row.Stato || "").toLowerCase() === "errore"
-                          const isWarn = String(row.Stato || "").toLowerCase() === "warning"
-                          const isMod = String(row.Stato || "").toLowerCase() === "modifica"
-                          const isInv = String(row.Stato || "").toLowerCase() === "invariato"
-                          return (
-                            <TableRow
-                              key={idx}
-                              className={`text-xs transition-colors ${
-                                isErr ? "bg-rose-500/5 hover:bg-rose-500/10" : ""
-                              }`}
-                            >
-                              <TableCell>{renderStatusBadge(String(row.Stato || ""))}</TableCell>
+                  <Table containerClassName="max-h-[380px] overflow-auto">
+                    <TableHeader className="sticky top-0 bg-card z-20 shadow-sm border-b [&_th]:sticky [&_th]:top-0 [&_th]:bg-card [&_th]:z-20">
+                      <TableRow>
+                        <TableHead className="w-12 text-center text-xs text-muted-foreground font-mono">#</TableHead>
+                        <TableHead className="w-24 text-xs">Stato</TableHead>
+                        <TableHead className="text-xs">Data</TableHead>
+                        <TableHead className="text-xs text-right">KM</TableHead>
+                        <TableHead className="text-xs text-right">Litri</TableHead>
+                        <TableHead className="text-xs text-right">Prezzo/L</TableHead>
+                        <TableHead className="text-xs text-right">Spesa</TableHead>
+                        <TableHead className="text-xs text-center">Pieno</TableHead>
+                        <TableHead className="text-xs min-w-[220px]">Esito Validazione & Motivo</TableHead>
+                        <TableHead className="w-16 text-center text-xs">Azioni</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {previewData.fuel_rows.map((row, idx) => {
+                        const isErr = String(row.Stato || "").toLowerCase() === "errore"
+                        const isWarn = String(row.Stato || "").toLowerCase() === "warning"
+                        const isMod = String(row.Stato || "").toLowerCase() === "modifica"
+                        const isInv = String(row.Stato || "").toLowerCase() === "invariato"
+                        return (
+                          <TableRow
+                            key={idx}
+                            className={`text-xs transition-colors ${
+                              isErr ? "bg-rose-500/5 hover:bg-rose-500/10" : ""
+                            }`}
+                          >
+                            <TableCell className="text-center font-mono text-xs text-muted-foreground font-medium">
+                              {idx + 1}°
+                            </TableCell>
+                            <TableCell>{renderStatusBadge(String(row.Stato || ""))}</TableCell>
                               <TableCell className="font-mono text-muted-foreground">
                                 {String(row.Data || "").split("T")[0]}
                               </TableCell>
@@ -555,7 +558,6 @@ export function ImportStagingZone() {
                         })}
                       </TableBody>
                     </Table>
-                  </div>
                 ) : (
                   <div className="p-8 text-center text-xs text-muted-foreground">
                     Nessun dato di rifornimento rilevato nel file caricato.
@@ -566,35 +568,38 @@ export function ImportStagingZone() {
               {/* Maintenance Table */}
               <TabsContent value="maintenance" className="border rounded-xl overflow-hidden bg-card/40">
                 {previewData.maintenance_rows?.length > 0 ? (
-                  <div className="max-h-[360px] overflow-y-auto">
-                    <Table>
-                      <TableHeader className="sticky top-0 bg-card z-10">
-                        <TableRow>
-                          <TableHead className="w-24 text-xs">Stato</TableHead>
-                          <TableHead className="text-xs">Data</TableHead>
-                          <TableHead className="text-xs text-right">KM</TableHead>
-                          <TableHead className="text-xs">Tipologia</TableHead>
-                          <TableHead className="text-xs text-right">Spesa</TableHead>
-                          <TableHead className="text-xs">Descrizione</TableHead>
-                          <TableHead className="text-xs min-w-[220px]">Esito Validazione & Motivo</TableHead>
-                          <TableHead className="text-xs">Scadenza Impostata</TableHead>
-                          <TableHead className="w-16 text-center text-xs">Azioni</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {previewData.maintenance_rows.map((row, idx) => {
-                          const isErr = String(row.Stato || "").toLowerCase() === "errore"
-                          const isWarn = String(row.Stato || "").toLowerCase() === "warning"
-                          const isMod = String(row.Stato || "").toLowerCase() === "modifica"
-                          const isInv = String(row.Stato || "").toLowerCase() === "invariato"
-                          return (
-                            <TableRow
-                              key={idx}
-                              className={`text-xs transition-colors ${
-                                isErr ? "bg-rose-500/5 hover:bg-rose-500/10" : ""
-                              }`}
-                            >
-                              <TableCell>{renderStatusBadge(String(row.Stato || ""))}</TableCell>
+                  <Table containerClassName="max-h-[380px] overflow-auto">
+                    <TableHeader className="sticky top-0 bg-card z-20 shadow-sm border-b [&_th]:sticky [&_th]:top-0 [&_th]:bg-card [&_th]:z-20">
+                      <TableRow>
+                        <TableHead className="w-12 text-center text-xs text-muted-foreground font-mono">#</TableHead>
+                        <TableHead className="w-24 text-xs">Stato</TableHead>
+                        <TableHead className="text-xs">Data</TableHead>
+                        <TableHead className="text-xs text-right">KM</TableHead>
+                        <TableHead className="text-xs">Tipologia</TableHead>
+                        <TableHead className="text-xs text-right">Spesa</TableHead>
+                        <TableHead className="text-xs">Descrizione</TableHead>
+                        <TableHead className="text-xs min-w-[220px]">Esito Validazione & Motivo</TableHead>
+                        <TableHead className="text-xs">Scadenza Impostata</TableHead>
+                        <TableHead className="w-16 text-center text-xs">Azioni</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {previewData.maintenance_rows.map((row, idx) => {
+                        const isErr = String(row.Stato || "").toLowerCase() === "errore"
+                        const isWarn = String(row.Stato || "").toLowerCase() === "warning"
+                        const isMod = String(row.Stato || "").toLowerCase() === "modifica"
+                        const isInv = String(row.Stato || "").toLowerCase() === "invariato"
+                        return (
+                          <TableRow
+                            key={idx}
+                            className={`text-xs transition-colors ${
+                              isErr ? "bg-rose-500/5 hover:bg-rose-500/10" : ""
+                            }`}
+                          >
+                            <TableCell className="text-center font-mono text-xs text-muted-foreground font-medium">
+                              {idx + 1}°
+                            </TableCell>
+                            <TableCell>{renderStatusBadge(String(row.Stato || ""))}</TableCell>
                               <TableCell className="font-mono text-muted-foreground">
                                 {String(row.Data || "").split("T")[0]}
                               </TableCell>
@@ -667,11 +672,20 @@ export function ImportStagingZone() {
                                 )}
                               </TableCell>
                               <TableCell className="text-muted-foreground font-mono text-[11px]">
-                                {row["Scadenza Km"]
-                                  ? `${Number(row["Scadenza Km"]).toLocaleString("it-IT")} km`
-                                  : row["Scadenza Data"]
-                                    ? String(row["Scadenza Data"]).split("T")[0]
-                                    : "—"}
+                                {row["Scadenza Km"] || row["Scadenza Data"] ? (
+                                  <div className="flex flex-col gap-0.5 whitespace-nowrap">
+                                    {row["Scadenza Km"] ? (
+                                      <span>{Number(row["Scadenza Km"]).toLocaleString("it-IT")} km</span>
+                                    ) : null}
+                                    {row["Scadenza Data"] ? (
+                                      <span className="text-[10px] text-muted-foreground/75">
+                                        {String(row["Scadenza Data"]).split("T")[0]}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground/50">—</span>
+                                )}
                               </TableCell>
                               <TableCell className="text-center">
                                 <Button
@@ -696,7 +710,6 @@ export function ImportStagingZone() {
                         })}
                       </TableBody>
                     </Table>
-                  </div>
                 ) : (
                   <div className="p-8 text-center text-xs text-muted-foreground">
                     Nessun intervento di manutenzione rilevato nel file caricato.

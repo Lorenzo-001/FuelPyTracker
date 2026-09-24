@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   Gauge,
@@ -8,6 +9,7 @@ import {
   Wallet,
   AlertTriangle,
   FileText,
+  Calendar,
 } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -20,7 +22,20 @@ import { TripCalculatorModal } from "@/components/dashboard/TripCalculatorModal"
 
 export default function DashboardPage() {
   const navigate = useNavigate()
-  const { data: summary, isLoading } = useDashboardSummary()
+  const [timeRange, setTimeRange] = useState("ytd")
+  const { data: summary, isLoading } = useDashboardSummary(timeRange)
+
+  const currentYear = new Date().getFullYear()
+
+  const timeRangeOptions = [
+    { id: "3m", label: "Ultimi 3 Mesi", shortLabel: "3M", desc: "negli ultimi 90 giorni" },
+    { id: "6m", label: "Ultimi 6 Mesi", shortLabel: "6M", desc: "negli ultimi 180 giorni" },
+    { id: "ytd", label: `Anno ${currentYear}`, shortLabel: "Anno", desc: `da inizio ${currentYear}` },
+    { id: "1y", label: "Ultimo Anno", shortLabel: "1A", desc: "negli ultimi 12 mesi" },
+    { id: "3y", label: "Ultimi 3 Anni", shortLabel: "3A", desc: "negli ultimi 3 anni" },
+    { id: "all", label: "Tutto lo Storico", shortLabel: "Tutto", desc: "complessivo di tutti gli anni" },
+  ]
+  const currentOption = timeRangeOptions.find((o) => o.id === timeRange) || timeRangeOptions[2]
 
   const avgKml = summary?.avg_km_per_liter ?? 0
   const avgL100km = avgKml > 0 ? (100 / avgKml).toFixed(2) : "—"
@@ -51,7 +66,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2">
             <Badge variant="success" className="gap-1 text-xs">
               <Sparkles className="h-3 w-3" />
-              Panoramica Flotta Attiva
+              Panoramica Attiva
             </Badge>
             <span className="text-xs text-muted-foreground font-mono">
               Contachilometri: <strong>{currentKm} km</strong>
@@ -107,13 +122,49 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* KPI Section Control Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1">
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-bold tracking-tight text-foreground flex items-center gap-1.5">
+              <Calendar className="h-4 w-4 text-emerald-400" />
+              Indicatori di Rendimento & Spesa
+            </h3>
+            <Badge variant="outline" className="text-[11px] font-semibold text-emerald-400 border-emerald-500/30 bg-emerald-500/10">
+              {currentOption.label}
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Dati calcolati {currentOption.desc}
+          </p>
+        </div>
+
+        {/* Time Filter Pills */}
+        <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-lg border border-border/60 self-stretch sm:self-auto overflow-x-auto max-w-full">
+          {timeRangeOptions.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTimeRange(t.id)}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all shrink-0 ${
+                timeRange === t.id
+                  ? "bg-card text-emerald-400 shadow-xs border border-border/60"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t.shortLabel}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* 4 Smart KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1: Efficienza / Consumo */}
         <Card className="hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-950/20 transition-all">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Consumo Medio Storico
+              Consumo Medio
             </CardTitle>
             <Gauge className="h-4 w-4 text-emerald-400" />
           </CardHeader>
@@ -227,7 +278,10 @@ export default function DashboardPage() {
       {/* Main Analytics Grid: Recharts Time-Series Charts (Left) & Car Health Widget (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Interactive Charts with Time-Range Filters and Metric Tabs */}
-        <DashboardCharts />
+        <DashboardCharts
+          timeRange={timeRange}
+          onTimeRangeChange={setTimeRange}
+        />
 
         {/* Car Health Score & Active Issues Diagnostic */}
         <CarHealthWidget

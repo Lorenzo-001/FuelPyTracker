@@ -75,35 +75,90 @@ export function ImportRowEditModal({
         setMaintTypeVal(String(rowData.Tipo || "Tagliando"))
         setCostVal(Number(rowData.Costo || 0))
         setDescVal(String(rowData.Descrizione || ""))
-        setExpiryKmVal(rowData["Scadenza Km"] ? String(rowData["Scadenza Km"]) : "")
+        setExpiryKmVal(
+          rowData["Scadenza Km"] !== undefined &&
+            rowData["Scadenza Km"] !== null &&
+            String(rowData["Scadenza Km"]).trim() !== "" &&
+            String(rowData["Scadenza Km"]).trim() !== "null"
+            ? String(rowData["Scadenza Km"])
+            : ""
+        )
         setExpiryDateVal(
-          rowData["Scadenza Data"] ? String(rowData["Scadenza Data"]).split("T")[0] : ""
+          rowData["Scadenza Data"] &&
+            String(rowData["Scadenza Data"]).trim() !== "" &&
+            String(rowData["Scadenza Data"]).trim() !== "null"
+            ? String(rowData["Scadenza Data"]).split("T")[0]
+            : ""
         )
       }
     }
   }, [rowData, open, type])
 
-  // Calcolo bidirezionale per rifornimenti
+  // Calcolo automatico litri per rifornimenti (non editabili manualmente)
   const handlePriceChange = (newPrice: number) => {
     setPriceVal(newPrice)
     if (newPrice > 0 && costVal > 0) {
       setLitersVal(Number((costVal / newPrice).toFixed(2)))
+    } else {
+      setLitersVal(0)
     }
   }
 
   const handleCostChange = (newCost: number) => {
     setCostVal(newCost)
-    if (type === "fuel" && priceVal > 0 && newCost > 0) {
-      setLitersVal(Number((newCost / priceVal).toFixed(2)))
+    if (type === "fuel") {
+      if (priceVal > 0 && newCost > 0) {
+        setLitersVal(Number((newCost / priceVal).toFixed(2)))
+      } else {
+        setLitersVal(0)
+      }
     }
   }
 
-  const handleLitersChange = (newLiters: number) => {
-    setLitersVal(newLiters)
-    if (priceVal > 0 && newLiters > 0) {
-      setCostVal(Number((newLiters * priceVal).toFixed(2)))
+  // Pre-validazione inline in tempo reale
+  const validationIssues: { type: "error" | "warning"; message: string }[] = []
+  if (type === "fuel") {
+    if (kmVal <= 0) {
+      validationIssues.push({ type: "error", message: "I chilometri totali devono essere maggiori di zero." })
+    }
+    if (priceVal <= 0) {
+      validationIssues.push({ type: "error", message: "Il prezzo al litro deve essere maggiore di zero." })
+    } else if (priceVal < 1.10 || priceVal > 2.60) {
+      validationIssues.push({
+        type: "warning",
+        message: `Prezzo al litro insolitamente ${priceVal < 1.10 ? "basso" : "alto"} (${priceVal.toFixed(3)} €/L).`,
+      })
+    }
+    if (costVal <= 0) {
+      validationIssues.push({ type: "error", message: "La spesa totale deve essere maggiore di zero." })
+    }
+    if (litersVal > 120) {
+      validationIssues.push({
+        type: "error",
+        message: `I litri calcolati (${litersVal.toFixed(2)} L) eccedono la capacità massima del serbatoio (120 L).`,
+      })
+    }
+  } else {
+    if (kmVal <= 0) {
+      validationIssues.push({ type: "error", message: "I chilometri totali devono essere maggiori di zero." })
+    }
+    if (costVal < 0) {
+      validationIssues.push({ type: "error", message: "Il costo dell'intervento non può essere negativo." })
+    } else if (
+      costVal > 0 &&
+      costVal < 15.0 &&
+      ["tagliando", "gomme", "freni", "frizione", "distribuzione", "revisione"].includes(
+        maintTypeVal.trim().toLowerCase()
+      )
+    ) {
+      validationIssues.push({
+        type: "warning",
+        message: `Importo molto basso per un intervento di tipo "${maintTypeVal}" (${costVal.toFixed(2)} €).`,
+      })
     }
   }
+
+  const hasBlockingErrors = validationIssues.some((i) => i.type === "error")
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -124,8 +179,11 @@ export function ImportRowEditModal({
     } else {
       updated.Tipo = maintTypeVal
       updated.Descrizione = descVal
-      updated["Scadenza Km"] = expiryKmVal ? Number(expiryKmVal) : null
-      updated["Scadenza Data"] = expiryDateVal || null
+      updated["Scadenza Km"] =
+        expiryKmVal && !isNaN(Number(expiryKmVal)) && Number(expiryKmVal) > 0
+          ? Number(expiryKmVal)
+          : null
+      updated["Scadenza Data"] = expiryDateVal && expiryDateVal.trim() !== "" ? expiryDateVal : null
     }
 
     onSave(updated, rowIndex, type)
@@ -340,18 +398,21 @@ export function ImportRowEditModal({
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="edit-liters" className="text-[11px] font-semibold">
-                    Litri Calcolati
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="edit-liters" className="text-[11px] font-semibold text-muted-foreground">
+                      Litri Calcolati
+                    </Label>
+                    <span className="text-[9px] text-muted-foreground/80 font-mono">(Spesa / Prezzo)</span>
+                  </div>
                   <Input
                     id="edit-liters"
                     type="number"
                     step="0.01"
                     value={litersVal || ""}
-                    onChange={(e) => handleLitersChange(Number(e.target.value))}
-                    required
-                    className="text-sm font-mono px-2"
-                    placeholder="27.49"
+                    readOnly
+                    tabIndex={-1}
+                    className="text-sm font-mono px-2 bg-muted/40 cursor-not-allowed text-muted-foreground select-none"
+                    placeholder="0.00"
                   />
                 </div>
               </div>
@@ -467,6 +528,36 @@ export function ImportRowEditModal({
             </>
           )}
 
+          {/* Real-time Inline Validation Banner */}
+          {validationIssues.length > 0 && (
+            <div
+              className={`p-3 rounded-xl border text-xs space-y-1.5 ${
+                hasBlockingErrors
+                  ? "bg-rose-500/10 border-rose-500/30 text-rose-300"
+                  : "bg-amber-500/10 border-amber-500/30 text-amber-300"
+              }`}
+            >
+              <div className="flex items-center gap-2 font-semibold">
+                {hasBlockingErrors ? (
+                  <>
+                    <XCircle className="h-4 w-4 text-rose-400 shrink-0" />
+                    <span>Dati non validi per la conferma:</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
+                    <span>Segnalazioni di congruenza:</span>
+                  </>
+                )}
+              </div>
+              <ul className="list-disc list-inside space-y-0.5 pl-1 text-[11px] opacity-90">
+                {validationIssues.map((issue, idx) => (
+                  <li key={idx}>{issue.message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <DialogFooter className="pt-3 sm:space-x-2">
             <Button
               type="button"
@@ -477,7 +568,8 @@ export function ImportRowEditModal({
             </Button>
             <Button
               type="submit"
-              variant="emerald"
+              variant={hasBlockingErrors ? "outline" : "emerald"}
+              disabled={hasBlockingErrors}
               className="gap-2"
             >
               <Sparkles className="h-4 w-4" />

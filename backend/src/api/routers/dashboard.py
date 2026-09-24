@@ -49,6 +49,8 @@ def _get_cutoff_date(time_range: str) -> Optional[date]:
         return date(today.year, 1, 1)
     elif time_range == "1y":
         return today - timedelta(days=365)
+    elif time_range == "3y":
+        return today - timedelta(days=365 * 3)
     return None
 
 
@@ -56,9 +58,10 @@ def _get_cutoff_date(time_range: str) -> Optional[date]:
     "/summary",
     response_model=DashboardSummaryResponse,
     summary="Cruscotto KPI aggregati e Car Health Score",
-    description="Restituisce la panoramica completa con spesa complessiva, ultimo rifornimento, salute auto e allarmi parziali.",
+    description="Restituisce la panoramica completa con spesa complessiva, ultimo rifornimento, salute auto e allarmi parziali, filtrabile per orizzonte temporale.",
 )
 def get_dashboard_summary(
+    time_range: str = Query("all", pattern="^(1m|3m|6m|ytd|1y|3y|all)$", description="Intervallo temporale per il calcolo di spese e consumi (1m, 3m, 6m, ytd, 1y, 3y, all)"),
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ) -> DashboardSummaryResponse:
@@ -68,7 +71,7 @@ def get_dashboard_summary(
 
     current_km = max((r.total_km for r in refuelings), default=0)
 
-    # 1. Ultimo Rifornimento
+    # 1. Ultimo Rifornimento (stato globale veicolo)
     last_refuel = max(refuelings, key=lambda x: x.date, default=None)
     last_dto = None
     if last_refuel:
@@ -79,7 +82,7 @@ def get_dashboard_summary(
             liters=last_refuel.liters,
         )
 
-    # 2. Car Health Score
+    # 2. Car Health Score (stato attuale veicolo)
     health_score, issues = gamification.calculate_car_health_score(db, user_id, current_km)
     status_color = "green" if health_score >= 80 else ("orange" if health_score >= 50 else "red")
     health_dto = HealthScoreSummary(
@@ -88,7 +91,7 @@ def get_dashboard_summary(
         issues=issues,
     )
 
-    # 3. Alert Parziali
+    # 3. Alert Parziali (stato attuale veicolo)
     partial_info = check_partial_accumulation(refuelings)
     max_threshold = settings.max_accumulated_partial_cost if settings else 150.0
     partial_alert = PartialAccumulationAlert(
@@ -98,14 +101,18 @@ def get_dashboard_summary(
         max_threshold=max_threshold,
     )
 
-    # 4. Spesa e Consumi
-    total_fuel_cost = round(sum(r.total_cost for r in refuelings), 2)
-    total_maint_cost = round(sum(m.cost for m in maintenances), 2)
+    # 4. Spesa e Consumi nel periodo selezionato
+    cutoff = _get_cutoff_date(time_range)
+    f_refuelings = [r for r in refuelings if cutoff is None or r.date >= cutoff]
+    f_maintenances = [m for m in maintenances if cutoff is None or m.date >= cutoff]
+
+    total_fuel_cost = round(sum(r.total_cost for r in f_refuelings), 2)
+    total_maint_cost = round(sum(m.cost for m in f_maintenances), 2)
     total_spent = round(total_fuel_cost + total_maint_cost, 2)
 
     valid_eff = [
         s["km_per_liter"]
-        for r in refuelings
+        for r in f_refuelings
         if (s := calculate_stats(r, refuelings)).get("km_per_liter") is not None
     ]
     avg_kml = round(sum(valid_eff) / len(valid_eff), 2) if valid_eff else 0.0
@@ -129,7 +136,7 @@ def get_dashboard_summary(
     description="Fornisce i punti per i grafici Prezzo Carburante, Efficienza Km/L e Spesa Mensile, filtrati per intervallo temporale.",
 )
 def get_dashboard_charts(
-    time_range: str = Query("all", pattern="^(1m|3m|6m|ytd|1y|all)$", description="Intervallo temporale (1m, 3m, 6m, ytd, 1y, all)"),
+    time_range: str = Query("all", pattern="^(1m|3m|6m|ytd|1y|3y|all)$", description="Intervallo temporale (1m, 3m, 6m, ytd, 1y, 3y, all)"),
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ) -> DashboardChartsResponse:

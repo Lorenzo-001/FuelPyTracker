@@ -38,35 +38,65 @@ def _enrich_reminder(rem: Reminder, current_km: int) -> ReminderResponse:
 
     today = date.today()
 
+    is_km_overdue = False
+    progress_km = 0.0
+    status_msg_km = ""
+    overrun_km = 0
+
+    is_days_overdue = False
+    progress_days = 0.0
+    status_msg_days = ""
+    overrun_days = 0
+
     if rem.frequency_km:
         last = rem.last_km_check if rem.last_km_check is not None else current_km
         target_km = last + rem.frequency_km
         diff = current_km - last
-        overrun = current_km - target_km
+        overrun_km = current_km - target_km
         remaining_km = target_km - current_km
 
         if diff >= rem.frequency_km:
-            progress = 1.0
-            is_overdue = True
-            status_message = f"Limite superato da {overrun} Km"
+            progress_km = 1.0
+            is_km_overdue = True
+            status_msg_km = f"Limite superato da {overrun_km} Km"
         else:
-            progress = max(0.0, diff / rem.frequency_km) if rem.frequency_km > 0 else 0.0
-            status_message = f"Mancano {remaining_km} Km alla scadenza"
+            progress_km = max(0.0, diff / rem.frequency_km) if rem.frequency_km > 0 else 0.0
+            status_msg_km = f"Mancano {remaining_km} Km alla scadenza"
 
-    elif rem.frequency_days:
-        last = rem.last_date_check if rem.last_date_check is not None else today
-        target_date = last + timedelta(days=rem.frequency_days)
-        diff_days = (today - last).days
+    if rem.frequency_days:
+        last_d = rem.last_date_check if rem.last_date_check is not None else today
+        target_date = last_d + timedelta(days=rem.frequency_days)
+        diff_days = (today - last_d).days
         overrun_days = (today - target_date).days
         remaining_days = (target_date - today).days
 
         if diff_days >= rem.frequency_days:
-            progress = 1.0
-            is_overdue = True
-            status_message = f"Scaduto da {overrun_days} giorni"
+            progress_days = 1.0
+            is_days_overdue = True
+            status_msg_days = f"Scaduto da {overrun_days} giorni"
         else:
-            progress = max(0.0, diff_days / rem.frequency_days) if rem.frequency_days > 0 else 0.0
-            status_message = f"Mancano {remaining_days} giorni alla scadenza"
+            progress_days = max(0.0, diff_days / rem.frequency_days) if rem.frequency_days > 0 else 0.0
+            status_msg_days = f"Mancano {remaining_days} giorni alla scadenza"
+
+    if rem.frequency_km and rem.frequency_days:
+        is_overdue = is_km_overdue or is_days_overdue
+        progress = max(progress_km, progress_days)
+        if is_km_overdue and is_days_overdue:
+            status_message = f"Scaduto sia per Km ({overrun_km} Km) che per Data ({overrun_days} gg)"
+        elif is_km_overdue:
+            status_message = status_msg_km
+        elif is_days_overdue:
+            status_message = status_msg_days
+        else:
+            status_message = status_msg_km if progress_km >= progress_days else status_msg_days
+    elif rem.frequency_km:
+        is_overdue = is_km_overdue
+        progress = progress_km
+        status_message = status_msg_km
+    elif rem.frequency_days:
+        is_overdue = is_days_overdue
+        progress = progress_days
+        status_message = status_msg_days
 
     return ReminderResponse(
         id=rem.id,
@@ -88,6 +118,14 @@ def _enrich_reminder(rem: Reminder, current_km: int) -> ReminderResponse:
     )
 
 
+def _get_current_km(db: Session, user_id: str) -> int:
+    """Calcola il chilometraggio massimo attuale aggregando sia rifornimenti che manutenzioni."""
+    refuelings = crud.get_all_refuelings(db, user_id)
+    maintenances = crud.get_all_maintenances(db, user_id)
+    all_km = [r.total_km for r in refuelings] + [m.total_km for m in maintenances]
+    return max(all_km, default=0)
+
+
 @router.get(
     "",
     response_model=List[ReminderResponse],
@@ -104,8 +142,7 @@ def get_reminders(
         .order_by(Reminder.id.asc())
         .all()
     )
-    refuelings = crud.get_all_refuelings(db, user_id)
-    current_km = max((r.total_km for r in refuelings), default=0)
+    current_km = _get_current_km(db, user_id)
     return [_enrich_reminder(rem, current_km) for rem in reminders]
 
 
@@ -120,8 +157,7 @@ def create_reminder(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ) -> ReminderResponse:
-    refuelings = crud.get_all_refuelings(db, user_id)
-    current_km = payload.current_km or max((r.total_km for r in refuelings), default=0)
+    current_km = payload.current_km or _get_current_km(db, user_id)
     current_date = payload.current_date or date.today()
 
     new_rem = crud.create_reminder(
@@ -165,8 +201,7 @@ def get_reminder(
     rem = db.query(Reminder).filter(Reminder.id == record_id, Reminder.user_id == user_id).first()
     if not rem:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Promemoria non trovato")
-    refuelings = crud.get_all_refuelings(db, user_id)
-    current_km = max((r.total_km for r in refuelings), default=0)
+    current_km = _get_current_km(db, user_id)
     return _enrich_reminder(rem, current_km)
 
 
@@ -207,8 +242,7 @@ def update_reminder(
     except Exception:
         pass
 
-    refuelings = crud.get_all_refuelings(db, user_id)
-    current_km = max((r.total_km for r in refuelings), default=0)
+    current_km = _get_current_km(db, user_id)
     return _enrich_reminder(rem, current_km)
 
 
@@ -243,15 +277,25 @@ def complete_reminder(
     if not rem:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Promemoria non trovato")
 
-    refuelings = crud.get_all_refuelings(db, user_id)
-    last_known_km = max((r.total_km for r in refuelings), default=rem.last_km_check or 0)
-    effective_km = payload.check_km if payload.check_km is not None else last_known_km
+    vehicle_km = _get_current_km(db, user_id)
+    last_known_km = max(vehicle_km, rem.last_km_check or 0)
+
+    # Determina i km effettivi di completamento:
+    if payload.check_km is not None and payload.check_km > 0:
+        # Se payload.check_km è rimasto uguale o inferiore al vecchio last_km_check (e il veicolo ha un km superiore),
+        # significa che è stato inviato erroneamente il vecchio km iniziale -> usa last_known_km
+        if rem.last_km_check and payload.check_km <= rem.last_km_check and last_known_km > rem.last_km_check:
+            effective_km = last_known_km
+        else:
+            effective_km = payload.check_km
+    else:
+        effective_km = last_known_km
 
     crud.log_reminder_execution(
         db=db,
         user_id=user_id,
         reminder_id=record_id,
-        check_date=payload.check_date,
+        check_date=payload.check_date or date.today(),
         check_km=effective_km,
         notes=payload.notes or "",
     )

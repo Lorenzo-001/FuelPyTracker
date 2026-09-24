@@ -7,11 +7,13 @@ import type {
 } from "@/types"
 
 export const dashboardApi = {
-  getSummary: (): Promise<DashboardSummaryResponse> => {
-    return apiClient.get<DashboardSummaryResponse>("/dashboard/summary")
+  getSummary: (time_range: string = "ytd"): Promise<DashboardSummaryResponse> => {
+    return apiClient.get<DashboardSummaryResponse>("/dashboard/summary", {
+      params: { time_range },
+    })
   },
 
-  getCharts: (time_range: string = "all"): Promise<DashboardChartsResponse> => {
+  getCharts: (time_range: string = "ytd"): Promise<DashboardChartsResponse> => {
     return apiClient.get<DashboardChartsResponse>("/dashboard/charts", {
       params: { time_range },
     })

@@ -35,6 +35,7 @@ const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string
   Batteria: { bg: "bg-amber-500/10", text: "text-amber-400", border: "border-amber-500/30" },
   "Olio & Filtri": { bg: "bg-teal-500/10", text: "text-teal-400", border: "border-teal-500/30" },
   Distribuzione: { bg: "bg-orange-500/10", text: "text-orange-400", border: "border-orange-500/30" },
+  Altro: { bg: "bg-slate-500/10", text: "text-slate-400", border: "border-slate-500/30" },
 }
 
 export function MaintenanceTimeline({ records, onEdit }: MaintenanceTimelineProps) {
@@ -72,9 +73,9 @@ export function MaintenanceTimeline({ records, onEdit }: MaintenanceTimelineProp
       <div className="relative pl-6 sm:pl-8 space-y-6 before:absolute before:left-2.5 sm:before:left-3.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-border/60">
         {records.map((r) => {
           const color = CATEGORY_COLORS[r.expense_type] || {
-            bg: "bg-muted/40",
-            text: "text-foreground",
-            border: "border-border",
+            bg: "bg-indigo-500/10",
+            text: "text-indigo-400",
+            border: "border-indigo-500/30",
           }
 
           return (

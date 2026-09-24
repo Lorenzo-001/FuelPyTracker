@@ -99,7 +99,7 @@ def validate_fuel_logic(db: Session, user_id: str, df: pd.DataFrame) -> pd.DataF
                 res['Note'] = 'Record duplicato nel file'
                 processed_rows.append(res)
 
-    # 4. Controllo Plausibilità km/L + Velocità km/giorno (post-loop)
+    # 4. Controllo Plausibilità km/L + Velocità km/giorno + Cronologia (post-loop)
     # Timeline combinata: DB + righe del file non in errore (per trovare predecessore immediato)
     kml_min   = getattr(settings, 'import_kml_min',   None) or DEFAULTS.SETTINGS.IMPORT.KML_MIN
     kml_max   = getattr(settings, 'import_kml_max',   None) or DEFAULTS.SETTINGS.IMPORT.KML_MAX
@@ -120,24 +120,48 @@ def validate_fuel_logic(db: Session, user_id: str, df: pd.DataFrame) -> pd.DataF
     }
 
     for row in processed_rows:
-        if row['Stato'] != 'Nuovo' or not row.get('Litri') or row['Litri'] <= 0:
-            continue
-
-        # Salto del check per evitare falsi warning su dati corretti.
-        if not row.get('Pieno', True):
+        if row['Stato'] == 'Errore' or not row.get('Km') or not row.get('Data'):
             continue
 
         d_km   = row['Km']
         d_date = row['Data']
 
-        # Predecessore immediato nella timeline combinata
+        # Predecessore e successore nella timeline combinata (escludendo il record stesso)
         prev_km   = None
         prev_date = None
-        prev_is_full = True  # Default: assumiamo pieno se record DB senza info
         for dt, km in combined:
-            if dt < d_date or (dt == d_date and km < d_km):
+            if dt < d_date:
                 prev_km   = km
                 prev_date = dt
+
+        next_km   = None
+        next_date = None
+        for dt, km in combined:
+            if dt > d_date:
+                next_km   = km
+                next_date = dt
+                break
+
+        # --- Check Coerenza Cronologica Ometrica (Sandwich Timeline DB + File) ---
+        if prev_date and d_km <= prev_km:
+            row['Stato'] = 'Errore'
+            p_str = prev_date.strftime('%d/%m/%Y') if hasattr(prev_date, 'strftime') else str(prev_date)
+            row['Note'] = (row['Note'] + f" | Km ≤ del {p_str} ({prev_km})").strip(' | ')
+            continue
+
+        if next_date and d_km >= next_km:
+            row['Stato'] = 'Errore'
+            n_str = next_date.strftime('%d/%m/%Y') if hasattr(next_date, 'strftime') else str(next_date)
+            row['Note'] = (row['Note'] + f" | Km ≥ del {n_str} ({next_km})").strip(' | ')
+            continue
+
+        # Salto dei controlli consumi/velocità se record non modificabile per consumi
+        if row['Stato'] not in ('Nuovo', 'Warning') or not row.get('Litri') or row['Litri'] <= 0:
+            continue
+
+        # Salto del check km/L per i parziali (il delta km/L non è affidabile)
+        if not row.get('Pieno', True):
+            continue
 
         if prev_km is None:
             continue  # Primo record assoluto, nessun predecessore
@@ -151,8 +175,6 @@ def validate_fuel_logic(db: Session, user_id: str, df: pd.DataFrame) -> pd.DataF
             continue
 
         delta_km = d_km - prev_km
-        if delta_km <= 0:
-            continue  # Già gestito dal sandwich check
 
         # --- Check Velocità ---
         delta_giorni = (d_date - prev_date).days if prev_date else 0
@@ -182,7 +204,8 @@ def validate_fuel_logic(db: Session, user_id: str, df: pd.DataFrame) -> pd.DataF
                 f'(limite assoluto: {kml_error} km/L)'
             ).strip(' | ')
         elif not (kml_min <= km_per_liter <= kml_max):
-            row['Stato'] = 'Warning'
+            if row['Stato'] != 'Errore':
+                row['Stato'] = 'Warning'
             row['Note'] = (
                 row['Note'] + f' | Consumo anomalo: {km_per_liter:.1f} km/L '
                 f'(range atteso: {kml_min}–{kml_max})'
@@ -293,6 +316,12 @@ def _parse_single_row(row, settings, ref_map, date_map, sorted_history, file_key
             status, notes = "Errore", [f"Spesa ({d_cost:.2f} €) oltre 2.5x la soglia massima consentita ({settings.max_total_cost:.2f} €)"]
         elif d_cost > settings.max_total_cost:
             status, notes = "Warning", [f"Spesa elevata ({d_cost:.2f} €) superiore alla soglia ({settings.max_total_cost:.2f} €)"]
+
+        # Check plausibilità prezzo al litro (Warning non bloccante per valori insoliti es. GPL o refusi)
+        if status in ["Nuovo", "Modifica"] and (d_price < 1.10 or d_price > 2.60):
+            if status == "Nuovo":
+                status = "Warning"
+            notes.append(f"Prezzo carburante insolito ({d_price:.3f} €/L)")
 
         if pieno_assumed:
             notes.append("Colonna 'pieno' assente nel file: impostato come pieno per default")

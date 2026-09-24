@@ -50,7 +50,7 @@ def _make_refueling(r_id, d, km, cost=50.0, price=1.75, is_full=True, notes=""):
     r.liters = round(cost / price, 2)
     return r
 
-def _make_maintenance(m_id, d, km, expense_type="Tagliando", cost=300.0, description=""):
+def _make_maintenance(m_id, d, km, expense_type="Tagliando", cost=300.0, description="", expiry_km=None, expiry_date=None):
     m = MagicMock(spec=Maintenance)
     m.id = m_id
     m.date = d
@@ -58,6 +58,8 @@ def _make_maintenance(m_id, d, km, expense_type="Tagliando", cost=300.0, descrip
     m.expense_type = expense_type
     m.cost = cost
     m.description = description
+    m.expiry_km = expiry_km
+    m.expiry_date = expiry_date
     return m
 
 
@@ -328,6 +330,30 @@ class TestFuelValidation:
         assert "Errore" in stati  # La seconda riga deve essere errore
         assert stati.count("Errore") == 1
 
+    def test_intra_file_km_regression_is_error(self):
+        """Seconda riga con data successiva ma km inferiori nello stesso file = Errore."""
+        result = self._run({
+            "data": ["2024-01-10", "2024-01-25"],
+            "km": [114500, 11495],
+            "prezzo": [1.80, 1.80],
+            "costo": [80.0, 80.0],
+            "pieno": [True, False]
+        })
+        stati = result["Stato"].tolist()
+        assert stati[1] == "Errore"
+        assert "Km ≤ del" in result.iloc[1]["Note"]
+
+    def test_unusual_fuel_price_is_warning(self):
+        """Prezzo insolitamente basso (es. GPL o refuso a 0.70 €/L) deve generare Warning."""
+        result = self._run({
+            "data": ["2024-01-15"],
+            "km": [50000],
+            "prezzo": [0.70],
+            "costo": [30.0]
+        })
+        assert result.iloc[0]["Stato"] == "Warning"
+        assert "Prezzo carburante insolito" in result.iloc[0]["Note"]
+
     def test_row_with_null_date_and_km_is_skipped(self):
         """Righe con data=NaN e km=0 devono essere skippate silenziosamente."""
         result = self._run({
@@ -520,6 +546,44 @@ class TestMaintenanceValidation:
         stati = result["Stato"].tolist()
         assert "Errore" in stati
 
+    def test_intra_file_km_regression_is_error(self):
+        """Seconda riga manutenzione con data successiva ma km inferiori nello stesso file = Errore."""
+        result = self._run({
+            "data": ["2024-01-15", "2024-02-20"],
+            "km": [114600, 40],
+            "tipo": ["Tagliando", "Freni"],
+            "costo": [300.0, 3.0]
+        })
+        stati = result["Stato"].tolist()
+        assert stati[1] == "Errore"
+        assert "inferiori al" in result.iloc[1]["Note"]
+
+    def test_unusually_low_cost_is_warning(self):
+        """Intervento strutturale con importo insolitamente basso genera Warning."""
+        result = self._run({
+            "data": ["2024-01-15"],
+            "km": [50000],
+            "tipo": ["Tagliando"],
+            "costo": [5.0]
+        })
+        assert result.iloc[0]["Stato"] == "Warning"
+        assert "insolitamente basso" in result.iloc[0]["Note"]
+
+
+    def test_preserves_expiry_km_and_expiry_date(self):
+        """Campi Scadenza_Km e Scadenza_Data devono essere estratti e preservati."""
+        result = self._run({
+            "data": ["2024-01-15"],
+            "km": [114600],
+            "tipo": ["Tagliando"],
+            "costo": [320.0],
+            "scadenza_km": [130000],
+            "scadenza_data": ["2025-01-15"]
+        })
+        row = result.iloc[0]
+        assert row["Scadenza Km"] == 130000
+        assert str(row["Scadenza Data"]) == "2025-01-15"
+
 
 class TestMaintenanceSaveRow:
 
@@ -531,6 +595,27 @@ class TestMaintenanceSaveRow:
             maint_importer.save_row(db, USER_ID, row)
             mock_crud.create_maintenance.assert_called_once()
 
+    def test_save_nuovo_passes_expiry_parameters(self):
+        db = MagicMock()
+        row = {
+            "Stato": "Nuovo", "db_id": None, "Data": date(2024, 1, 15),
+            "Km": 114600, "Tipo": "Tagliando", "Costo": 320.0, "Descrizione": "Test",
+            "Scadenza Km": 130000, "Scadenza Data": date(2025, 1, 15)
+        }
+        with patch('src.services.data.importers.maintenance.crud') as mock_crud:
+            maint_importer.save_row(db, USER_ID, row)
+            mock_crud.create_maintenance.assert_called_once_with(
+                db=db,
+                user_id=USER_ID,
+                date_obj=date(2024, 1, 15),
+                total_km=114600,
+                expense_type="Tagliando",
+                cost=320.0,
+                description="Test",
+                expiry_km=130000,
+                expiry_date=date(2025, 1, 15)
+            )
+
     def test_save_modifica_calls_update(self):
         db = MagicMock()
         row = {"Stato": "Modifica", "db_id": 42, "Data": date(2024,1,15),
@@ -538,6 +623,27 @@ class TestMaintenanceSaveRow:
         with patch('src.services.data.importers.maintenance.crud') as mock_crud:
             maint_importer.save_row(db, USER_ID, row)
             mock_crud.update_maintenance.assert_called_once()
+
+    def test_save_modifica_passes_expiry_parameters(self):
+        db = MagicMock()
+        row = {
+            "Stato": "Modifica", "db_id": 42, "Data": date(2024, 1, 15),
+            "Km": 114600, "Tipo": "Tagliando", "Costo": 320.0, "Descrizione": "Test",
+            "Scadenza Km": 130000, "Scadenza Data": date(2025, 1, 15)
+        }
+        with patch('src.services.data.importers.maintenance.crud') as mock_crud:
+            maint_importer.save_row(db, USER_ID, row)
+            mock_crud.update_maintenance.assert_called_once_with(
+                db, USER_ID, 42, {
+                    "date": date(2024, 1, 15),
+                    "total_km": 114600,
+                    "expense_type": "Tagliando",
+                    "cost": 320.0,
+                    "description": "Test",
+                    "expiry_km": 130000,
+                    "expiry_date": date(2025, 1, 15)
+                }
+            )
 
     def test_save_errore_is_skipped(self):
         db = MagicMock()

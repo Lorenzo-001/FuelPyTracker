@@ -4,6 +4,13 @@ import random
 import math
 from datetime import date, timedelta
 
+try:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 # Comando Avvio: python -m src.scripts.seed_data
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -41,8 +48,15 @@ PRICE_HISTORY = [
     (2024,  4, 1.800), (2024,  5, 1.810), (2024,  6, 1.830),
     (2024,  7, 1.820), (2024,  8, 1.810), (2024,  9, 1.790),
     (2024, 10, 1.760), (2024, 11, 1.730), (2024, 12, 1.710),
-    # 2025: inizio anno
+    # 2025
     (2025,  1, 1.720), (2025,  2, 1.740), (2025,  3, 1.760),
+    (2025,  4, 1.780), (2025,  5, 1.810), (2025,  6, 1.840),
+    (2025,  7, 1.850), (2025,  8, 1.860), (2025,  9, 1.820),
+    (2025, 10, 1.790), (2025, 11, 1.770), (2025, 12, 1.750),
+    # 2026
+    (2026,  1, 1.760), (2026,  2, 1.780), (2026,  3, 1.800),
+    (2026,  4, 1.820), (2026,  5, 1.830), (2026,  6, 1.850),
+    (2026,  7, 1.870), (2026,  8, 1.860), (2026,  9, 1.830),
 ]
 
 def get_base_price(d: date) -> float:
@@ -119,11 +133,11 @@ def clean_database(db, user_id):
     """Svuota i dati SOLO dell'utente corrente."""
     print(f"🧹 Pulizia dati per l'utente {user_id}...")
     try:
-        db.query(ReminderHistory).filter(ReminderHistory.user_id == user_id).delete()
-        db.query(Reminder).filter(Reminder.user_id == user_id).delete()
-        db.query(Maintenance).filter(Maintenance.user_id == user_id).delete()
-        db.query(Refueling).filter(Refueling.user_id == user_id).delete()
-        db.query(AppSettings).filter(AppSettings.user_id == user_id).delete()
+        db.query(ReminderHistory).filter(ReminderHistory.user_id == user_id).delete(synchronize_session=False)
+        db.query(Reminder).filter(Reminder.user_id == user_id).delete(synchronize_session=False)
+        db.query(Maintenance).filter(Maintenance.user_id == user_id).delete(synchronize_session=False)
+        db.query(Refueling).filter(Refueling.user_id == user_id).delete(synchronize_session=False)
+        db.query(AppSettings).filter(AppSettings.user_id == user_id).delete(synchronize_session=False)
         db.commit()
         print("✅ Dati utente rimossi.")
     except Exception as e:
@@ -552,7 +566,15 @@ if __name__ == "__main__":
     print("╔══════════════════════════════════════════════════╗")
     print("║   FUELPYTRACKER SEEDER v5 — Dati Realistici      ║")
     print("╚══════════════════════════════════════════════════╝\n")
-    target_uuid = input("Inserisci il tuo User ID (UUID) da Supabase: ").strip()
+    if len(sys.argv) > 1 and sys.argv[1].strip():
+        target_uuid = sys.argv[1].strip()
+    else:
+        try:
+            target_uuid = input("Inserisci il tuo User ID (UUID) da Supabase [default: demo]: ").strip()
+        except (EOFError, OSError):
+            target_uuid = ""
+        if not target_uuid:
+            target_uuid = "00000000-0000-4000-8000-000000000001"
 
     if len(target_uuid) < 10:
         print("❌ UUID non valido (troppo corto).")

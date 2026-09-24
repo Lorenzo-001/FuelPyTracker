@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
+import { useReminders } from "@/hooks/useReminders"
 
 interface SidebarProps {
   collapsed: boolean
@@ -28,42 +29,51 @@ interface NavItem {
   badgeVariant?: "default" | "secondary" | "destructive" | "outline" | "success" | "warning" | "info"
 }
 
-const navItems: NavItem[] = [
-  {
-    title: "Dashboard",
-    href: "/",
-    icon: Gauge,
-  },
-  {
-    title: "Rifornimenti",
-    href: "/fuel",
-    icon: Fuel,
-  },
-  {
-    title: "Manutenzioni",
-    href: "/maintenance",
-    icon: Wrench,
-  },
-  {
-    title: "Promemoria",
-    href: "/reminders",
-    icon: CalendarClock,
-    badge: "2",
-    badgeVariant: "warning",
-  },
-  {
-    title: "Report & Export",
-    href: "/reports",
-    icon: BarChart3,
-  },
-  {
-    title: "Impostazioni",
-    href: "/settings",
-    icon: Settings,
-  },
-]
-
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+  const { data: reminders } = useReminders()
+  const overdueCount = reminders?.filter((r) => r.is_overdue).length || 0
+  const urgentCount =
+    reminders?.filter((r) => r.progress >= 0.7 && !r.is_overdue).length || 0
+  const totalAlerts = overdueCount + urgentCount
+
+  const navItems: NavItem[] = React.useMemo(
+    () => [
+      {
+        title: "Dashboard",
+        href: "/",
+        icon: Gauge,
+      },
+      {
+        title: "Rifornimenti",
+        href: "/fuel",
+        icon: Fuel,
+      },
+      {
+        title: "Manutenzioni",
+        href: "/maintenance",
+        icon: Wrench,
+      },
+      {
+        title: "Promemoria",
+        href: "/reminders",
+        icon: CalendarClock,
+        badge: totalAlerts > 0 ? String(totalAlerts) : undefined,
+        badgeVariant: overdueCount > 0 ? "destructive" : "warning",
+      },
+      {
+        title: "Report & Export",
+        href: "/reports",
+        icon: BarChart3,
+      },
+      {
+        title: "Impostazioni",
+        href: "/settings",
+        icon: Settings,
+      },
+    ],
+    [totalAlerts, overdueCount]
+  )
+
   return (
     <aside
       className={cn(
@@ -83,7 +93,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 FuelPyTracker
               </span>
               <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400/90">
-                Flotta v2.0
+                Versione 2.0
               </span>
             </div>
           )}
@@ -126,14 +136,24 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             >
               {({ isActive }) => (
                 <>
-                  <Icon
-                    className={cn(
-                      "h-5 w-5 shrink-0 transition-transform duration-150 group-hover:scale-110",
-                      isActive
-                        ? "text-emerald-400"
-                        : "text-muted-foreground group-hover:text-foreground"
+                  <div className="relative flex items-center justify-center">
+                    <Icon
+                      className={cn(
+                        "h-5 w-5 shrink-0 transition-transform duration-150 group-hover:scale-110",
+                        isActive
+                          ? "text-emerald-400"
+                          : "text-muted-foreground group-hover:text-foreground"
+                      )}
+                    />
+                    {collapsed && item.badge && (
+                      <span
+                        className={cn(
+                          "absolute -top-1 -right-1 h-2 w-2 rounded-full ring-2 ring-background",
+                          item.badgeVariant === "destructive" ? "bg-rose-500 animate-pulse" : "bg-amber-400"
+                        )}
+                      />
                     )}
-                  />
+                  </div>
                   {!collapsed && (
                     <span className="flex-1 truncate">{item.title}</span>
                   )}

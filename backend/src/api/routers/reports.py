@@ -191,7 +191,14 @@ async def preview_import_file(
             if "Data" in df_maint_clean.columns:
                 df_maint_clean["Data"] = df_maint_clean["Data"].astype(str)
             if "Scadenza Data" in df_maint_clean.columns:
-                df_maint_clean["Scadenza Data"] = df_maint_clean["Scadenza Data"].astype(str)
+                df_maint_clean["Scadenza Data"] = df_maint_clean["Scadenza Data"].apply(
+                    lambda x: str(x).split("T")[0].split(" ")[0] if pd.notna(x) and str(x).strip() not in ("None", "nan", "NaT", "") else None
+                )
+            if "Scadenza Km" in df_maint_clean.columns:
+                df_maint_clean["Scadenza Km"] = df_maint_clean["Scadenza Km"].apply(
+                    lambda x: int(float(x)) if pd.notna(x) and str(x).strip() not in ("None", "nan", "") and float(x) > 0 else None
+                )
+            df_maint_clean = df_maint_clean.where(pd.notnull(df_maint_clean), None)
             maint_records = df_maint_clean.to_dict(orient="records")
             maint_summary = df_maint["Stato"].value_counts().to_dict() if "Stato" in df_maint else {}
 
@@ -240,7 +247,14 @@ def revalidate_imported_rows(
             if "Data" in df_clean.columns:
                 df_clean["Data"] = df_clean["Data"].astype(str)
             if "Scadenza Data" in df_clean.columns:
-                df_clean["Scadenza Data"] = df_clean["Scadenza Data"].astype(str)
+                df_clean["Scadenza Data"] = df_clean["Scadenza Data"].apply(
+                    lambda x: str(x).split("T")[0].split(" ")[0] if pd.notna(x) and str(x).strip() not in ("None", "nan", "NaT", "") else None
+                )
+            if "Scadenza Km" in df_clean.columns:
+                df_clean["Scadenza Km"] = df_clean["Scadenza Km"].apply(
+                    lambda x: int(float(x)) if pd.notna(x) and str(x).strip() not in ("None", "nan", "") and float(x) > 0 else None
+                )
+            df_clean = df_clean.where(pd.notnull(df_clean), None)
             maint_records = df_clean.to_dict(orient="records")
             maint_summary = df_validated["Stato"].value_counts().to_dict() if "Stato" in df_validated else {}
 
@@ -296,6 +310,8 @@ def commit_imported_rows(
     for row in payload.maintenance_rows:
         if row.status == "Modifica" and row.db_id:
             crud.update_maintenance(db, user_id, row.db_id, {
+                "date": row.date,
+                "total_km": row.total_km,
                 "expense_type": row.expense_type,
                 "cost": row.cost,
                 "description": row.description,

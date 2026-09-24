@@ -48,16 +48,42 @@ function CustomTooltip({ active, payload, label, suffix = "" }: CustomTooltipPro
   return null
 }
 
-export function DashboardCharts() {
+interface DashboardChartsProps {
+  timeRange?: string
+  onTimeRangeChange?: (range: string) => void
+}
+
+export function DashboardCharts({
+  timeRange: controlledTimeRange,
+  onTimeRangeChange,
+}: DashboardChartsProps = {}) {
   const navigate = useNavigate()
-  const [timeRange, setTimeRange] = useState("all")
+  const [internalTimeRange, setInternalTimeRange] = useState("ytd")
   const [activeTab, setActiveTab] = useState<"price" | "efficiency" | "spending">("price")
 
-  const { data: chartsData, isLoading } = useDashboardCharts(timeRange)
+  const effectiveTimeRange = controlledTimeRange ?? internalTimeRange
+  const handleTimeRangeChange = (range: string) => {
+    if (onTimeRangeChange) {
+      onTimeRangeChange(range)
+    } else {
+      setInternalTimeRange(range)
+    }
+  }
+
+  const { data: chartsData, isLoading } = useDashboardCharts(effectiveTimeRange)
 
   const priceData = chartsData?.price_trend ?? []
   const efficiencyData = chartsData?.efficiency ?? []
   const spendingData = chartsData?.monthly_spending ?? []
+
+  const timeRangeOptions = [
+    { id: "3m", label: "3M" },
+    { id: "6m", label: "6M" },
+    { id: "ytd", label: "Anno" },
+    { id: "1y", label: "1A" },
+    { id: "3y", label: "3A" },
+    { id: "all", label: "Tutto" },
+  ]
 
   return (
     <Card className="lg:col-span-2 shadow-sm hover:border-border transition-all">
@@ -73,21 +99,17 @@ export function DashboardCharts() {
         </div>
 
         {/* Time Range Filter Switcher */}
-        <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-lg border border-border/60 self-start sm:self-auto">
-          {[
-            { id: "3m", label: "3M" },
-            { id: "6m", label: "6M" },
-            { id: "1y", label: "1A" },
-            { id: "all", label: "Tutto" },
-          ].map((t) => (
+        <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-lg border border-border/60 self-start sm:self-auto overflow-x-auto max-w-full">
+          {timeRangeOptions.map((t) => (
             <button
               key={t.id}
               type="button"
-              onClick={() => setTimeRange(t.id)}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${timeRange === t.id
+              onClick={() => handleTimeRangeChange(t.id)}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all shrink-0 ${
+                effectiveTimeRange === t.id
                   ? "bg-card text-emerald-400 shadow-xs border border-border/60"
                   : "text-muted-foreground hover:text-foreground"
-                }`}
+              }`}
             >
               {t.label}
             </button>
