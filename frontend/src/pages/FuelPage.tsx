@@ -12,6 +12,7 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useRefuelings } from "@/hooks/useRefuelings"
 import { FuelTable } from "@/components/fuel/FuelTable"
@@ -200,9 +201,14 @@ export default function FuelPage() {
       {/* Quick Aggregate Stats Ribbon */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="p-3.5 rounded-xl bg-card border border-border/60 flex flex-col justify-between">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Pieni Registrati
-          </span>
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Pieni Registrati
+            </span>
+            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-medium">
+              {selectedYear ? `Anno ${selectedYear}` : "Tutti gli anni"}
+            </Badge>
+          </div>
           <div className="mt-1 flex items-baseline gap-1.5">
             <span className="text-xl font-bold font-mono text-foreground">{stats.count}</span>
             <span className="text-xs text-muted-foreground">record</span>
@@ -210,9 +216,14 @@ export default function FuelPage() {
         </div>
 
         <div className="p-3.5 rounded-xl bg-card border border-border/60 flex flex-col justify-between">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Spesa Totale
-          </span>
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Spesa Totale
+            </span>
+            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-medium">
+              {selectedYear ? `Anno ${selectedYear}` : "Tutti gli anni"}
+            </Badge>
+          </div>
           <div className="mt-1 flex items-baseline gap-1.5">
             <span className="text-xl font-bold font-mono text-emerald-400">
               {stats.totalCost.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -222,9 +233,14 @@ export default function FuelPage() {
         </div>
 
         <div className="p-3.5 rounded-xl bg-card border border-border/60 flex flex-col justify-between">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Carburante Immesso
-          </span>
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Carburante Immesso
+            </span>
+            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-medium">
+              {selectedYear ? `Anno ${selectedYear}` : "Tutti gli anni"}
+            </Badge>
+          </div>
           <div className="mt-1 flex items-baseline gap-1.5">
             <span className="text-xl font-bold font-mono text-foreground">
               {stats.totalLiters.toFixed(1)}
@@ -234,9 +250,14 @@ export default function FuelPage() {
         </div>
 
         <div className="p-3.5 rounded-xl bg-card border border-border/60 flex flex-col justify-between">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Consumo Medio Reale
-          </span>
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Consumo Medio Reale
+            </span>
+            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-medium">
+              {selectedYear ? `Anno ${selectedYear}` : "Tutti gli anni"}
+            </Badge>
+          </div>
           <div className="mt-1 flex items-baseline gap-1.5">
             <span className="text-xl font-bold font-mono text-emerald-400">
               {stats.avgKmL > 0 ? stats.avgKmL.toFixed(2) : "—"}

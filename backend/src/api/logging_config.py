@@ -30,6 +30,7 @@ def configure_api_logging() -> None:
     """Configura filtri e livelli di log per un ambiente console pulito e focalizzato."""
     # 1. Disabilita warning interni di Streamlit quando i moduli DB vengono invocati da FastAPI
     try:
+        # pyrefly: ignore [missing-import]
         import streamlit.runtime.caching.cache_data_api as cda
 
         cda._LOGGER.disabled = True
@@ -37,6 +38,7 @@ def configure_api_logging() -> None:
         pass
 
     try:
+        # pyrefly: ignore [missing-import]
         import streamlit.logger as st_logger
 
         st_logger.set_log_level("error")

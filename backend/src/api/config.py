@@ -29,7 +29,7 @@ API_PREFIX = "/api"
 _cors_env = os.environ.get("CORS_ORIGINS", "*")
 CORS_ORIGINS = [origin.strip() for origin in _cors_env.split(",") if origin.strip()]
 
-# Flag Demo Mode e utente predefinito
+# Flag Demo Mode e utente predefinito (se False, abilita chiamate AI reali e Supabase auth)
 _TRUTHY = ("1", "true", "yes")
 DEMO_MODE = os.environ.get("DEMO_MODE", "").strip().lower() in _TRUTHY
 DEMO_USER_ID = os.environ.get("DEMO_USER_ID", "00000000-0000-4000-8000-000000000001")

@@ -8,6 +8,7 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useMaintenances, useMaintenanceCategories } from "@/hooks/useMaintenance"
 import { DeadlineBanner } from "@/components/maintenance/DeadlineBanner"
@@ -121,10 +122,15 @@ export default function MaintenancePage() {
       {/* Quick Aggregate Stats Ribbon */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="p-3.5 rounded-xl bg-card border border-border/60 flex flex-col justify-between">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Spesa Complessiva
-          </span>
-          <div className="mt-1 flex items-baseline gap-1.5">
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Spesa Complessiva
+            </span>
+            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-amber-500/30 bg-amber-500/10 text-amber-400 font-medium">
+              {selectedYear ? `Anno ${selectedYear}` : "Tutti gli anni"}
+            </Badge>
+          </div>
+          <div className="mt-2 flex items-baseline gap-1.5">
             <span className="text-xl font-bold font-mono text-foreground">
               {stats.totalCost.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
@@ -133,20 +139,30 @@ export default function MaintenancePage() {
         </div>
 
         <div className="p-3.5 rounded-xl bg-card border border-border/60 flex flex-col justify-between">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Interventi Svolti
-          </span>
-          <div className="mt-1 flex items-baseline gap-1.5">
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Interventi Svolti
+            </span>
+            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-amber-500/30 bg-amber-500/10 text-amber-400 font-medium">
+              {selectedYear ? `Anno ${selectedYear}` : "Tutti gli anni"}
+            </Badge>
+          </div>
+          <div className="mt-2 flex items-baseline gap-1.5">
             <span className="text-xl font-bold font-mono text-foreground">{stats.count}</span>
             <span className="text-xs text-muted-foreground">voci</span>
           </div>
         </div>
 
         <div className="p-3.5 rounded-xl bg-card border border-border/60 flex flex-col justify-between">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Ultimo Intervento
-          </span>
-          <div className="mt-1 flex items-baseline gap-1.5">
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Ultimo Intervento
+            </span>
+            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-amber-500/30 bg-amber-500/10 text-amber-400 font-medium">
+              {selectedYear ? `Anno ${selectedYear}` : "Tutti gli anni"}
+            </Badge>
+          </div>
+          <div className="mt-2 flex items-baseline gap-1.5">
             <span className="text-sm font-bold font-mono text-emerald-400">
               {stats.lastDate}
             </span>
@@ -154,10 +170,15 @@ export default function MaintenancePage() {
         </div>
 
         <div className="p-3.5 rounded-xl bg-card border border-border/60 flex flex-col justify-between">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Km Ultimo Check
-          </span>
-          <div className="mt-1 flex items-baseline gap-1.5">
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Km Ultimo Check
+            </span>
+            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-amber-500/30 bg-amber-500/10 text-amber-400 font-medium">
+              {selectedYear ? `Anno ${selectedYear}` : "Tutti gli anni"}
+            </Badge>
+          </div>
+          <div className="mt-2 flex items-baseline gap-1.5">
             <span className="text-base font-bold font-mono text-foreground">
               {stats.lastKm}
             </span>

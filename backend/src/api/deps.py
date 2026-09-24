@@ -6,8 +6,11 @@ from __future__ import annotations
 
 import logging
 from typing import Generator
+# pyrefly: ignore [missing-import]
 import jwt
+# pyrefly: ignore [missing-import]
 from fastapi import Header, HTTPException, status
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 
 from src.database.core import SessionLocal

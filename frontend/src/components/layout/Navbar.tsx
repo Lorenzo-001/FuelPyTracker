@@ -1,6 +1,5 @@
 import { useLocation, Link } from "react-router-dom"
 import {
-  Fuel,
   Plus,
   Server,
   User,
@@ -34,9 +33,11 @@ export function Navbar() {
       {/* Left: Brand Icon (mobile) & Title / Breadcrumb */}
       <div className="flex items-center gap-3">
         {/* Mobile Brand Icon */}
-        <div className="md:hidden flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 text-slate-950 shadow-sm shadow-emerald-500/20">
-          <Fuel className="h-4 w-4" />
-        </div>
+        <img
+          src="/logo.png"
+          alt="FuelPyTracker Logo"
+          className="md:hidden h-8 w-8 shrink-0 object-contain drop-shadow-[0_2px_8px_rgba(250,204,21,0.3)]"
+        />
 
         <div className="flex flex-col">
           <div className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground">

@@ -82,11 +82,18 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       )}
     >
       {/* Brand Header */}
-      <div className="flex h-16 items-center justify-between px-4 border-b border-border/60">
+      <div
+        className={cn(
+          "flex h-16 items-center border-b border-border/60 transition-all",
+          collapsed ? "justify-center px-2" : "justify-between px-4"
+        )}
+      >
         <div className="flex items-center gap-3 overflow-hidden">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-slate-950 shadow-md shadow-emerald-500/25">
-            <Fuel className="h-5 w-5" />
-          </div>
+          <img
+            src="/logo.png"
+            alt="FuelPyTracker Logo"
+            className="h-10 w-10 shrink-0 object-contain drop-shadow-[0_2px_10px_rgba(250,204,21,0.3)] transition-transform duration-200 hover:scale-105"
+          />
           {!collapsed && (
             <div className="flex flex-col truncate">
               <span className="font-bold text-base tracking-tight bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
@@ -104,7 +111,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           type="button"
           onClick={onToggle}
           aria-label={collapsed ? "Espandi barra laterale" : "Comprimi barra laterale"}
-          className="hidden md:flex h-7 w-7 items-center justify-center rounded-lg border border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className={cn(
+            "hidden md:flex h-7 w-7 items-center justify-center rounded-lg border border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0",
+            collapsed && "absolute -right-3.5 top-4.5 z-40 bg-card shadow-md border-border"
+          )}
         >
           {collapsed ? (
             <ChevronRight className="h-4 w-4" />
