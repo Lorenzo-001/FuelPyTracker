@@ -77,10 +77,6 @@ def analyze_receipt(file_buffer) -> ReceiptData:
         return mock_analyze_receipt()
 
     # 1. Controllo Pre-Flight
-    global client
-    if client is None and _get_openai_key():
-        client = get_openai_client()
-
     if not client:
         return ReceiptData(raw_text="ERRORE: API Key OpenAI mancante in backend/.env o variabili d'ambiente.")
 

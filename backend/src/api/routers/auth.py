@@ -35,21 +35,15 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
     description="Autentica l'utente tramite email e password. Restituisce il token JWT per le chiamate successive.",
 )
 def login(payload: LoginRequest) -> TokenResponse:
-    # 1. Gestione Sandbox / Demo Mode / Locale senza Supabase
-    if (
-        is_demo_mode()
-        or is_local_sqlite()
-        or DEMO_MODE
-        or not auth_service.is_supabase_configured()
-        or payload.email == DEMO_USER_EMAIL
-    ):
+    # 1. Gestione Sandbox / Demo Mode
+    if is_demo_mode() or is_local_sqlite() or DEMO_MODE or payload.email == DEMO_USER_EMAIL:
         return TokenResponse(
             access_token="demo-session-token",
             token_type="bearer",
             user=UserResponse(
                 id=DEMO_USER_ID,
                 email=str(payload.email),
-                is_demo=is_demo_mode() or DEMO_MODE,
+                is_demo=True,
             ),
         )
 
@@ -88,10 +82,10 @@ def login(payload: LoginRequest) -> TokenResponse:
     summary="Registra un nuovo account",
 )
 def register(payload: RegisterRequest) -> MessageResponse:
-    # In demo mode o ambiente locale senza Supabase, la registrazione è simulata con successo
-    if is_demo_mode() or is_local_sqlite() or DEMO_MODE or not auth_service.is_supabase_configured():
+    # In demo mode la registrazione è simulata
+    if is_demo_mode() or is_local_sqlite() or DEMO_MODE:
         return MessageResponse(
-            message="Registrazione completata con successo! Ora puoi accedere.",
+            message="Registrazione simulata completata in ambiente Demo.",
             success=True,
         )
 
@@ -128,12 +122,12 @@ def logout() -> MessageResponse:
     summary="Recupera il profilo dell'utente autenticato",
 )
 def get_me(user_id: str = Depends(get_current_user_id)) -> UserResponse:
-    # Se utente demo identificato da deps o senza supabase
-    if user_id == DEMO_USER_ID or not auth_service.is_supabase_configured():
+    # Se utente demo identificato da deps
+    if user_id == DEMO_USER_ID:
         return UserResponse(
             id=DEMO_USER_ID,
             email=DEMO_USER_EMAIL,
-            is_demo=is_demo_mode() or DEMO_MODE,
+            is_demo=True,
         )
 
     # Utente reale autenticato da token

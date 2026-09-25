@@ -49,12 +49,10 @@ def get_current_user_id(
     auth_val = authorization if isinstance(authorization, str) else None
     uid_val = x_user_id if isinstance(x_user_id, str) else None
 
-    # 1. Verifica token Bearer (Supabase JWT o token Demo/Locale)
+    # 1. Verifica token Bearer (Supabase JWT o token Demo)
     if auth_val and auth_val.lower().startswith("bearer "):
         token = auth_val.split(" ", 1)[1].strip()
-        if token in ("demo-session-token", "local-session-token") and (
-            is_demo_mode() or is_local_sqlite() or DEMO_MODE or not auth_service.is_supabase_configured()
-        ):
+        if token == "demo-session-token" and (is_demo_mode() or is_local_sqlite() or DEMO_MODE):
             return DEMO_USER_ID
 
         try:
@@ -79,7 +77,7 @@ def get_current_user_id(
         return uid_val.strip()
 
     # 3. Fallback trasparente su utente demo (locale, sandbox o sqlite)
-    if is_demo_mode() or is_local_sqlite() or DEMO_MODE or not auth_service.is_supabase_configured():
+    if is_demo_mode() or is_local_sqlite() or DEMO_MODE:
         return DEMO_USER_ID
 
 

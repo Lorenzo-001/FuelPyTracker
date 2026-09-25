@@ -5,16 +5,8 @@ _TRUTHY = ("1", "true", "yes")
 
 
 def is_local_sqlite() -> bool:
-    """True when LOCAL_SQLITE env opts into SQLite or when running locally without cloud DB."""
-    if os.environ.get("LOCAL_SQLITE", "").strip().lower() in _TRUTHY:
-        return True
-    db_url = os.environ.get("DATABASE_URL", "").strip().lower()
-    if db_url.startswith("sqlite"):
-        return True
-    # Se non c'è DATABASE_URL impostato, il backend fa fallback automatico su SQLite locale
-    if not db_url and not os.environ.get("SUPABASE_URL"):
-        return True
-    return False
+    """True when LOCAL_SQLITE env opts into the zero-cloud SQLite bootstrap."""
+    return os.environ.get("LOCAL_SQLITE", "").strip().lower() in _TRUTHY
 
 
 

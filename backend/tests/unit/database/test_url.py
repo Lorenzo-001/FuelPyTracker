@@ -18,7 +18,7 @@ class TestIsLocalSqlite:
 
 class TestResolveDatabaseUrl:
     def test_local_sqlite_returns_sqlite_file_url(self):
-        with patch.dict(os.environ, {"LOCAL_SQLITE": "True"}):
+        with patch.dict(os.environ, {"LOCAL_SQLITE": "True", "DATABASE_URL": ""}):
             url = resolve_database_url(secrets_url=None)
         assert url.startswith("sqlite:///")
         assert url.endswith("/data/local.db") or url.endswith("\\data\\local.db") or "data/local.db" in url
@@ -27,12 +27,12 @@ class TestResolveDatabaseUrl:
         assert (root / "data").is_dir()
 
     def test_secrets_url_when_not_local(self):
-        with patch.dict(os.environ, {"LOCAL_SQLITE": "False"}):
+        with patch.dict(os.environ, {"LOCAL_SQLITE": "False", "DATABASE_URL": ""}):
             url = resolve_database_url(secrets_url="postgresql://u:p@h/db")
         assert url == "postgresql://u:p@h/db"
 
     def test_raises_when_neither(self):
-        with patch.dict(os.environ, {"LOCAL_SQLITE": "False"}):
+        with patch.dict(os.environ, {"LOCAL_SQLITE": "False", "DATABASE_URL": ""}):
             try:
                 resolve_database_url(secrets_url=None)
                 assert False, "expected ValueError"
