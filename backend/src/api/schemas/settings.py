@@ -22,6 +22,9 @@ class AppSettingsResponse(BaseModel):
     import_kmd_max: float = Field(..., description="Distanza massima percorribile in un giorno in km/giorno (errore bloccante)")
     ocr_add_station_to_notes: bool = Field(True, description="Inserisce automaticamente il nome del distributore nelle note")
     ocr_add_liters_to_notes: bool = Field(True, description="Inserisce automaticamente il dettaglio litri erogati nelle note")
+    vehicle_name: Optional[str] = Field("Il mio Veicolo", description="Nome o modello del veicolo monitorato")
+    vehicle_plate: Optional[str] = Field("", description="Targa del veicolo")
+    vehicle_fuel_type: Optional[str] = Field("Benzina", description="Tipologia alimentazione (Benzina, Diesel, GPL, Metano, Ibrida, Elettrica)")
 
     model_config = {"from_attributes": True}
 
@@ -39,6 +42,9 @@ class AppSettingsUpdate(BaseModel):
     import_kmd_max: Optional[float] = Field(None, gt=0)
     ocr_add_station_to_notes: Optional[bool] = None
     ocr_add_liters_to_notes: Optional[bool] = None
+    vehicle_name: Optional[str] = Field(None, max_length=100)
+    vehicle_plate: Optional[str] = Field(None, max_length=20)
+    vehicle_fuel_type: Optional[str] = Field(None, max_length=50)
 
 
 class CategoryOperationRequest(BaseModel):

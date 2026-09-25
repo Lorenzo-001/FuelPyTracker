@@ -4,6 +4,7 @@ import {
   Fuel,
   Plus,
   Camera,
+  Sparkles,
   Search,
   Table2,
   LayoutGrid,
@@ -14,7 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useRefuelings } from "@/hooks/useRefuelings"
+import { useRefuelings, useOcrStatus } from "@/hooks/useRefuelings"
 import { FuelTable } from "@/components/fuel/FuelTable"
 import { FuelCardList } from "@/components/fuel/FuelCardList"
 import { FuelFormModal } from "@/components/fuel/FuelFormModal"
@@ -47,6 +48,7 @@ export default function FuelPage() {
 
   // Data fetching via React Query: fetch all refuelings once and filter in memory
   const { data: refuelings, isLoading, isError, refetch } = useRefuelings()
+  const { data: ocrStatus } = useOcrStatus()
 
   // Handle ?action=new query param (e.g. from FAB or Header)
   useEffect(() => {
@@ -179,11 +181,13 @@ export default function FuelPage() {
           <Button
             variant="outline"
             size="sm"
-            className="gap-1.5 flex-1 sm:flex-none border-border/80 hover:border-emerald-500/50"
+            disabled={!ocrStatus?.available}
+            className="relative group gap-1.5 flex-1 sm:flex-none border-sky-400/60 hover:border-sky-300 bg-gradient-to-r from-sky-500/15 via-cyan-500/10 to-sky-600/15 hover:from-sky-500/25 hover:to-cyan-500/25 text-sky-300 dark:text-sky-200 hover:text-white shadow-[0_0_12px_-2px_rgba(56,189,248,0.35)] hover:shadow-[0_0_18px_0px_rgba(56,189,248,0.55)] transition-all duration-300 font-medium disabled:opacity-50 disabled:pointer-events-none disabled:shadow-none"
             onClick={() => setIsOcrOpen(true)}
           >
-            <Camera className="h-4 w-4 text-emerald-400" />
+            <Camera className="h-4 w-4 text-sky-400 group-hover:scale-105 transition-transform" />
             <span>Scansiona Scontrino</span>
+            <Sparkles className="h-3.5 w-3.5 text-sky-400/90 group-hover:rotate-12 transition-transform" />
           </Button>
 
           <Button
@@ -202,11 +206,11 @@ export default function FuelPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="p-3.5 rounded-xl bg-card border border-border/60 flex flex-col justify-between">
           <div className="flex items-center justify-between gap-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
               Pieni Registrati
             </span>
-            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-medium">
-              {selectedYear ? `Anno ${selectedYear}` : "Tutti gli anni"}
+            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-medium shrink-0 whitespace-nowrap">
+              {selectedYear ? `${selectedYear}` : "Tutti"}
             </Badge>
           </div>
           <div className="mt-1 flex items-baseline gap-1.5">
@@ -217,11 +221,11 @@ export default function FuelPage() {
 
         <div className="p-3.5 rounded-xl bg-card border border-border/60 flex flex-col justify-between">
           <div className="flex items-center justify-between gap-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
               Spesa Totale
             </span>
-            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-medium">
-              {selectedYear ? `Anno ${selectedYear}` : "Tutti gli anni"}
+            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-medium shrink-0 whitespace-nowrap">
+              {selectedYear ? `${selectedYear}` : "Tutti"}
             </Badge>
           </div>
           <div className="mt-1 flex items-baseline gap-1.5">
@@ -234,11 +238,11 @@ export default function FuelPage() {
 
         <div className="p-3.5 rounded-xl bg-card border border-border/60 flex flex-col justify-between">
           <div className="flex items-center justify-between gap-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Carburante Immesso
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
+              Carburante
             </span>
-            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-medium">
-              {selectedYear ? `Anno ${selectedYear}` : "Tutti gli anni"}
+            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-medium shrink-0 whitespace-nowrap">
+              {selectedYear ? `${selectedYear}` : "Tutti"}
             </Badge>
           </div>
           <div className="mt-1 flex items-baseline gap-1.5">
@@ -251,11 +255,11 @@ export default function FuelPage() {
 
         <div className="p-3.5 rounded-xl bg-card border border-border/60 flex flex-col justify-between">
           <div className="flex items-center justify-between gap-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Consumo Medio Reale
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
+              Consumo Medio
             </span>
-            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-medium">
-              {selectedYear ? `Anno ${selectedYear}` : "Tutti gli anni"}
+            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-medium shrink-0 whitespace-nowrap">
+              {selectedYear ? `${selectedYear}` : "Tutti"}
             </Badge>
           </div>
           <div className="mt-1 flex items-baseline gap-1.5">

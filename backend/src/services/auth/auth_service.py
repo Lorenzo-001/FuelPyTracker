@@ -75,29 +75,35 @@ def get_client() -> Client | None:
     return None
 
 
+def is_supabase_configured() -> bool:
+    """Restituisce True solo se le credenziali Supabase (URL e KEY) sono configurate."""
+    url, key = _get_supabase_credentials()
+    return bool(url and key)
+
+
 # 2. Funzioni di Autenticazione
 
 def sign_in(email, password):
     """Esegue il Login. Ritorna l'oggetto sessione o lancia errore."""
-    try:
-        response = get_client().auth.sign_in_with_password({
-            "email": email, 
-            "password": password
-        })
-        return response
-    except Exception as e:
-        raise e
+    client = get_client()
+    if client is None:
+        raise RuntimeError("Client Supabase non configurato (credenziali mancanti).")
+    return client.auth.sign_in_with_password({
+        "email": email, 
+        "password": password
+    })
+
 
 def sign_up(email, password):
     """Registra un nuovo utente."""
-    try:
-        response = get_client().auth.sign_up({
-            "email": email, 
-            "password": password
-        })
-        return response
-    except Exception as e:
-        raise e
+    client = get_client()
+    if client is None:
+        raise RuntimeError("Client Supabase non configurato (credenziali mancanti).")
+    return client.auth.sign_up({
+        "email": email, 
+        "password": password
+    })
+
 
 def sign_out():
     """Effettua il Logout."""

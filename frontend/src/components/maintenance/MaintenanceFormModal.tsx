@@ -43,7 +43,7 @@ const maintenanceSchema = z.object({
     .max(30, "Massimo 30 caratteri"),
   cost: z
     .number({ invalid_type_error: "Inserisci un costo valido" })
-    .positive("L'importo deve essere maggiore di 0"),
+    .min(0, "L'importo non può essere negativo"),
   description: z.string().optional(),
   expiry_km: z
     .number({ invalid_type_error: "Inserisci un numero valido" })

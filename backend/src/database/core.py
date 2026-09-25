@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 import toml
 # pyrefly: ignore [missing-import]
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, inspect
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import sessionmaker
 # pyrefly: ignore [missing-import]
@@ -117,6 +117,24 @@ def init_db():
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         Base.metadata.create_all(bind=engine)
+
+        # Migrazione automatica colonne veicolo se mancanti (per SQLite locale e ambienti non migrati)
+        try:
+            inspector = inspect(engine)
+            if "settings" in inspector.get_table_names():
+                cols = {c["name"] for c in inspector.get_columns("settings")}
+                with engine.begin() as conn:
+                    if "vehicle_name" not in cols:
+                        logger.info("Aggiunta colonna settings.vehicle_name...")
+                        conn.execute(text("ALTER TABLE settings ADD COLUMN vehicle_name VARCHAR(100) DEFAULT 'Il mio Veicolo'"))
+                    if "vehicle_plate" not in cols:
+                        logger.info("Aggiunta colonna settings.vehicle_plate...")
+                        conn.execute(text("ALTER TABLE settings ADD COLUMN vehicle_plate VARCHAR(20) DEFAULT ''"))
+                    if "vehicle_fuel_type" not in cols:
+                        logger.info("Aggiunta colonna settings.vehicle_fuel_type...")
+                        conn.execute(text("ALTER TABLE settings ADD COLUMN vehicle_fuel_type VARCHAR(50) DEFAULT 'Benzina'"))
+        except Exception as mig_err:
+            logger.warning("Verifica/migrazione colonne settings non riuscita (non bloccante): %s", mig_err)
     except OperationalError as exc:
         if _is_streamlit_running() and st is not None:
             hint = (

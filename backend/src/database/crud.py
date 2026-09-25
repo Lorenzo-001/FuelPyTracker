@@ -335,6 +335,14 @@ def get_settings(db: Session, user_id: str) -> AppSettings:
         settings.ocr_add_station_to_notes = True
     if getattr(settings, 'ocr_add_liters_to_notes', None) is None:
         settings.ocr_add_liters_to_notes = True
+
+    # Fallback per i campi veicolo
+    if getattr(settings, 'vehicle_name', None) is None:
+        settings.vehicle_name = "Il mio Veicolo"
+    if getattr(settings, 'vehicle_plate', None) is None:
+        settings.vehicle_plate = ""
+    if getattr(settings, 'vehicle_fuel_type', None) is None:
+        settings.vehicle_fuel_type = "Benzina"
         
     return settings
 
@@ -352,6 +360,9 @@ def update_settings(
     kmd_max:   float = DEFAULTS.SETTINGS.IMPORT.KMD_MAX,
     ocr_add_station_to_notes: bool = True,
     ocr_add_liters_to_notes: bool = True,
+    vehicle_name: Optional[str] = None,
+    vehicle_plate: Optional[str] = None,
+    vehicle_fuel_type: Optional[str] = None,
 ):
     settings = db.query(AppSettings).filter(AppSettings.user_id == user_id).first()
     if not settings:
@@ -369,6 +380,13 @@ def update_settings(
     settings.import_kmd_max = kmd_max
     settings.ocr_add_station_to_notes = ocr_add_station_to_notes
     settings.ocr_add_liters_to_notes = ocr_add_liters_to_notes
+
+    if vehicle_name is not None:
+        settings.vehicle_name = vehicle_name
+    if vehicle_plate is not None:
+        settings.vehicle_plate = vehicle_plate
+    if vehicle_fuel_type is not None:
+        settings.vehicle_fuel_type = vehicle_fuel_type
     
     db.commit()
     db.refresh(settings)

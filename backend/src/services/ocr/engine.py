@@ -59,7 +59,7 @@ client = get_openai_client()
 
 def is_openai_enabled() -> bool:
     """Restituisce True se OpenAI è configurato e pronto all'uso."""
-    return client is not None
+    return client is not None or bool(_get_openai_key())
 
 
 def analyze_receipt(file_buffer) -> ReceiptData:
@@ -77,8 +77,12 @@ def analyze_receipt(file_buffer) -> ReceiptData:
         return mock_analyze_receipt()
 
     # 1. Controllo Pre-Flight
+    global client
+    if client is None and _get_openai_key():
+        client = get_openai_client()
+
     if not client:
-        return ReceiptData(raw_text="ERRORE: API Key OpenAI mancante in .streamlit/secrets.toml o env")
+        return ReceiptData(raw_text="ERRORE: API Key OpenAI mancante in backend/.env o variabili d'ambiente.")
 
     try:
         base64_image = _encode_image_to_base64(file_buffer)

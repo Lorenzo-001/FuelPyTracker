@@ -53,7 +53,7 @@ class ImportCommitRowMaintenance(BaseModel):
     date: dt.date
     total_km: int = Field(..., gt=0)
     expense_type: str = Field(..., min_length=1)
-    cost: float = Field(..., gt=0)
+    cost: float = Field(..., ge=0)
     description: Optional[str] = None
     expiry_km: Optional[int] = None
     expiry_date: Optional[dt.date] = None

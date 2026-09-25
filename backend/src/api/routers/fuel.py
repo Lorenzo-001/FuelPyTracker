@@ -215,6 +215,34 @@ def validate_refueling(
     )
 
 
+@router.get(
+    "/ocr/status",
+    summary="Stato di disponibilità OCR AI",
+    description="Indica se l'estrazione dati con GPT-4o o mock è disponibile.",
+)
+def get_ocr_status():
+    from src.services.ocr.engine import is_openai_enabled
+    from src.demo import is_demo_mode
+
+    ai_enabled = is_openai_enabled()
+    demo_enabled = is_demo_mode()
+    available = ai_enabled or demo_enabled
+
+    return {
+        "available": available,
+        "is_demo": demo_enabled and not ai_enabled,
+        "message": (
+            "OpenAI GPT-4o Vision configurato e pronto"
+            if ai_enabled
+            else (
+                "Modalità Demo attiva (scansione simulata)"
+                if demo_enabled
+                else "OPENAI_API_KEY non configurata nel backend (.env)"
+            )
+        ),
+    }
+
+
 @router.post(
     "/ocr",
     response_model=OCRScanResponse,
@@ -236,11 +264,20 @@ async def scan_receipt_ocr(
     
     try:
         receipt_data = analyze_receipt(buffer)
+        is_error = bool(receipt_data.raw_text and receipt_data.raw_text.startswith("ERRORE"))
+        has_extracted_data = bool(
+            (receipt_data.total_cost is not None and receipt_data.total_cost > 0)
+            or (receipt_data.price_per_liter is not None and receipt_data.price_per_liter > 0)
+            or (receipt_data.liters is not None and receipt_data.liters > 0)
+            or receipt_data.date is not None
+        )
+        success = not is_error and has_extracted_data
+
         return OCRScanResponse(
-            success=True,
-            total_cost=receipt_data.total_cost,
-            price_per_liter=receipt_data.price_per_liter,
-            liters=receipt_data.liters,
+            success=success,
+            total_cost=receipt_data.total_cost if (receipt_data.total_cost and receipt_data.total_cost > 0) else None,
+            price_per_liter=receipt_data.price_per_liter if (receipt_data.price_per_liter and receipt_data.price_per_liter > 0) else None,
+            liters=receipt_data.liters if (receipt_data.liters and receipt_data.liters > 0) else None,
             date=receipt_data.date,
             station_name=receipt_data.station_name,
             raw_text=receipt_data.raw_text,

@@ -2,6 +2,7 @@ import { useState } from "react"
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { AppLayout } from "@/components/layout/AppLayout"
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import DashboardPage from "@/pages/DashboardPage"
 import FuelPage from "@/pages/FuelPage"
 import MaintenancePage from "@/pages/MaintenancePage"
@@ -31,16 +32,22 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/fuel" element={<FuelPage />} />
-            <Route path="/maintenance" element={<MaintenancePage />} />
-            <Route path="/reminders" element={<RemindersPage />} />
-            <Route path="/reports" element={<ReportsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="*" element={<NotFoundPage />} />
+          {/* Rotta di autenticazione pubblica */}
+          <Route path="/login" element={<LoginPage />} />
+
+          {/* Rotte applicative protette (accesso con token o modalità vetrina demo) */}
+          <Route element={<ProtectedRoute />}>
+            <Route element={<AppLayout />}>
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/fuel" element={<FuelPage />} />
+              <Route path="/maintenance" element={<MaintenancePage />} />
+              <Route path="/reminders" element={<RemindersPage />} />
+              <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Route>
           </Route>
+
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </BrowserRouter>
       <Toaster position="bottom-right" richColors />

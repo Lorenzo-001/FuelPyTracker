@@ -123,11 +123,11 @@ export default function MaintenancePage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="p-3.5 rounded-xl bg-card border border-border/60 flex flex-col justify-between">
           <div className="flex items-center justify-between gap-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
               Spesa Complessiva
             </span>
-            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-amber-500/30 bg-amber-500/10 text-amber-400 font-medium">
-              {selectedYear ? `Anno ${selectedYear}` : "Tutti gli anni"}
+            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-amber-500/30 bg-amber-500/10 text-amber-400 font-medium shrink-0 whitespace-nowrap">
+              {selectedYear ? `${selectedYear}` : "Tutti"}
             </Badge>
           </div>
           <div className="mt-2 flex items-baseline gap-1.5">
@@ -140,11 +140,11 @@ export default function MaintenancePage() {
 
         <div className="p-3.5 rounded-xl bg-card border border-border/60 flex flex-col justify-between">
           <div className="flex items-center justify-between gap-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Interventi Svolti
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
+              Interventi
             </span>
-            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-amber-500/30 bg-amber-500/10 text-amber-400 font-medium">
-              {selectedYear ? `Anno ${selectedYear}` : "Tutti gli anni"}
+            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-amber-500/30 bg-amber-500/10 text-amber-400 font-medium shrink-0 whitespace-nowrap">
+              {selectedYear ? `${selectedYear}` : "Tutti"}
             </Badge>
           </div>
           <div className="mt-2 flex items-baseline gap-1.5">
@@ -155,11 +155,11 @@ export default function MaintenancePage() {
 
         <div className="p-3.5 rounded-xl bg-card border border-border/60 flex flex-col justify-between">
           <div className="flex items-center justify-between gap-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Ultimo Intervento
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
+              Ultimo Check
             </span>
-            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-amber-500/30 bg-amber-500/10 text-amber-400 font-medium">
-              {selectedYear ? `Anno ${selectedYear}` : "Tutti gli anni"}
+            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-amber-500/30 bg-amber-500/10 text-amber-400 font-medium shrink-0 whitespace-nowrap">
+              {selectedYear ? `${selectedYear}` : "Tutti"}
             </Badge>
           </div>
           <div className="mt-2 flex items-baseline gap-1.5">
@@ -171,11 +171,11 @@ export default function MaintenancePage() {
 
         <div className="p-3.5 rounded-xl bg-card border border-border/60 flex flex-col justify-between">
           <div className="flex items-center justify-between gap-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
               Km Ultimo Check
             </span>
-            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-amber-500/30 bg-amber-500/10 text-amber-400 font-medium">
-              {selectedYear ? `Anno ${selectedYear}` : "Tutti gli anni"}
+            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-amber-500/30 bg-amber-500/10 text-amber-400 font-medium shrink-0 whitespace-nowrap">
+              {selectedYear ? `${selectedYear}` : "Tutti"}
             </Badge>
           </div>
           <div className="mt-2 flex items-baseline gap-1.5">

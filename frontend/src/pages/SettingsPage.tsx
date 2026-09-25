@@ -1,4 +1,4 @@
-import { Settings, Shield, Tag, User, AlertCircle, RefreshCw } from "lucide-react"
+import { Settings, Shield, Tag, User, AlertCircle, RefreshCw, Car } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -8,6 +8,7 @@ import { CategoryManagerCard } from "@/components/settings/CategoryManagerCard"
 import { OcrPreferencesCard } from "@/components/settings/OcrPreferencesCard"
 import { UserProfileCard } from "@/components/settings/UserProfileCard"
 import { ApiDiagnosticsCard } from "@/components/settings/ApiDiagnosticsCard"
+import { VehicleSettingsCard } from "@/components/settings/VehicleSettingsCard"
 
 export default function SettingsPage() {
   const { data: settings, isLoading, isError, error, refetch } = useSettings()
@@ -60,6 +61,10 @@ export default function SettingsPage() {
               <Shield className="h-3.5 w-3.5 text-emerald-400" />
               <span>Soglie & Carburante</span>
             </TabsTrigger>
+            <TabsTrigger value="vehicle" className="gap-2 text-xs font-semibold px-4 py-2">
+              <Car className="h-3.5 w-3.5 text-emerald-400" />
+              <span>Veicolo</span>
+            </TabsTrigger>
             <TabsTrigger value="categories" className="gap-2 text-xs font-semibold px-4 py-2">
               <Tag className="h-3.5 w-3.5 text-emerald-400" />
               <span>Categorie & Tag</span>
@@ -76,12 +81,17 @@ export default function SettingsPage() {
             <OcrPreferencesCard settings={settings} />
           </TabsContent>
 
-          {/* Tab 2: Gestione Categorie */}
+          {/* Tab 2: Anagrafica Veicolo */}
+          <TabsContent value="vehicle" className="space-y-6 outline-none">
+            <VehicleSettingsCard settings={settings} />
+          </TabsContent>
+
+          {/* Tab 3: Gestione Categorie */}
           <TabsContent value="categories" className="space-y-6 outline-none">
             <CategoryManagerCard settings={settings} />
           </TabsContent>
 
-          {/* Tab 3: Profilo & Diagnostica API */}
+          {/* Tab 4: Profilo & Diagnostica API */}
           <TabsContent value="system" className="grid grid-cols-1 md:grid-cols-2 gap-6 outline-none">
             <UserProfileCard />
             <ApiDiagnosticsCard />

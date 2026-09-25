@@ -1,5 +1,5 @@
 import React from "react"
-import { NavLink } from "react-router-dom"
+import { NavLink, Link } from "react-router-dom"
 import {
   Gauge,
   Fuel,
@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { useReminders } from "@/hooks/useReminders"
+import { useSettings } from "@/hooks/useSettings"
 
 interface SidebarProps {
   collapsed: boolean
@@ -31,6 +32,13 @@ interface NavItem {
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { data: reminders } = useReminders()
+  const { data: settings } = useSettings()
+
+  const vehicleName = settings?.vehicle_name?.trim() || "Il mio Veicolo"
+  const vehicleDetails = [settings?.vehicle_plate?.trim(), settings?.vehicle_fuel_type?.trim()]
+    .filter(Boolean)
+    .join(" • ") || "Configura in Impostazioni"
+
   const overdueCount = reminders?.filter((r) => r.is_overdue).length || 0
   const urgentCount =
     reminders?.filter((r) => r.progress >= 0.7 && !r.is_overdue).length || 0
@@ -189,30 +197,38 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Active Vehicle Snippet / Bottom Card */}
       <div className="p-3 border-t border-border/60">
         {collapsed ? (
-          <div className="flex justify-center" title="Veicolo attivo: BMW Serie 1 (AB123CD)">
-            <div className="h-9 w-9 rounded-lg bg-muted/40 border border-border/60 flex items-center justify-center text-muted-foreground hover:text-foreground">
+          <Link
+            to="/settings"
+            className="flex justify-center"
+            title={`Veicolo attivo: ${vehicleName} (${vehicleDetails})`}
+          >
+            <div className="h-9 w-9 rounded-lg bg-muted/40 border border-border/60 flex items-center justify-center text-muted-foreground hover:text-emerald-400 hover:border-emerald-500/40 transition-colors">
               <Car className="h-4 w-4" />
             </div>
-          </div>
+          </Link>
         ) : (
-          <div className="rounded-lg border border-border/60 bg-muted/20 p-2.5">
-            <div className="flex items-center gap-2 mb-1.5">
-              <div className="h-6 w-6 rounded-md bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+          <Link
+            to="/settings"
+            className="block rounded-lg border border-border/60 bg-muted/20 p-2.5 hover:border-emerald-500/40 hover:bg-muted/30 transition-all group"
+            title="Gestisci anagrafica veicolo nelle Impostazioni"
+          >
+            <div className="flex items-center gap-2">
+              <div className="h-6 w-6 rounded-md bg-emerald-500/15 text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
                 <Car className="h-3.5 w-3.5" />
               </div>
               <div className="flex-1 truncate">
                 <div className="text-xs font-semibold text-foreground truncate">
-                  BMW Serie 1
+                  {vehicleName}
                 </div>
-                <div className="text-[10px] text-muted-foreground">
-                  AB 123 CD • Diesel
+                <div className="text-[10px] text-muted-foreground truncate">
+                  {vehicleDetails}
                 </div>
               </div>
               <span title="Veicolo Principale">
                 <ShieldCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
               </span>
             </div>
-          </div>
+          </Link>
         )}
       </div>
     </aside>

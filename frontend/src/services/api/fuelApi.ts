@@ -6,6 +6,7 @@ import type {
   RefuelingValidationRequest,
   RefuelingValidationResponse,
   OCRScanResponse,
+  OCRStatusResponse,
 } from "@/types"
 
 export const fuelApi = {
@@ -41,6 +42,10 @@ export const fuelApi = {
     const formData = new FormData()
     formData.append("file", file)
     return apiClient.post<OCRScanResponse>("/fuel/ocr", formData)
+  },
+
+  getOcrStatus: (): Promise<OCRStatusResponse> => {
+    return apiClient.get<OCRStatusResponse>("/fuel/ocr/status")
   },
 }
 

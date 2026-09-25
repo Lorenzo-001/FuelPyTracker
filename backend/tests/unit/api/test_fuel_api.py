@@ -364,3 +364,30 @@ def test_ocr_mocked_ai_success(client_with_db):
         assert data["price_per_liter"] == 1.789
         assert data["station_name"] == "Q8 Easy"
         assert data["date"] == "2025-08-14"
+
+
+def test_ocr_status_endpoint(client_with_db):
+    """Verifica che l'endpoint GET /api/fuel/ocr/status risponda correttamente."""
+    response = client_with_db.get("/api/fuel/ocr/status")
+    assert response.status_code == 200
+    data = response.json()
+    assert "available" in data
+    assert "is_demo" in data
+    assert "message" in data
+
+
+def test_ocr_missing_key_returns_failure(client_with_db):
+    """Verifica che quando l'API key manca, l'OCR restituisca success=False con messaggio chiaro."""
+    mock_rd = ReceiptData()
+    mock_rd.raw_text = "ERRORE: API Key OpenAI mancante in backend/.env o variabili d'ambiente."
+
+    with patch("src.api.routers.fuel.analyze_receipt", return_value=mock_rd):
+        fake_image = io.BytesIO(b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR")
+        response = client_with_db.post(
+            "/api/fuel/ocr",
+            files={"file": ("scontrino.png", fake_image, "image/png")},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert "ERRORE" in data["raw_text"]

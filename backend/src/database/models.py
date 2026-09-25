@@ -98,5 +98,10 @@ class AppSettings(Base):
     ocr_add_station_to_notes     = Column(Boolean, default=True)
     ocr_add_liters_to_notes      = Column(Boolean, default=True)
 
+    # Anagrafica Veicolo principale dell'utente
+    vehicle_name                 = Column(String(100), nullable=True, default="Il mio Veicolo")
+    vehicle_plate                = Column(String(20), nullable=True, default="")
+    vehicle_fuel_type            = Column(String(50), nullable=True, default="Benzina")
+
     def __repr__(self):
         return f"<AppSettings(user={self.user_id})>"

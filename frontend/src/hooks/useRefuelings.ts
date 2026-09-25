@@ -70,3 +70,11 @@ export function useScanReceiptOcr() {
     mutationFn: (file: File) => fuelApi.scanReceiptOcr(file),
   })
 }
+
+export function useOcrStatus() {
+  return useQuery({
+    queryKey: ["ocr", "status"],
+    queryFn: () => fuelApi.getOcrStatus(),
+    staleTime: 1000 * 60 * 5, // 5 minuti
+  })
+}

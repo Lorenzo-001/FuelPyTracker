@@ -15,7 +15,7 @@ class MaintenanceBase(BaseModel):
     date: dt.date = Field(..., description="Data dell'intervento di manutenzione")
     total_km: int = Field(..., gt=0, description="Chilometraggio del veicolo al momento dell'intervento")
     expense_type: str = Field(..., min_length=1, description="Categoria o tipologia di spesa (es. Tagliando, Revisione, Gomme)")
-    cost: float = Field(..., gt=0, description="Importo speso in Euro")
+    cost: float = Field(..., ge=0, description="Importo speso in Euro (può essere 0 per garanzie o controlli gratuiti)")
     description: Optional[str] = Field(None, description="Dettaglio lavorazioni, officina o ricambi utilizzati")
     expiry_km: Optional[int] = Field(None, gt=0, description="Chilometraggio previsto per la prossima scadenza")
     expiry_date: Optional[dt.date] = Field(None, description="Data prevista per la prossima scadenza")
@@ -31,7 +31,7 @@ class MaintenanceUpdate(BaseModel):
     date: Optional[dt.date] = None
     total_km: Optional[int] = Field(None, gt=0)
     expense_type: Optional[str] = Field(None, min_length=1)
-    cost: Optional[float] = Field(None, gt=0)
+    cost: Optional[float] = Field(None, ge=0)
     description: Optional[str] = None
     expiry_km: Optional[int] = Field(None, gt=0)
     expiry_date: Optional[dt.date] = None

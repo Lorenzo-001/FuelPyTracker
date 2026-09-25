@@ -59,6 +59,9 @@ def update_user_settings(
         kmd_max=payload.import_kmd_max if payload.import_kmd_max is not None else current.import_kmd_max,
         ocr_add_station_to_notes=payload.ocr_add_station_to_notes if payload.ocr_add_station_to_notes is not None else current.ocr_add_station_to_notes,
         ocr_add_liters_to_notes=payload.ocr_add_liters_to_notes if payload.ocr_add_liters_to_notes is not None else current.ocr_add_liters_to_notes,
+        vehicle_name=payload.vehicle_name if payload.vehicle_name is not None else getattr(current, "vehicle_name", None),
+        vehicle_plate=payload.vehicle_plate if payload.vehicle_plate is not None else getattr(current, "vehicle_plate", None),
+        vehicle_fuel_type=payload.vehicle_fuel_type if payload.vehicle_fuel_type is not None else getattr(current, "vehicle_fuel_type", None),
     )
     return AppSettingsResponse.model_validate(updated)
 

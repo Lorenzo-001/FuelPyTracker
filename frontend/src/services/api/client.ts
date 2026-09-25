@@ -16,6 +16,8 @@ export class ApiError extends Error {
   }
 }
 
+import { isPublicDemoMode } from "@/lib/demo"
+
 const TOKEN_STORAGE_KEY = "fpt_access_token"
 
 export const authStorage = {
@@ -98,9 +100,10 @@ class ApiClient {
 
     if (token) {
       defaultHeaders["Authorization"] = `Bearer ${token}`
-    } else {
-      // In dev/demo environment without login, use default demo user
+    } else if (isPublicDemoMode()) {
+      // In modalità vetrina pubblica senza login, utilizza credenziali sandbox isolate
       defaultHeaders["X-User-Id"] = "00000000-0000-4000-8000-000000000001"
+      defaultHeaders["Authorization"] = "Bearer demo-session-token"
     }
 
     const config: RequestInit = {
@@ -121,6 +124,14 @@ class ApiClient {
       const response = await fetch(url, config)
 
       if (!response.ok) {
+        // Se la sessione è scaduta o non valida, pulisci e reindirizza al login privato
+        if (response.status === 401 && !endpoint.includes("/auth/login")) {
+          authStorage.removeToken()
+          if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login") && !isPublicDemoMode()) {
+            window.location.href = "/login"
+          }
+        }
+
         let errorDetail: unknown = null
         let errorMessage = `Errore di rete (${response.status} ${response.statusText})`
 

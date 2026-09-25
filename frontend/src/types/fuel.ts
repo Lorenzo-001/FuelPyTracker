@@ -52,3 +52,9 @@ export interface OCRScanResponse {
   station_name: string | null
   raw_text: string | null
 }
+
+export interface OCRStatusResponse {
+  available: boolean
+  is_demo: boolean
+  message: string
+}

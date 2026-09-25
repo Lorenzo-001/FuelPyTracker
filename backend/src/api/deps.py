@@ -17,6 +17,7 @@ from src.database.core import SessionLocal
 from src.database.url import is_local_sqlite
 from src.demo import is_demo_mode
 from src.api.config import DEMO_MODE, DEMO_USER_ID, SUPABASE_JWT_SECRET
+from src.services.auth import auth_service
 
 logger = logging.getLogger(__name__)
 
@@ -48,10 +49,12 @@ def get_current_user_id(
     auth_val = authorization if isinstance(authorization, str) else None
     uid_val = x_user_id if isinstance(x_user_id, str) else None
 
-    # 1. Verifica token Bearer (Supabase JWT o token Demo)
+    # 1. Verifica token Bearer (Supabase JWT o token Demo/Locale)
     if auth_val and auth_val.lower().startswith("bearer "):
         token = auth_val.split(" ", 1)[1].strip()
-        if token == "demo-session-token" and (is_demo_mode() or is_local_sqlite() or DEMO_MODE):
+        if token in ("demo-session-token", "local-session-token") and (
+            is_demo_mode() or is_local_sqlite() or DEMO_MODE or not auth_service.is_supabase_configured()
+        ):
             return DEMO_USER_ID
 
         try:
@@ -71,16 +74,14 @@ def get_current_user_id(
                 detail="Token di autenticazione non valido o scaduto.",
             ) from exc
 
-
-
     # 2. Header custom per test e ambienti di sviluppo
     if uid_val and uid_val.strip():
         return uid_val.strip()
 
-
     # 3. Fallback trasparente su utente demo (locale, sandbox o sqlite)
-    if is_demo_mode() or is_local_sqlite() or DEMO_MODE:
+    if is_demo_mode() or is_local_sqlite() or DEMO_MODE or not auth_service.is_supabase_configured():
         return DEMO_USER_ID
+
 
     # 4. Accesso negato se nessun metodo di autenticazione è soddisfatto
     raise HTTPException(

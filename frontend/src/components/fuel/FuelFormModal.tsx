@@ -22,12 +22,15 @@ import {
   Calendar,
   Gauge,
   Sparkles,
+  Camera,
 } from "lucide-react"
 import {
   useCreateRefueling,
   useUpdateRefueling,
   useValidateRefueling,
+  useOcrStatus,
 } from "@/hooks/useRefuelings"
+import { ReceiptOcrModal } from "./ReceiptOcrModal"
 import type { RefuelingResponse } from "@/types"
 import { toast } from "sonner"
 
@@ -78,7 +81,26 @@ export function FuelFormModal({
     nextKm?: number | null
   } | null>(null)
 
+  const [isOcrOpen, setIsOcrOpen] = useState(false)
+  const { data: ocrStatus } = useOcrStatus()
+
   const todayStr = new Date().toISOString().split("T")[0]
+
+  const handleOcrApply = (data: {
+    date?: string
+    price_per_liter?: number
+    total_cost?: number
+    liters?: number
+    notes?: string
+  }) => {
+    if (data.date) setValue("date", data.date, { shouldValidate: true })
+    if (data.price_per_liter) setValue("price_per_liter", data.price_per_liter, { shouldValidate: true })
+    if (data.total_cost) setValue("total_cost", data.total_cost, { shouldValidate: true })
+    if (data.liters) setValue("liters", data.liters, { shouldValidate: true })
+    if (data.notes) setValue("notes", data.notes, { shouldValidate: true })
+    toast.success("Dati dello scontrino inseriti nel modulo!")
+    setIsOcrOpen(false)
+  }
 
   const {
     register,
@@ -247,6 +269,41 @@ export function FuelFormModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
+          {/* Banner Scansione Scontrino con AI */}
+          {!isEditing && (
+            <div className="relative overflow-hidden rounded-xl border border-sky-500/35 bg-gradient-to-r from-sky-500/10 via-cyan-500/5 to-blue-500/5 p-3 sm:p-3.5 shadow-[0_0_15px_-3px_rgba(56,189,248,0.15)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-sky-500/15 text-sky-400 border border-sky-500/30 shrink-0 shadow-[0_0_12px_rgba(56,189,248,0.2)]">
+                  <Camera className="h-5 w-5 text-sky-400" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-bold text-foreground">Vuoi velocizzare l'inserimento?</span>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-sky-500/40 bg-sky-500/10 text-sky-400 font-semibold">
+                      AI Vision
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Scatta una foto allo scontrino: importo, prezzo al litro e data verranno estratti in automatico.
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={!ocrStatus?.available}
+                onClick={() => setIsOcrOpen(true)}
+                className="relative group shrink-0 gap-1.5 text-xs font-semibold border-sky-400/60 hover:border-sky-300 bg-gradient-to-r from-sky-500/15 via-cyan-500/10 to-sky-600/15 hover:from-sky-500/25 hover:to-cyan-500/25 text-sky-300 dark:text-sky-200 hover:text-white shadow-[0_0_14px_-2px_rgba(56,189,248,0.35)] hover:shadow-[0_0_20px_0px_rgba(56,189,248,0.55)] transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none disabled:shadow-none"
+              >
+                <Camera className="h-3.5 w-3.5 text-sky-400" />
+                <span>Scansiona Scontrino</span>
+                <Sparkles className="h-3.5 w-3.5 text-sky-400 group-hover:rotate-12 transition-transform" />
+              </Button>
+            </div>
+          )}
+
           {/* Row 1: Data e Chilometri */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
@@ -479,6 +536,13 @@ export function FuelFormModal({
             </Button>
           </DialogFooter>
         </form>
+
+        <ReceiptOcrModal
+          open={isOcrOpen}
+          onOpenChange={setIsOcrOpen}
+          onApplyData={handleOcrApply}
+          actionLabel="Inserisci nel Form"
+        />
       </DialogContent>
     </Dialog>
   )

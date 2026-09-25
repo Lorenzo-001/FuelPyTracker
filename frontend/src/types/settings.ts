@@ -10,6 +10,9 @@ export interface AppSettingsResponse {
   import_kmd_max: number
   ocr_add_station_to_notes: boolean
   ocr_add_liters_to_notes: boolean
+  vehicle_name?: string
+  vehicle_plate?: string
+  vehicle_fuel_type?: string
 }
 
 export interface AppSettingsUpdate {
@@ -24,6 +27,9 @@ export interface AppSettingsUpdate {
   import_kmd_max?: number
   ocr_add_station_to_notes?: boolean
   ocr_add_liters_to_notes?: boolean
+  vehicle_name?: string
+  vehicle_plate?: string
+  vehicle_fuel_type?: string
 }
 
 export interface CategoryOperationRequest {

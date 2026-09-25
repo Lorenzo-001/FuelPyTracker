@@ -3,11 +3,13 @@ import {
   Plus,
   Server,
   User,
-  ExternalLink,
+  Sparkles,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useSystemHealth } from "@/hooks/useSystemHealth"
+import { useCurrentUser } from "@/hooks/useAuth"
+import { isPublicDemoMode } from "@/lib/demo"
 
 const pageTitles: Record<string, { title: string; category: string }> = {
   "/": { title: "Dashboard Generale", category: "Panoramica" },
@@ -22,6 +24,8 @@ const pageTitles: Record<string, { title: string; category: string }> = {
 export function Navbar() {
   const location = useLocation()
   const { data: healthData, isError, isLoading } = useSystemHealth()
+  const { data: user } = useCurrentUser()
+  const isDemo = isPublicDemoMode()
 
   const currentMeta = pageTitles[location.pathname] || {
     title: "FuelPyTracker",
@@ -90,6 +94,18 @@ export function Navbar() {
           </Badge>
         )}
 
+        {/* Public Demo Indicator */}
+        {isDemo && (
+          <Badge
+            variant="outline"
+            className="hidden sm:inline-flex items-center gap-1.5 py-1 px-2.5 text-xs border-amber-500/30 bg-amber-500/10 text-amber-400"
+            title="Applicazione in modalità vetrina dimostrativa (Read-Only)"
+          >
+            <Sparkles className="h-3 w-3" />
+            <span>Vetrina Demo</span>
+          </Badge>
+        )}
+
         {/* Desktop Quick Action: New Refueling (Hidden on mobile where FAB is present) */}
         <Button
           asChild
@@ -103,16 +119,18 @@ export function Navbar() {
           </Link>
         </Button>
 
-        {/* User Pill / Login */}
+        {/* User Pill / Profile */}
         <Link
-          to="/login"
+          to={user || isDemo ? "/settings" : "/login"}
+          title={user?.email ? `Profilo utente: ${user.email}` : "Accedi alla tua area"}
           className="flex items-center gap-2 rounded-lg border border-border/70 bg-card/60 px-2 sm:px-2.5 py-1.5 text-xs text-muted-foreground hover:border-border hover:text-foreground transition-all"
         >
-          <div className="h-6 w-6 rounded-full bg-muted/60 flex items-center justify-center text-foreground font-medium">
-            <User className="h-3.5 w-3.5" />
+          <div className="h-6 w-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-[10px]">
+            {user?.email ? user.email.slice(0, 2).toUpperCase() : <User className="h-3.5 w-3.5" />}
           </div>
-          <span className="hidden md:inline font-medium">Lorenzo</span>
-          <ExternalLink className="h-3 w-3 opacity-60 hidden md:inline" />
+          <span className="hidden md:inline font-medium text-foreground truncate max-w-[120px]">
+            {user?.email ? user.email.split("@")[0] : isDemo ? "Ospite Demo" : "Accedi"}
+          </span>
         </Link>
       </div>
     </header>

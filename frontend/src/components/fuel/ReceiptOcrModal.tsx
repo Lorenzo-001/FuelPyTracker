@@ -35,12 +35,14 @@ interface ReceiptOcrModalProps {
     liters?: number
     notes?: string
   }) => void
+  actionLabel?: string
 }
 
 export function ReceiptOcrModal({
   open,
   onOpenChange,
   onApplyData,
+  actionLabel,
 }: ReceiptOcrModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -78,7 +80,7 @@ export function ReceiptOcrModal({
       if (res.success) {
         toast.success("Scontrino scansionato con successo!")
       } else {
-        toast.warning(res.raw_text || "Dati parziali rilevati dallo scontrino.")
+        toast.error(res.raw_text || "Impossibile estrarre i dati dallo scontrino.")
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Impossibile leggere i dati dallo scontrino"
@@ -231,7 +233,31 @@ export function ReceiptOcrModal({
           )}
 
           {/* OCR Result Presentation */}
-          {ocrResult && (() => {
+          {ocrResult && !ocrResult.success && (
+            <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3.5 space-y-2.5 text-xs animate-in fade-in-50">
+              <div className="flex items-center gap-2 text-rose-300 font-semibold">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />
+                <span>Scansione non riuscita</span>
+              </div>
+              <p className="text-[11px] text-rose-200/90 leading-relaxed font-mono">
+                {ocrResult.raw_text || "Impossibile estrarre i dati dallo scontrino."}
+              </p>
+              <div className="flex justify-end pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs border-rose-500/50 bg-rose-500/15 text-rose-300 hover:bg-rose-500/30 gap-1.5"
+                  onClick={handleReset}
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  Riprova con un&apos;altra foto
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {ocrResult && ocrResult.success && (() => {
             const missingFields: string[] = []
             if (!ocrResult.total_cost || ocrResult.total_cost <= 0) missingFields.push("Totale Spesa")
             if (!ocrResult.price_per_liter || ocrResult.price_per_liter <= 0) missingFields.push("Prezzo al Litro")
@@ -357,7 +383,7 @@ export function ReceiptOcrModal({
                   className="w-full gap-2 mt-2"
                   onClick={handleApply}
                 >
-                  Crea Rifornimento
+                  {actionLabel || "Applica Dati al Rifornimento"}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>

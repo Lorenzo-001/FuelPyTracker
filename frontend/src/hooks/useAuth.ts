@@ -44,6 +44,25 @@ export function useLogin() {
 }
 
 /**
+ * Mutazione per registrare un nuovo account.
+ */
+export function useRegister() {
+  return useMutation({
+    mutationFn: (credentials: { email: string; password: string }) =>
+      authApi.register(credentials),
+    onSuccess: (data) => {
+      toast.success("Registrazione completata!", {
+        description: data.message || "Account registrato con successo. Ora puoi accedere.",
+      })
+    },
+    onError: (err: Error) => {
+      toast.error(`Registrazione fallita: ${err.message}`)
+    },
+  })
+}
+
+
+/**
  * Mutazione per effettuare il logout.
  */
 export function useLogout() {
