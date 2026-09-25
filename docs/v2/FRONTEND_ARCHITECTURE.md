@@ -277,4 +277,16 @@ La **Fase 4** trasforma lo scheletro in un'applicazione interattiva completa, fr
 | **Step 4.5** | **Manutenzioni & Promemoria** | Timeline cronologica, semaforo scadenze, azione atomica *Mark as Done* | ✅ **Completato** |
 | **Step 4.6** | **Report & Staging Import** | Download center Excel/PDF, importatore drag&drop con anteprima a semafori | ✅ **Completato** |
 | **Step 4.7** | **Impostazioni & Categorie** | Form soglie carburante, gestore categorie con tag interattivi, profilo & diagnostica | ✅ **Completato** |
-| **Step 4.8** | **Collaudo Globale E2E UX** | Certificazione browser end-to-end e documentazione conclusiva | 🔄 **Prossimo** |
+| **Step 4.8** | **Collaudo Globale E2E UX** | Certificazione browser end-to-end e documentazione conclusiva | ✅ **Completato** |
+
+---
+
+## 🌐 5. Configurazione di Produzione & Hosting Edge (Fase 5.3)
+
+Per consentire la distribuzione su Edge CDN gratuite con supporto completo al routing client-side (SPA):
+- **Vercel (`frontend/vercel.json`):**
+  - Regola di riscrittura universale `/(.*) -> /index.html` per garantire che i refresh del browser su percorsi come `/fuel`, `/maintenance`, `/reports` e `/settings` non restituiscano errore 404.
+  - Caching immutabile (`max-age=31536000, immutable`) per tutti gli asset hash-named generati da Vite nella cartella `/assets/`.
+  - Header HTTP di sicurezza applicati all'origine (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`).
+- **Netlify & Cloudflare Pages (`frontend/public/_redirects`):**
+  - Regola standard `/* /index.html 200` inclusa nella cartella `public/` e automaticamente copiata nella root della cartella `dist/` durante `npm run build`.
