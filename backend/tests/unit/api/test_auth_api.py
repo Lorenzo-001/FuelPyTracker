@@ -10,14 +10,16 @@ from fastapi.testclient import TestClient
 from src.api.server import app
 from src.api.config import DEMO_USER_ID, DEMO_USER_EMAIL
 
-client = TestClient(app)
+@pytest.fixture
+def client():
+    return TestClient(app)
 
 
 # =============================================================================
 # TEST: Validazione Pydantic
 # =============================================================================
 
-def test_login_validation_invalid_email():
+def test_login_validation_invalid_email(client):
     """Verifica che un'email malformata venga rifiutata con HTTP 422."""
     response = client.post("/api/auth/login", json={
         "email": "not-an-email",
@@ -26,7 +28,7 @@ def test_login_validation_invalid_email():
     assert response.status_code == 422
 
 
-def test_login_validation_short_password():
+def test_login_validation_short_password(client):
     """Verifica che una password inferiore a 6 caratteri venga rifiutata con HTTP 422."""
     response = client.post("/api/auth/login", json={
         "email": "valid@example.com",
@@ -39,7 +41,7 @@ def test_login_validation_short_password():
 # TEST: POST /api/auth/login
 # =============================================================================
 
-def test_login_demo_mode_success():
+def test_login_demo_mode_success(client):
     """Verifica il successo immediato del login in ambiente Demo."""
     with patch("src.api.routers.auth.is_demo_mode", return_value=True):
         response = client.post("/api/auth/login", json={
@@ -54,7 +56,7 @@ def test_login_demo_mode_success():
         assert data["user"]["id"] == DEMO_USER_ID
 
 
-def test_login_failed_in_production():
+def test_login_failed_in_production(client):
     """Verifica che credenziali errate restituiscano HTTP 401."""
     with patch("src.api.routers.auth.is_demo_mode", return_value=False), \
          patch("src.api.routers.auth.is_local_sqlite", return_value=False), \
@@ -71,7 +73,7 @@ def test_login_failed_in_production():
 # TEST: POST /api/auth/register
 # =============================================================================
 
-def test_register_demo_mode_success():
+def test_register_demo_mode_success(client):
     """Verifica la risposta simulata di registrazione in modalità Demo."""
     with patch("src.api.routers.auth.is_demo_mode", return_value=True):
         response = client.post("/api/auth/register", json={
@@ -83,7 +85,7 @@ def test_register_demo_mode_success():
         assert data["success"] is True
 
 
-def test_register_error_handling():
+def test_register_error_handling(client):
     """Verifica la gestione degli errori durante la registrazione."""
     with patch("src.api.routers.auth.is_demo_mode", return_value=False), \
          patch("src.api.routers.auth.is_local_sqlite", return_value=False), \
@@ -100,7 +102,7 @@ def test_register_error_handling():
 # TEST: POST /api/auth/logout
 # =============================================================================
 
-def test_logout():
+def test_logout(client):
     """Verifica l'endpoint di logout."""
     response = client.post("/api/auth/logout")
     assert response.status_code == 200
@@ -111,7 +113,7 @@ def test_logout():
 # TEST: GET /api/auth/me
 # =============================================================================
 
-def test_get_me_demo_mode():
+def test_get_me_demo_mode(client):
     """Verifica che /api/auth/me restituisca l'utente demo in ambiente demo."""
     with patch("src.api.deps.is_demo_mode", return_value=True):
         response = client.get("/api/auth/me")
@@ -121,7 +123,7 @@ def test_get_me_demo_mode():
         assert data["is_demo"] is True
 
 
-def test_get_me_with_jwt_token():
+def test_get_me_with_jwt_token(client):
     """Verifica che /api/auth/me risolva correttamente l'utente da un token Bearer."""
     custom_uid = "user-real-uuid-777"
     token = jwt.encode({"sub": custom_uid, "email": "real@example.com"}, "secret", algorithm="HS256")
@@ -137,7 +139,7 @@ def test_get_me_with_jwt_token():
         assert data["is_demo"] is False
 
 
-def test_get_me_unauthorized():
+def test_get_me_unauthorized(client):
     """Verifica che /api/auth/me sollevi 401 in assenza di credenziali fuori da demo."""
     with patch("src.api.deps.is_demo_mode", return_value=False), \
          patch("src.api.deps.is_local_sqlite", return_value=False), \
@@ -150,7 +152,7 @@ def test_get_me_unauthorized():
 # TEST: POST /api/auth/reset-password
 # =============================================================================
 
-def test_reset_password_demo():
+def test_reset_password_demo(client):
     """Verifica il comportamento di recupero password in demo."""
     with patch("src.api.routers.auth.is_demo_mode", return_value=True):
         response = client.post("/api/auth/reset-password", json={

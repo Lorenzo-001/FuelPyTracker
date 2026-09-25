@@ -1,0 +1,36 @@
+# =============================================================================
+# FuelPyTracker V2 — Render Blueprint Specification (Infrastructure-as-Code)
+# =============================================================================
+# Documentazione: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: fuelpytracker-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    region: frankfurt
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn src.api.server:app --host 0.0.0.0 --port $PORT --workers 2
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: PYTHONPATH
+        value: .
+      - key: LOCAL_SQLITE
+        value: "True"
+      - key: DEMO_MODE
+        value: "False"
+      - key: CORS_ORIGINS
+        value: "*"
+      # Variabili sensibili da configurare manualmente nella dashboard di Render:
+      # - key: DATABASE_URL
+      #   sync: false
+      # - key: OPENAI_API_KEY
+      #   sync: false
+      # - key: SUPABASE_URL
+      #   sync: false
+      # - key: SUPABASE_KEY
+      #   sync: false

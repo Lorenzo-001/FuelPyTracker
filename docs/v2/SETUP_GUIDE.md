@@ -14,6 +14,7 @@
 5. [Collaudo tramite Swagger UI](#5-collaudo-tramite-swagger-ui)
 6. [Esecuzione dei Test Unitari (pytest)](#6-esecuzione-dei-test-unitari-pytest)
 7. [Esecuzione Parallela con Streamlit V1](#7-esecuzione-parallela-con-streamlit-v1)
+8. [Avvio Rapido con Docker Compose (Full-Stack V2)](#8-avvio-rapido-con-docker-compose-full-stack-v2)
 
 ---
 
@@ -148,3 +149,25 @@ Durante la fase transitoria di sviluppo della V2, l'applicazione Streamlit v1.1.
 ```
 - **Streamlit V1 UI:** `http://localhost:8501`
 - **FastAPI V2 API & Swagger:** `http://localhost:8000`
+
+---
+
+## 8. Avvio Rapido con Docker Compose (Full-Stack V2)
+
+A partire dalla Fase 5, puoi avviare l'intero stack applicativo (Backend FastAPI + Frontend React/Nginx) con un singolo comando Docker, senza necessità di installare Python o Node.js sull'host:
+
+### Avvio dei container:
+```powershell
+docker compose up --build
+```
+
+### Accesso ai servizi:
+- **Frontend Web SPA (React 19 + Nginx):** 👉 **[http://localhost:80](http://localhost:80)** (o [http://localhost:3000](http://localhost:3000))
+- **Backend API & Swagger UI (FastAPI):** 👉 **[http://localhost:8000/docs](http://localhost:8000/docs)**
+- **Healthcheck di Sistema:** `http://localhost:8000/health`
+
+### Arresto:
+```powershell
+docker compose down
+```
+I dati SQLite vengono preservati nella cartella locale `./data/` montata a volume.

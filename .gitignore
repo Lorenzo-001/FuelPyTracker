@@ -1,20 +1,69 @@
+# Python & Virtual Environments
 .venv/
 venv/
+ENV/
+env/
 __pycache__/
-*.pyc
-.DS_Store
+*.py[cod]
+*$py.class
+*.so
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+coverage/
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Node & Frontend Build
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+dist-ssr/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment & Secrets (NEVER COMMIT)
 .env
 **/.env
 **/.env.*
 !**/.env.example
-data/*.db
-**/data/*.db
+*.local
+**/*.local
 .streamlit/secrets.toml
 **/.streamlit/secrets.toml
 !.streamlit/config.toml
 !**/.streamlit/config.toml
 !.streamlit/secrets.toml.example
 !**/.streamlit/secrets.toml.example
-# agent scratch (never commit)
+
+# Databases & Local Storage
+data/*.db
+**/data/*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Operating System & IDEs
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+
+# Project Management & Agent Scratch
 .superpowers/
-_cantiere/
+_cantiere/

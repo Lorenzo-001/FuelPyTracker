@@ -1,31 +1,44 @@
-# 1. Usa un'immagine base di Python leggera (Debian Slim)
+# =============================================================================
+# FuelPyTracker V2 — Backend Production Dockerfile (FastAPI + Uvicorn)
+# =============================================================================
+
 FROM python:3.11-slim
 
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+# 1. Impostazioni ambiente Python per produzione
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH="/app" \
+    PORT=8000
 
-# 2. Evita che Python scriva file __pycache__ e bufferizzi l'output
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-
-# 3. Imposta la cartella di lavoro dentro il container virtuale
 WORKDIR /app
 
-# PYTHONPATH fisso all'immagine: la struttura /app è decisa qui, non dall'utente.
-ENV PYTHONPATH="/app"
+# 2. Installa curl per l'Healthcheck e ripulisci la cache apt
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# 4. Copia il file dei requisiti e installa le dipendenze
-# Facciamo questo PRIMA di copiare il codice per sfruttare la cache di Docker
+# 3. Dipendenze Python (sfruttando la cache layer di Docker)
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
 
-# 5. Copia tutto il resto del codice del progetto
+# 4. Copia del codice applicativo
 COPY . .
 
-# 6. Esponi la porta standard di Streamlit
-EXPOSE 8501
+# 5. Creazione utente di sistema non-root per sicurezza e cartella data persistente
+RUN addgroup --system --gid 1001 appgroup \
+    && adduser --system --uid 1001 --gid 1001 appuser \
+    && mkdir -p /app/data \
+    && chown -R appuser:appgroup /app
 
-# 7. Verifica che il container sia sano (Healthcheck)
-HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health || exit 1
+USER appuser
 
-# 8. Comando di avvio dell'app
-CMD ["streamlit", "run", "main.py", "--server.port=8501", "--server.address=0.0.0.0"]
+# 6. Esposizione porta API REST
+EXPOSE 8000
+
+# 7. Healthcheck nativo su GET /health
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD curl --fail http://localhost:8000/health || exit 1
+
+# 8. Avvio server di produzione Uvicorn
+CMD ["uvicorn", "src.api.server:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]

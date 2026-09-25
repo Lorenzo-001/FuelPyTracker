@@ -686,7 +686,7 @@ L'intera architettura client-side del Monorepo (`frontend/`), comprendente:
 | **Fase 2.6**| **Collaudo E2E Globale** | Test sequenziale del ciclo di vita API, certificazione OpenAPI e Swagger | ✅ **Completata** |
 | **Fase 3** | **Bootstrap Frontend (React)** | Setup Vite, TailwindCSS, Shadcn/UI, routing SPA, TanStack Query | ✅ **Completata** |
 | **Fase 4** | **Ricostruzione Interfaccia UX** | Pagine React, cruscotti analitici, modal d'inserimento, responsive | ✅ **Completata** |
-| **Fase 5** | **Deploy CI/CD & Dismissione V1** | Deploy Vercel (Frontend), Render (Backend), archiviazione branch V1 | 🔄 **Prossima** |
+| **Fase 5** | **Containerizzazione, CI/CD & Deploy** | Docker Compose, GitHub Actions, Vercel/Netlify SPA, Render IaC, Keep-Alive | 🔄 **In Corso (5.1-5.3 ✅)** |
 
 ---
 
@@ -762,6 +762,94 @@ flowchart TD
 - **Backend Test Suite (Pytest):** `272 test superati al 100%` (`backend/tests/` unitari ed end-to-end), con zero fallimenti e tempi di esecuzione ottimali (~11s).
 - **Frontend Linter (Oxlint):** `0 errori` su 79 file sorgente.
 - **Frontend Type-Check & Production Bundle (TypeScript + Vite):** compilazione con zero errori di tipo e bundle minificato generato in `1.90s`.
+
+---
+
+## 🚢 16. Fase 5: Containerizzazione, CI/CD, Hosting Zero-Cost & Release
+
+La **Fase 5** standardizza l'infrastruttura del repository, predisponendo l'intero ciclo di vita applicativo per il rilascio in produzione di FuelPyTracker V2.0.
+
+```mermaid
+flowchart LR
+    subgraph Repo ["📦 Monorepo GitHub"]
+        direction TB
+        BE["backend/ (FastAPI)"]
+        FE["frontend/ (React + Vite)"]
+        CI["CI/CD (.github/workflows)"]
+    end
+
+    subgraph CI_Pipeline ["⚙️ GitHub Actions CI"]
+        direction TB
+        Job1["backend-ci: Pytest (284+ test)"]
+        Job2["frontend-ci: Oxlint + tsc + Vite"]
+        Job3["docker-smoke-test: Compose Build"]
+    end
+
+    subgraph Deploy ["🚀 Zero-Cost Cloud Deployment"]
+        direction TB
+        Vercel["Frontend: Vercel / Netlify CDN"]
+        Render["Backend: Render.com PaaS"]
+        KeepAlive["Keep-Alive Cron: Ping /health (14 min)"]
+    end
+
+    Repo --> CI_Pipeline
+    CI_Pipeline -->|Success| Deploy
+    KeepAlive -.->|Anti-Sleep| Render
+```
+
+### 1. Step 5.1: Containerizzazione Docker Multi-Stage & Compose
+- **Backend Dockerfile (`backend/Dockerfile`):**
+  - Base `python:3.11-slim` per garantire un'impronta ridotta e massima sicurezza.
+  - Multi-stage build per l'installazione delle dipendenze con caching dei layer `pip`.
+  - Creazione di utente non privilegiato di sistema (`appuser`, UID 10001) in conformità alle best-practice di sicurezza OCI/Docker.
+  - Healthcheck nativo integrato con curl su `http://localhost:8000/health` (intervallo 30s, timeout 5s, 3 retry).
+  - Entrypoint di produzione con Uvicorn parametrizzato su porta 8000 (`0.0.0.0:8000`).
+- **Frontend Dockerfile (`frontend/Dockerfile`) & Nginx (`frontend/nginx.conf`):**
+  - **Stage 1 (Builder):** `node:22-alpine` per l'installazione pulita (`npm ci`) e la compilazione di produzione (`npm run build`).
+  - **Stage 2 (Runner):** `nginx:alpine` ultra-leggero (< 25MB totali).
+  - **Routing SPA:** Direttiva `try_files $uri $uri/ /index.html;` per prevenire errori 404 nei refresh di pagine interne React Router.
+  - **Reverse Proxy integrato:** Proxy trasparente per `/api/` e `/health` instradati internamente verso il container `backend:8000`.
+  - **Performance & Sicurezza:** Compressione gzip attiva per text, css, json e javascript; header `Cache-Control: public, max-age=31536000, immutable` per gli asset con hash in `/assets/`.
+- **Orchestrazione `docker-compose.yml`:**
+  - Avvio full-stack con un solo comando: `docker compose up --build`.
+  - Servizio `backend` (porta 8000, montaggio volume `data/` per persistenza SQLite locale, caricamento `.env`).
+  - Servizio `frontend` (porta 80 per default, mappabile su porta host 3000 o 8080).
+  - Rete interna bridge isolata `fuel-network`.
+
+### 2. Step 5.2: Continuous Integration Automatizzata (`.github/workflows/ci.yml`)
+Pipeline Monorepo multi-job eseguita su ogni `push` e `pull_request` verso rami principali:
+1. **Job `backend` (Python 3.11 & Pytest):**
+   - Setup Python 3.11 con cache nativa `pip`.
+   - Installazione pulita delle dipendenze da `backend/requirements.txt`.
+   - Esecuzione dell'intera suite di test (284+ test unitari ed E2E) con `pytest backend/tests/ -v --durations=10`.
+   - Isolamento ambiente in memoria con variabili `PYTHONPATH=backend`, `LOCAL_SQLITE=True`, `DEMO_MODE=True`.
+2. **Job `frontend` (Node 22, Oxlint, TypeScript & Build):**
+   - Setup Node.js 22 con cache npm basata su `package-lock.json`.
+   - Installazione deterministica con `npm ci`.
+   - Controllo statico con linter ad alta velocità (`oxlint`).
+   - Verifica rigorosa dei tipi TypeScript (`tsc -b`) e compilazione bundle di produzione Vite (`npm run build`).
+3. **Job `docker-smoke-test`:**
+   - Eseguito in parallelo/successione dopo i check applicativi.
+   - Verifica di conformità e compilazione di entrambi i Dockerfile tramite `docker compose build`.
+
+### 3. Step 5.3: Configurazione Hosting & Strategia Zero-Cost
+- **Frontend Edge CDN (Vercel / Netlify / Cloudflare Pages):**
+  - **`frontend/vercel.json`:** Regola di riscrittura URL verso `/index.html` per garantire il corretto funzionamento di React Router; header di cache immutabile a 1 anno per `/assets/*`; policy di sicurezza HTTP (`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`).
+  - **`frontend/public/_redirects`:** Regola di fallback universale per Netlify e Cloudflare Pages (`/* /index.html 200`), copiata automaticamente da Vite nella root del bundle di distribuzione (`dist/`).
+- **Backend PaaS Cloud (Render.com):**
+  - **`render.yaml`:** Specifica Blueprint Infrastructure-as-Code (IaC) per il deploy con 1-click del web service `fuelpytracker-backend`.
+  - Configurazione: piano gratuito (`plan: free`), regione europea a bassa latenza (`frankfurt`), runtime Python 3.11.9, healthcheck automatico su `/health`, 2 worker Uvicorn.
+- **Workflow Anti-Sleep / Keep-Alive (`.github/workflows/keep-alive.yml`):**
+  - Risoluzione del problema del *Cold Start* del free-tier di Render (sospensione dopo 15 minuti di inattività).
+  - Cron-job schedulato ogni 14 minuti con `curl` su `${{ vars.RENDER_BACKEND_URL }}/health`.
+  - Trigger manuale `workflow_dispatch` per consentire collaudo istantaneo e messaggi diagnostici guidati.
+
+### 4. Risoluzione Incompatibilità Dipendenze CI (`httpx` & `Starlette TestClient`)
+- **Problema riscontrato:** Nelle versioni di `httpx >= 0.28.0`, il parametro legacy `app=` è stato definitivamente rimosso da `httpx.Client.__init__()`. La versione di `fastapi==0.110.0` si appoggia a `starlette==0.36.3`, il cui `TestClient` effettua internamente la chiamata `super().__init__(app=app, ...)`. In ambiente CI pulito, la presenza di `httpx==0.28.1` causava l'eccezione `TypeError: Client.__init__() got an unexpected keyword argument 'app'`.
+- **Intervento applicato:**
+  - In `backend/requirements.txt`: allineato `httpx==0.27.2` (pienamente compatibile con `TestClient` e con i client di `openai` e `supabase`).
+  - In `backend/tests/unit/api/test_auth_api.py`: convertito il client globale in una `@pytest.fixture` passata come parametro ai singoli test, standardizzando l'architettura rispetto agli altri test del repository ed evitando esecuzioni premature durante la fase di *test collection* di Pytest.
+
 
 
 
