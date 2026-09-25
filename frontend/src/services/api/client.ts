@@ -50,17 +50,26 @@ interface RequestOptions extends Omit<RequestInit, "body"> {
 class ApiClient {
   private baseUrl: string
 
-  constructor(baseUrl: string = "/api") {
+  constructor(baseUrl: string = (import.meta.env.VITE_API_URL as string | undefined) || "/api") {
     this.baseUrl = baseUrl
   }
 
   private buildUrl(endpoint: string, params?: RequestOptions["params"]): string {
-    // If endpoint starts with http or /health, don't prepend baseUrl
-    const base = endpoint.startsWith("http")
-      ? endpoint
-      : endpoint.startsWith("/health")
-        ? endpoint
-        : `${this.baseUrl}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`
+    let base: string
+    if (endpoint.startsWith("http")) {
+      base = endpoint
+    } else if (endpoint === "/health" || endpoint.startsWith("/health")) {
+      if (this.baseUrl.startsWith("http")) {
+        const origin = new URL(this.baseUrl).origin
+        base = `${origin}${endpoint}`
+      } else {
+        base = endpoint
+      }
+    } else {
+      const cleanBase = this.baseUrl.replace(/\/+$/, "")
+      const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`
+      base = `${cleanBase}${cleanEndpoint}`
+    }
 
     if (!params) return base
 
