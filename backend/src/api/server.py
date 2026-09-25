@@ -28,6 +28,15 @@ async def lifespan(app: FastAPI):
     """Gestisce il ciclo di vita dell'applicazione, assicurando logger puliti anche post-inizializzazione Uvicorn."""
     configure_api_logging()
     logger.info("FuelPyTracker API v%s avviata (Health checks silenziati)", API_VERSION)
+    
+    # Inizializza automaticamente lo schema del database (tabelle mancanti) all'avvio
+    try:
+        from src.database.core import init_db
+        init_db()
+        logger.info("Schema database verificato e inizializzato con successo.")
+    except Exception as exc:
+        logger.error("Inizializzazione database fallita all'avvio: %s", exc)
+        
     yield
 
 
@@ -47,6 +56,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc: Exception):
+    """Intercetta eccezioni non gestite garantendo che le risposte 500 mantengano gli header CORS."""
+    logger.exception("Eccezione non gestita durante la richiesta a %s: %s", request.url.path, exc)
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error", "error": str(exc)},
+    )
 
 from src.api.routers.auth import router as auth_router
 from src.api.routers.fuel import router as fuel_router
@@ -78,11 +98,22 @@ def root():
 def health_check():
     """
     Endpoint di health-check.
-    Utilizzato da UptimeRobot o altri cron per prevenire il cold start del server.
+    Verifica lo stato del server e la connettività al database.
     """
+    db_status = "unknown"
+    try:
+        from src.database.core import engine
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        db_status = "connected"
+    except Exception as exc:
+        db_status = f"error: {str(exc)}"
+
     return {
         "status": "ok",
         "version": "2.0.0",
+        "database": db_status,
         "timestamp": datetime.datetime.utcnow().isoformat()
     }
 
