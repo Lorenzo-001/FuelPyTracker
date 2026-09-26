@@ -95,10 +95,14 @@ def root():
     return RedirectResponse(url="/docs")
 
 @app.get("/health", tags=["System"])
+@app.head("/health", include_in_schema=False)
+@app.get("/api/health", include_in_schema=False)
+@app.head("/api/health", include_in_schema=False)
 def health_check():
     """
     Endpoint di health-check.
     Verifica lo stato del server e la connettività al database.
+    Supporta sia richieste GET che HEAD per compatibilità con i monitor di uptime (es. UptimeRobot).
     """
     db_status = "unknown"
     try:

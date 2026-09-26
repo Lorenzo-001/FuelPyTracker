@@ -43,13 +43,23 @@ def client_with_db(db_session):
 
 def test_system_health_and_openapi_spec(client_with_db):
     """Verifica che il server risponda su /health, reindirizzi su /docs e contenga tutti i 25+ percorsi API."""
-    # 1. Health check
+    # 1. Health check (GET e HEAD per compatibilità con uptime monitor come UptimeRobot)
     res_health = client_with_db.get("/health")
     assert res_health.status_code == 200
     health_data = res_health.json()
     assert health_data["status"] == "ok"
     assert "version" in health_data
     assert "timestamp" in health_data
+
+    res_health_head = client_with_db.head("/health")
+    assert res_health_head.status_code == 200
+
+    res_api_health_get = client_with_db.get("/api/health")
+    assert res_api_health_get.status_code == 200
+    assert res_api_health_get.json()["status"] == "ok"
+
+    res_api_health_head = client_with_db.head("/api/health")
+    assert res_api_health_head.status_code == 200
 
     # 2. Redirect root verso Swagger
     res_root = client_with_db.get("/", follow_redirects=False)
