@@ -12,10 +12,14 @@ import {
   User,
   Car,
   ChevronRight,
+  LogOut,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { useReminders } from "@/hooks/useReminders"
+import { useCurrentUser, useLogout } from "@/hooks/useAuth"
+import { useSettings } from "@/hooks/useSettings"
+import { isPublicDemoMode } from "@/lib/demo"
 import {
   Sheet,
   SheetContent,
@@ -30,6 +34,17 @@ export function BottomBar() {
   const location = useLocation()
 
   const { data: reminders } = useReminders()
+  const { data: user } = useCurrentUser()
+  const { data: settings } = useSettings()
+  const logoutMutation = useLogout()
+  const isDemo = isPublicDemoMode()
+
+  const vehicleName = settings?.vehicle_name?.trim() || "Il mio Veicolo"
+  const vehicleDetails =
+    [settings?.vehicle_plate?.trim(), settings?.vehicle_fuel_type?.trim()]
+      .filter(Boolean)
+      .join(" • ") || "Configura in Impostazioni"
+
   const overdueCount = reminders?.filter((r) => r.is_overdue).length || 0
   const urgentCount =
     reminders?.filter((r) => r.progress >= 0.7 && !r.is_overdue).length || 0
@@ -168,18 +183,25 @@ export function BottomBar() {
           </SheetHeader>
 
           {/* Active Vehicle Snippet */}
-          <div className="p-3 rounded-xl border border-border/70 bg-muted/20 flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+          <button
+            type="button"
+            onClick={() => {
+              setMoreOpen(false)
+              navigate("/settings")
+            }}
+            className="w-full p-3 rounded-xl border border-border/70 bg-muted/20 hover:bg-muted/30 transition-colors flex items-center justify-between mb-4 text-left"
+          >
+            <div className="flex items-center gap-3 truncate">
+              <div className="h-9 w-9 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0">
                 <Car className="h-5 w-5" />
               </div>
-              <div>
-                <div className="text-xs font-semibold text-foreground">BMW Serie 1 (118d)</div>
-                <div className="text-[11px] text-muted-foreground">AB 123 CD • Diesel</div>
+              <div className="truncate">
+                <div className="text-xs font-semibold text-foreground truncate">{vehicleName}</div>
+                <div className="text-[11px] text-muted-foreground truncate">{vehicleDetails}</div>
               </div>
             </div>
-            <Badge variant="success" className="text-[10px] py-0.5">Attivo</Badge>
-          </div>
+            <Badge variant="success" className="text-[10px] py-0.5 shrink-0 ml-2">Attivo</Badge>
+          </button>
 
           {/* Navigation Links Grid */}
           <div className="space-y-2">
@@ -249,36 +271,99 @@ export function BottomBar() {
               className="w-full flex items-center justify-between p-3 rounded-xl border border-border/60 bg-card/60 hover:bg-muted/40 transition-colors text-left"
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-muted text-foreground">
+                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
                   <Settings className="h-4 w-4" />
                 </div>
                 <div>
                   <div className="text-xs font-semibold text-foreground">Impostazioni Sistema</div>
-                  <div className="text-[10px] text-muted-foreground">Soglie carburante, categorie e parametri</div>
+                  <div className="text-[10px] text-muted-foreground">Catalogo auto, soglie, preferenze e diagnostica</div>
                 </div>
               </div>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
+          </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setMoreOpen(false)
-                navigate("/login")
-              }}
-              className="w-full flex items-center justify-between p-3 rounded-xl border border-border/60 bg-card/60 hover:bg-muted/40 transition-colors text-left"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-muted text-foreground">
-                  <User className="h-4 w-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-foreground">Profilo Utente & Accesso</div>
-                  <div className="text-[10px] text-muted-foreground">Autenticazione JWT / Modalità Demo</div>
-                </div>
+          {/* User Account / Profile Card */}
+          <div className="pt-3 mt-3 border-t border-border/60">
+            {user ? (
+              <div className="p-3 rounded-xl border border-border/60 bg-card/60 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMoreOpen(false)
+                    navigate("/settings")
+                  }}
+                  className="flex items-center gap-3 min-w-0 text-left flex-1"
+                >
+                  <div className="h-9 w-9 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">
+                    {user.email ? user.email.slice(0, 2).toUpperCase() : <User className="h-4 w-4" />}
+                  </div>
+                  <div className="truncate min-w-0 flex-1">
+                    <div className="text-xs font-semibold text-foreground truncate">
+                      {user.email}
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
+                      <span className="text-[10px] text-muted-foreground truncate">
+                        {user.is_demo ? "Modalità Demo Sandbox" : "Account Personale"}
+                      </span>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mr-1" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMoreOpen(false)
+                    logoutMutation.mutate()
+                  }}
+                  title="Disconnetti account"
+                  className="p-2 rounded-lg text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10 transition-colors shrink-0 ml-1 border border-border/40"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
               </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </button>
+            ) : isDemo ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setMoreOpen(false)
+                  navigate("/login")
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-left hover:bg-amber-500/15 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400">
+                    <User className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-foreground">Modalità Vetrina Demo</div>
+                    <div className="text-[10px] text-muted-foreground">Tocca per accedere al tuo account personale</div>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setMoreOpen(false)
+                  navigate("/login")
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-xl border border-border/60 bg-card/60 hover:bg-muted/40 transition-colors text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-muted text-foreground">
+                    <User className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-foreground">Accedi al tuo account</div>
+                    <div className="text-[10px] text-muted-foreground">Inserisci email e password</div>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </button>
+            )}
           </div>
         </SheetContent>
       </Sheet>
