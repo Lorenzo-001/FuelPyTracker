@@ -55,25 +55,27 @@ export default function SettingsPage() {
         </div>
       ) : (
         /* Tabs di Navigazione */
-        <Tabs defaultValue="thresholds" className="space-y-6">
-          <TabsList className="bg-muted/40 p-1 border border-border/60 rounded-xl">
-            <TabsTrigger value="thresholds" className="gap-2 text-xs font-semibold px-4 py-2">
-              <Shield className="h-3.5 w-3.5 text-emerald-400" />
-              <span>Soglie & Carburante</span>
-            </TabsTrigger>
-            <TabsTrigger value="vehicle" className="gap-2 text-xs font-semibold px-4 py-2">
-              <Car className="h-3.5 w-3.5 text-emerald-400" />
-              <span>Veicolo</span>
-            </TabsTrigger>
-            <TabsTrigger value="categories" className="gap-2 text-xs font-semibold px-4 py-2">
-              <Tag className="h-3.5 w-3.5 text-emerald-400" />
-              <span>Categorie & Tag</span>
-            </TabsTrigger>
-            <TabsTrigger value="system" className="gap-2 text-xs font-semibold px-4 py-2">
-              <User className="h-3.5 w-3.5 text-emerald-400" />
-              <span>Profilo & Diagnostica</span>
-            </TabsTrigger>
-          </TabsList>
+        <Tabs defaultValue="thresholds" className="space-y-6 max-w-full">
+          <div className="w-full overflow-x-auto pb-1 scrollbar-none">
+            <TabsList className="w-max min-w-full justify-start sm:justify-center bg-muted/40 p-1 border border-border/60 rounded-xl">
+              <TabsTrigger value="thresholds" className="gap-2 text-xs font-semibold px-4 py-2 shrink-0">
+                <Shield className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Soglie & Carburante</span>
+              </TabsTrigger>
+              <TabsTrigger value="vehicle" className="gap-2 text-xs font-semibold px-4 py-2 shrink-0">
+                <Car className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Veicolo</span>
+              </TabsTrigger>
+              <TabsTrigger value="categories" className="gap-2 text-xs font-semibold px-4 py-2 shrink-0">
+                <Tag className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Categorie & Tag</span>
+              </TabsTrigger>
+              <TabsTrigger value="system" className="gap-2 text-xs font-semibold px-4 py-2 shrink-0">
+                <User className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Profilo & Diagnostica</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Tab 1: Soglie Carburante & OCR */}
           <TabsContent value="thresholds" className="space-y-6 outline-none">

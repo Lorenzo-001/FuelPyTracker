@@ -26,9 +26,9 @@ export function OcrPreferencesCard({ settings }: OcrPreferencesCardProps) {
   return (
     <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-md">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 items-start">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0 mt-0.5 sm:mt-0">
               <FileText className="h-5 w-5" />
             </div>
             <div>
@@ -40,7 +40,7 @@ export function OcrPreferencesCard({ settings }: OcrPreferencesCardProps) {
               </CardDescription>
             </div>
           </div>
-          <Badge variant="outline" className="text-xs gap-1 border-border/80">
+          <Badge variant="outline" className="text-xs gap-1 border-border/80 shrink-0 self-start sm:self-auto">
             <Sparkles className="h-3 w-3 text-emerald-400" />
             Scansione Ricevute
           </Badge>

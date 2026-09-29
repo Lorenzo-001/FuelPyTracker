@@ -231,6 +231,10 @@ def update_reminder(
         rem.is_active = update_dict["is_active"]
     if "notes" in update_dict:
         rem.notes = update_dict["notes"]
+    if "current_km" in update_dict and update_dict["current_km"] is not None:
+        rem.last_km_check = update_dict["current_km"]
+    elif "last_km_check" in update_dict and update_dict["last_km_check"] is not None:
+        rem.last_km_check = update_dict["last_km_check"]
 
     db.commit()
     db.refresh(rem)
@@ -275,12 +279,7 @@ def complete_reminder(
 
     # Determina i km effettivi di completamento:
     if payload.check_km is not None and payload.check_km > 0:
-        # Se payload.check_km è rimasto uguale o inferiore al vecchio last_km_check (e il veicolo ha un km superiore),
-        # significa che è stato inviato erroneamente il vecchio km iniziale -> usa last_known_km
-        if rem.last_km_check and payload.check_km <= rem.last_km_check and last_known_km > rem.last_km_check:
-            effective_km = last_known_km
-        else:
-            effective_km = payload.check_km
+        effective_km = payload.check_km
     else:
         effective_km = last_known_km
 

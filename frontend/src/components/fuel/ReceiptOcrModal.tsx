@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   ArrowRight,
   RefreshCw,
+  ChevronRight,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useScanReceiptOcr } from "@/hooks/useRefuelings"
@@ -49,6 +50,7 @@ export function ReceiptOcrModal({
   const [ocrResult, setOcrResult] = useState<OCRScanResponse | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
 
   const scanMutation = useScanReceiptOcr()
 
@@ -111,6 +113,9 @@ export function ReceiptOcrModal({
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = ""
+    }
   }
 
   return (
@@ -136,25 +141,37 @@ export function ReceiptOcrModal({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* File Upload / Drag Zone */}
+          {/* File Upload / Camera Zone */}
           {!selectedFile ? (
-            <div
-              onDragOver={(e) => {
-                e.preventDefault()
-                setDragOver(true)
-              }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${dragOver
-                  ? "border-emerald-500 bg-emerald-500/10"
-                  : "border-border/60 hover:border-emerald-500/50 hover:bg-muted/30"
-                }`}
-            >
+            <div className="space-y-3">
+              {/* Pulsante Fotocamera Diretta (Mobile First) */}
+              <button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-cyan-400/60 bg-gradient-to-r from-sky-500/15 via-cyan-500/10 to-transparent hover:from-sky-500/25 hover:via-cyan-500/20 active:scale-[0.99] transition-all text-left group shadow-sm shadow-cyan-500/10"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-sky-400 to-cyan-500 text-slate-950 flex items-center justify-center font-bold shadow-md shadow-cyan-500/25 group-hover:scale-105 transition-transform shrink-0">
+                    <Camera className="h-6 w-6 stroke-[2.2]" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                      <span>Scatta Foto con Fotocamera</span>
+                      <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Attiva direttamente la fotocamera del tuo smartphone
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-cyan-400 shrink-0 ml-2 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+
               <input
-                ref={fileInputRef}
+                ref={cameraInputRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp"
+                accept="image/*"
+                capture="environment"
                 className="hidden"
                 onChange={(e) => {
                   if (e.target.files && e.target.files[0]) {
@@ -162,17 +179,47 @@ export function ReceiptOcrModal({
                   }
                 }}
               />
-              <div className="mx-auto w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-3">
-                <UploadCloud className="h-6 w-6" />
-              </div>
-              <p className="text-sm font-semibold">Trascina qui l&apos;immagine dello scontrino</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                oppure clicca per selezionare da file o fotocamera
-              </p>
-              <div className="flex items-center justify-center gap-2 mt-4 text-[11px] text-muted-foreground">
-                <Badge variant="outline" className="text-[10px]">JPEG</Badge>
-                <Badge variant="outline" className="text-[10px]">PNG</Badge>
-                <Badge variant="outline" className="text-[10px]">WebP</Badge>
+
+              {/* Oppure Drag & Drop / Carica da File o Galleria */}
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  setDragOver(true)
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all ${
+                  dragOver
+                    ? "border-emerald-500 bg-emerald-500/10"
+                    : "border-border/60 hover:border-emerald-500/50 hover:bg-muted/30"
+                }`}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      handleFileChange(e.target.files[0])
+                    }
+                  }}
+                />
+                <div className="mx-auto w-10 h-10 rounded-full bg-muted/60 text-muted-foreground flex items-center justify-center mb-2">
+                  <UploadCloud className="h-5 w-5" />
+                </div>
+                <p className="text-xs font-semibold text-foreground">
+                  Oppure scegli da Galleria o File
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Trascina qui l&apos;immagine (JPEG, PNG, WebP)
+                </p>
+                <div className="flex items-center justify-center gap-2 mt-3 text-[10px] text-muted-foreground">
+                  <Badge variant="outline" className="text-[10px] py-0 px-1.5">JPEG</Badge>
+                  <Badge variant="outline" className="text-[10px] py-0 px-1.5">PNG</Badge>
+                  <Badge variant="outline" className="text-[10px] py-0 px-1.5">WebP</Badge>
+                </div>
               </div>
             </div>
           ) : (
@@ -190,12 +237,23 @@ export function ReceiptOcrModal({
                   <Button
                     size="sm"
                     variant="outline"
+                    className="h-7 text-xs bg-background/85 backdrop-blur-sm gap-1 hover:text-cyan-400 border-cyan-400/40"
+                    onClick={() => cameraInputRef.current?.click()}
+                    disabled={scanMutation.isPending}
+                    title="Scatta nuovamente la foto con la fotocamera"
+                  >
+                    <Camera className="h-3 w-3" />
+                    <span>Rifai Foto</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
                     className="h-7 text-xs bg-background/80 backdrop-blur-sm gap-1"
                     onClick={handleReset}
                     disabled={scanMutation.isPending}
                   >
                     <RefreshCw className="h-3 w-3" />
-                    Cambia
+                    <span>Cambia</span>
                   </Button>
                 </div>
               </div>

@@ -11,6 +11,8 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   Dialog,
   DialogContent,
@@ -30,22 +32,44 @@ interface ReminderCardProps {
 
 export function ReminderCard({ reminder, onEdit }: ReminderCardProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [completeDialogOpen, setCompleteDialogOpen] = useState(false)
+  const [execKm, setExecKm] = useState<number | string>(
+    reminder.target_km ?? reminder.last_km_check ?? ""
+  )
+  const [execDate, setExecDate] = useState<string>(
+    new Date().toISOString().split("T")[0]
+  )
+  const [execNotes, setExecNotes] = useState<string>("")
+
   const completeMutation = useCompleteReminder()
   const deleteMutation = useDeleteReminder()
 
   const pct = Math.min(100, Math.max(0, Math.round(reminder.progress * 100)))
   const isUrgent = reminder.progress >= 0.7 && !reminder.is_overdue
 
-  const handleMarkAsDone = async () => {
+  const handleOpenCompleteDialog = () => {
+    setExecKm(reminder.target_km ?? reminder.last_km_check ?? "")
+    setExecDate(new Date().toISOString().split("T")[0])
+    setExecNotes("")
+    setCompleteDialogOpen(true)
+  }
+
+  const handleConfirmComplete = async () => {
+    if (reminder.frequency_km && (!execKm || Number(execKm) <= 0)) {
+      toast.error("Inserisci un chilometraggio valido")
+      return
+    }
     try {
       await completeMutation.mutateAsync({
         id: reminder.id,
         data: {
-          check_date: new Date().toISOString().split("T")[0],
-          notes: "Eseguito manualmente dall'interfaccia",
+          check_date: execDate,
+          check_km: reminder.frequency_km ? Number(execKm) : undefined,
+          notes: execNotes || "Eseguito manualmente dall'interfaccia",
         },
       })
       toast.success(`"${reminder.title}" segnato come eseguito! Ciclo azzerato.`)
+      setCompleteDialogOpen(false)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Errore durante il salvataggio"
       toast.error(msg)
@@ -197,7 +221,7 @@ export function ReminderCard({ reminder, onEdit }: ReminderCardProps) {
             variant={reminder.is_overdue ? "emerald" : "outline"}
             size="sm"
             className="w-full gap-2 font-semibold text-xs h-9 border-border/80 hover:border-emerald-500/50"
-            onClick={handleMarkAsDone}
+            onClick={handleOpenCompleteDialog}
             disabled={completeMutation.isPending}
           >
             {completeMutation.isPending ? (
@@ -209,6 +233,100 @@ export function ReminderCard({ reminder, onEdit }: ReminderCardProps) {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Complete Execution Dialog */}
+      <Dialog open={completeDialogOpen} onOpenChange={setCompleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-emerald-400">
+              <CheckCircle2 className="h-5 w-5" />
+              Registra Controllo Eseguito
+            </DialogTitle>
+            <DialogDescription>
+              Conferma l&apos;avvenuta verifica per <strong>&quot;{reminder.title}&quot;</strong>.
+              Il ciclo verrà azzerato e l&apos;operazione verrà registrata nello storico.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            {reminder.frequency_km && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="exec_km" className="text-xs font-semibold">
+                    Chilometraggio del Veicolo (km) <span className="text-destructive font-bold">*</span>
+                  </Label>
+                  {reminder.target_km && (
+                    <span className="text-[11px] text-muted-foreground">
+                      Target ciclo: <strong className="font-mono text-foreground">{reminder.target_km.toLocaleString("it-IT")} km</strong>
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <Input
+                    id="exec_km"
+                    type="number"
+                    value={execKm}
+                    onChange={(e) => setExecKm(e.target.value)}
+                    placeholder={String(reminder.target_km || "")}
+                    className="pr-12 font-mono text-sm"
+                  />
+                  <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">
+                    km
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Chilometri rilevati al momento del controllo effettivo.
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="exec_date" className="text-xs font-semibold">
+                Data Intervento
+              </Label>
+              <Input
+                id="exec_date"
+                type="date"
+                value={execDate}
+                onChange={(e) => setExecDate(e.target.value)}
+                className="text-sm font-mono"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="exec_notes" className="text-xs font-semibold">
+                Note Opzionali
+              </Label>
+              <Input
+                id="exec_notes"
+                placeholder="Es. Eseguito regolarmente, controllo ok..."
+                value={execNotes}
+                onChange={(e) => setExecNotes(e.target.value)}
+                className="text-sm"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:space-x-2">
+            <Button
+              variant="outline"
+              onClick={() => setCompleteDialogOpen(false)}
+              disabled={completeMutation.isPending}
+            >
+              Annulla
+            </Button>
+            <Button
+              variant="emerald"
+              onClick={handleConfirmComplete}
+              disabled={completeMutation.isPending}
+              className="gap-2"
+            >
+              {completeMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              Conferma ed Azzera
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

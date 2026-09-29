@@ -16,6 +16,8 @@ export interface ReminderUpdate {
   frequency_days?: number | null
   is_active?: boolean
   notes?: string | null
+  current_km?: number | null
+  last_km_check?: number | null
 }
 
 export interface ReminderResponse extends ReminderBase {

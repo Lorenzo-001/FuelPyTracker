@@ -16,25 +16,68 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { CalendarClock, Gauge, Clock, Loader2, Sparkles } from "lucide-react"
 import { useCreateReminder, useUpdateReminder } from "@/hooks/useReminders"
+import { useRefuelings } from "@/hooks/useRefuelings"
 import { useSettings } from "@/hooks/useSettings"
 import type { ReminderResponse } from "@/types"
 import { toast } from "sonner"
 
-const reminderSchema = z.object({
-  title: z.string().min(2, "Il titolo deve contenere almeno 2 caratteri"),
-  frequency_type: z.enum(["days", "km"]),
-  frequency_days: z
-    .number({ invalid_type_error: "Inserisci un numero valido" })
-    .positive()
-    .optional()
-    .nullable(),
-  frequency_km: z
-    .number({ invalid_type_error: "Inserisci un numero valido" })
-    .positive()
-    .optional()
-    .nullable(),
-  notes: z.string().optional(),
-})
+const reminderSchema = z
+  .object({
+    title: z.string().min(2, "Il titolo deve contenere almeno 2 caratteri"),
+    frequency_type: z.enum(["days", "km"]),
+    frequency_days: z
+      .number({ invalid_type_error: "Inserisci un numero valido" })
+      .positive("I giorni devono essere maggiori di 0")
+      .optional()
+      .nullable(),
+    frequency_km: z
+      .number({ invalid_type_error: "Inserisci un numero valido" })
+      .positive("L'intervallo km deve essere maggiore di 0")
+      .optional()
+      .nullable(),
+    current_km: z
+      .number({ invalid_type_error: "Inserisci i chilometri attuali" })
+      .min(1, "I chilometri attuali devono essere maggiori di 0")
+      .optional()
+      .nullable(),
+    notes: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.frequency_type === "km") {
+        return typeof data.current_km === "number" && data.current_km > 0
+      }
+      return true
+    },
+    {
+      message: "I chilometri attuali sono obbligatori per i controlli a base chilometrica",
+      path: ["current_km"],
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.frequency_type === "km") {
+        return typeof data.frequency_km === "number" && data.frequency_km > 0
+      }
+      return true
+    },
+    {
+      message: "L'intervallo km è obbligatorio",
+      path: ["frequency_km"],
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.frequency_type === "days") {
+        return typeof data.frequency_days === "number" && data.frequency_days > 0
+      }
+      return true
+    },
+    {
+      message: "L'intervallo giorni è obbligatorio",
+      path: ["frequency_days"],
+    }
+  )
 
 type ReminderFormData = z.infer<typeof reminderSchema>
 
@@ -61,6 +104,12 @@ export function ReminderFormModal({
   const createMutation = useCreateReminder()
   const updateMutation = useUpdateReminder()
   const { data: settings } = useSettings()
+  const { data: refuelings } = useRefuelings()
+
+  const latestRefuelingKm = Math.max(
+    ...(refuelings?.map((r) => r.total_km) || [0]),
+    0
+  )
 
   const {
     register,
@@ -76,6 +125,7 @@ export function ReminderFormModal({
       frequency_type: "days",
       frequency_days: 30,
       frequency_km: null,
+      current_km: null,
       notes: "",
     },
   })
@@ -90,6 +140,7 @@ export function ReminderFormModal({
           frequency_type: initialData.frequency_km ? "km" : "days",
           frequency_days: initialData.frequency_days || null,
           frequency_km: initialData.frequency_km || null,
+          current_km: initialData.last_km_check ?? (latestRefuelingKm > 0 ? latestRefuelingKm : null),
           notes: initialData.notes || "",
         })
       } else {
@@ -98,11 +149,12 @@ export function ReminderFormModal({
           frequency_type: "days",
           frequency_days: 30,
           frequency_km: null,
+          current_km: latestRefuelingKm > 0 ? latestRefuelingKm : null,
           notes: "",
         })
       }
     }
-  }, [open, initialData, reset])
+  }, [open, initialData, latestRefuelingKm, reset])
 
   const applyPreset = (preset: typeof PRESETS[0]) => {
     setValue("title", preset.title, { shouldValidate: true })
@@ -110,9 +162,13 @@ export function ReminderFormModal({
     if (preset.type === "days") {
       setValue("frequency_days", preset.days, { shouldValidate: true })
       setValue("frequency_km", null)
+      setValue("current_km", null)
     } else {
       setValue("frequency_km", preset.km, { shouldValidate: true })
       setValue("frequency_days", null)
+      if (!watch("current_km") && latestRefuelingKm > 0) {
+        setValue("current_km", latestRefuelingKm, { shouldValidate: true })
+      }
     }
   }
 
@@ -125,6 +181,7 @@ export function ReminderFormModal({
             title: data.title,
             frequency_days: data.frequency_type === "days" ? data.frequency_days : null,
             frequency_km: data.frequency_type === "km" ? data.frequency_km : null,
+            current_km: data.frequency_type === "km" ? data.current_km : null,
             notes: data.notes || null,
           },
         })
@@ -134,6 +191,7 @@ export function ReminderFormModal({
           title: data.title,
           frequency_days: data.frequency_type === "days" ? data.frequency_days : null,
           frequency_km: data.frequency_type === "km" ? data.frequency_km : null,
+          current_km: data.frequency_type === "km" ? data.current_km : null,
           notes: data.notes || null,
         })
         toast.success("Nuovo promemoria attivato!")
@@ -239,6 +297,9 @@ export function ReminderFormModal({
                   setValue("frequency_type", "km")
                   setValue("frequency_days", null)
                   if (!watch("frequency_km")) setValue("frequency_km", 5000)
+                  if (!watch("current_km") && latestRefuelingKm > 0) {
+                    setValue("current_km", latestRefuelingKm, { shouldValidate: true })
+                  }
                 }}
                 className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
                   freqType === "km"
@@ -256,7 +317,7 @@ export function ReminderFormModal({
           {freqType === "days" ? (
             <div className="space-y-1.5">
               <Label htmlFor="frequency_days" className="text-xs font-semibold">
-                Ogni quanti giorni ripetere?
+                Ogni quanti giorni ripetere? <span className="text-destructive font-bold">*</span>
               </Label>
               <div className="relative">
                 <Input
@@ -275,25 +336,67 @@ export function ReminderFormModal({
               )}
             </div>
           ) : (
-            <div className="space-y-1.5">
-              <Label htmlFor="frequency_km" className="text-xs font-semibold">
-                Ogni quanti chilometri ripetere?
-              </Label>
-              <div className="relative">
-                <Input
-                  id="frequency_km"
-                  type="number"
-                  placeholder="5000"
-                  {...register("frequency_km", { valueAsNumber: true })}
-                  className="pr-12 font-mono text-sm"
-                />
-                <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">
-                  km
-                </span>
+            <div className="space-y-3">
+              {/* Current Km (Required) */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="current_km" className="text-xs font-semibold">
+                    Chilometri Attuali del Veicolo <span className="text-destructive font-bold">*</span>
+                  </Label>
+                  {latestRefuelingKm > 0 && (
+                    <span className="text-[11px] text-muted-foreground">
+                      Ultimo rifornimento: <strong className="font-mono text-foreground">{latestRefuelingKm.toLocaleString("it-IT")} km</strong>
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <Input
+                    id="current_km"
+                    type="number"
+                    placeholder={latestRefuelingKm > 0 ? String(latestRefuelingKm) : "Es. 125000"}
+                    {...register("current_km", { valueAsNumber: true })}
+                    className="pr-12 font-mono text-sm"
+                  />
+                  <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">
+                    km
+                  </span>
+                </div>
+                {errors.current_km && (
+                  <p className="text-xs text-rose-400">{errors.current_km.message}</p>
+                )}
+                <p className="text-[11px] text-muted-foreground">
+                  Punto di partenza per il ciclo. Precompilato in automatico con l'ultimo valore registrato.
+                </p>
               </div>
-              {errors.frequency_km && (
-                <p className="text-xs text-rose-400">{errors.frequency_km.message}</p>
-              )}
+
+              {/* Frequency Km */}
+              <div className="space-y-1.5">
+                <Label htmlFor="frequency_km" className="text-xs font-semibold">
+                  Ogni quanti chilometri ripetere? <span className="text-destructive font-bold">*</span>
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="frequency_km"
+                    type="number"
+                    placeholder="5000"
+                    {...register("frequency_km", { valueAsNumber: true })}
+                    className="pr-12 font-mono text-sm"
+                  />
+                  <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">
+                    km
+                  </span>
+                </div>
+                {errors.frequency_km && (
+                  <p className="text-xs text-rose-400">{errors.frequency_km.message}</p>
+                )}
+                {Boolean(watch("current_km") && watch("frequency_km")) && (
+                  <p className="text-[11px] text-emerald-400 font-mono">
+                    ✓ Prossima scadenza prevista a: {(
+                      (Number(watch("current_km")) || 0) + (Number(watch("frequency_km")) || 0)
+                    ).toLocaleString("it-IT")} km
+                  </p>
+                )}
+              </div>
             </div>
           )}
 

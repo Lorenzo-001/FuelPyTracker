@@ -834,17 +834,28 @@ Pipeline Monorepo multi-job eseguita su ogni `push` e `pull_request` verso rami 
 
 ### 3. Step 5.3: Configurazione Hosting & Strategia Zero-Cost
 - **Frontend Edge CDN (Vercel / Netlify / Cloudflare Pages):**
-  - **`frontend/vercel.json`:** Regola di riscrittura URL verso `/index.html` per garantire il corretto funzionamento di React Router; header di cache immutabile a 1 anno per `/assets/*`; policy di sicurezza HTTP (`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`).
+  - **`vercel.json` (Root & `frontend/`):** Regola universale di riscrittura URL `/(.*) -> /index.html` per garantire il corretto funzionamento di React Router SPA sia con build root-level che con Root Directory `frontend/`; previene gli errori HTTP 404 sui refresh e sulla navigazione diretta (es. `/settings`). Include header di cache immutabile a 1 anno per `/assets/*` e policy di sicurezza HTTP (`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`).
   - **`frontend/public/_redirects`:** Regola di fallback universale per Netlify e Cloudflare Pages (`/* /index.html 200`), copiata automaticamente da Vite nella root del bundle di distribuzione (`dist/`).
 - **Backend PaaS Cloud (Render.com):**
   - **`render.yaml`:** Specifica Blueprint Infrastructure-as-Code (IaC) per il deploy con 1-click del web service `fuelpytracker-backend`.
   - Configurazione: piano gratuito (`plan: free`), regione europea a bassa latenza (`frankfurt`), runtime Python 3.11.9, healthcheck automatico su `/health`, 2 worker Uvicorn.
 - **Workflow Anti-Sleep / Keep-Alive (`.github/workflows/keep-alive.yml`):**
   - Risoluzione del problema del *Cold Start* del free-tier di Render (sospensione dopo 15 minuti di inattività).
-  - Cron-job schedulato ogni 14 minuti con `curl` su `${{ vars.RENDER_BACKEND_URL }}/health`.
+  - Cron-job schedulato ogni 14 minuti con `curl` su `${{ vars.RENDER_BACKEND_URL }}/health` (con supporto sia a metodi `GET` che `HEAD` per monitoraggio esterno uptime).
   - Trigger manuale `workflow_dispatch` per consentire collaudo istantaneo e messaggi diagnostici guidati.
 
-### 4. Risoluzione Incompatibilità Dipendenze CI (`httpx` & `Starlette TestClient`)
+### 4. Rifinitura Mobile UX, Acquisizione Diretta Fotocamera & Promemoria
+- **Risoluzione Overflow & Bug Visuali Mobile:**
+  - Correzione della barra dei tab in `SettingsPage.tsx` con scrolling orizzontale nativo su smartphone, eliminando gli spazi bianchi laterali.
+  - Simulatore costi viaggio (`TripCalculatorModal.tsx`) reso pienamente compatibile con l'inserimento di decimali (`.` o `,`) senza reset a zero.
+  - Intestazioni flessibili per tutte le card delle impostazioni e posizionamento controllato dell'asterisco obbligatorio in `VehicleSelector.tsx`.
+- **Acquisizione Scontrini con Fotocamera Nativa (`ReceiptOcrModal.tsx`):**
+  - Supporto diretto alla fotocamera dello smartphone tramite `capture="environment"`, con possibilità di scattare e ripetere la foto prima dell'invio ad OpenAI Vision.
+- **Chilometraggio Attuale Promemoria (`ReminderFormModal.tsx` & `ReminderCard.tsx`):**
+  - Introduzione del campo obbligatorio per i chilometri attuali/di partenza nei controlli a base chilometrica, precompilato con l'ultimo valore registrato a sistema.
+  - Dialogo di conferma e rettifica manuale dei chilometri rilevati all'atto della registrazione dell'intervento eseguito.
+
+### 5. Risoluzione Incompatibilità Dipendenze CI (`httpx` & `Starlette TestClient`)
 - **Problema riscontrato:** Nelle versioni di `httpx >= 0.28.0`, il parametro legacy `app=` è stato definitivamente rimosso da `httpx.Client.__init__()`. La versione di `fastapi==0.110.0` si appoggia a `starlette==0.36.3`, il cui `TestClient` effettua internamente la chiamata `super().__init__(app=app, ...)`. In ambiente CI pulito, la presenza di `httpx==0.28.1` causava l'eccezione `TypeError: Client.__init__() got an unexpected keyword argument 'app'`.
 - **Intervento applicato:**
   - In `backend/requirements.txt`: allineato `httpx==0.27.2` (pienamente compatibile con `TestClient` e con i client di `openai` e `supabase`).

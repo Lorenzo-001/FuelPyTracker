@@ -183,14 +183,15 @@ export function VehicleSelector({ value, onChange, error }: VehicleSelectorProps
   return (
     <div className="space-y-2.5">
       {/* Header with Mode Toggle */}
-      <div className="flex items-center justify-between">
-        <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-          <Car className="h-3.5 w-3.5 text-emerald-400" />
-          <span>Modello Veicolo</span>
-          <span className="text-destructive">*</span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <label className="text-xs font-semibold text-foreground flex items-center gap-1.5 shrink-0">
+          <Car className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+          <span>
+            Modello Veicolo <span className="text-destructive font-bold">*</span>
+          </span>
         </label>
 
-        <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded-lg border border-border/50 text-[11px]">
+        <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded-lg border border-border/50 text-[11px] self-start sm:self-auto shrink-0">
           <button
             type="button"
             onClick={handleSwitchToCatalog}

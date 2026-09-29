@@ -20,8 +20,8 @@ interface TripCalculatorModalProps {
 
 export function TripCalculatorModal({ defaultAvgKml = 18.45 }: TripCalculatorModalProps) {
   const [open, setOpen] = useState(false)
-  const [distanceKm, setDistanceKm] = useState<number>(350)
-  const [fuelPrice, setFuelPrice] = useState<number>(1.82)
+  const [distanceKm, setDistanceKm] = useState<string>("350")
+  const [fuelPrice, setFuelPrice] = useState<string>("1.82")
   const [result, setResult] = useState<TripCalculationResponse | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -29,23 +29,31 @@ export function TripCalculatorModal({ defaultAvgKml = 18.45 }: TripCalculatorMod
     e.preventDefault()
     setLoading(true)
 
+    const parsedDistance = parseFloat(distanceKm.replace(",", ".")) || 0
+    const parsedPrice = parseFloat(fuelPrice.replace(",", ".")) || 0
+
+    if (parsedDistance <= 0 || parsedPrice <= 0) {
+      setLoading(false)
+      return
+    }
+
     try {
       const res = await dashboardApi.calculateTrip({
-        distance_km: distanceKm,
-        expected_fuel_price: fuelPrice,
+        distance_km: parsedDistance,
+        expected_fuel_price: parsedPrice,
       })
       setResult(res)
     } catch {
       // Fallback calculation using local stats if offline or unauthenticated
       const kml = defaultAvgKml > 0 ? defaultAvgKml : 18.45
-      const liters = distanceKm / kml
-      const cost = liters * fuelPrice
+      const liters = parsedDistance / kml
+      const cost = liters * parsedPrice
       setResult({
-        distance_km: distanceKm,
+        distance_km: parsedDistance,
         estimated_liters: Number(liters.toFixed(2)),
         estimated_cost: Number(cost.toFixed(2)),
         avg_km_per_liter_used: Number(kml.toFixed(2)),
-        fuel_price_used: fuelPrice,
+        fuel_price_used: parsedPrice,
       })
     } finally {
       setLoading(false)
@@ -80,11 +88,11 @@ export function TripCalculatorModal({ defaultAvgKml = 18.45 }: TripCalculatorMod
                 Distanza (km)
               </label>
               <Input
-                type="number"
-                min={1}
-                step={1}
+                type="text"
+                inputMode="decimal"
                 value={distanceKm}
-                onChange={(e) => setDistanceKm(Number(e.target.value))}
+                onChange={(e) => setDistanceKm(e.target.value)}
+                placeholder="es. 350"
                 required
               />
             </div>
@@ -95,11 +103,11 @@ export function TripCalculatorModal({ defaultAvgKml = 18.45 }: TripCalculatorMod
                 Prezzo Stimato (€/L)
               </label>
               <Input
-                type="number"
-                min={0.5}
-                step={0.01}
+                type="text"
+                inputMode="decimal"
                 value={fuelPrice}
-                onChange={(e) => setFuelPrice(Number(e.target.value))}
+                onChange={(e) => setFuelPrice(e.target.value)}
+                placeholder="es. 1.82"
                 required
               />
             </div>

@@ -37,6 +37,8 @@ class ReminderUpdate(BaseModel):
     frequency_days: Optional[int] = Field(None, gt=0)
     is_active: Optional[bool] = None
     notes: Optional[str] = None
+    current_km: Optional[int] = Field(None, gt=0, description="Chilometraggio aggiornato di riferimento")
+    last_km_check: Optional[int] = Field(None, gt=0, description="Chilometraggio dell'ultimo controllo")
 
 
 class ReminderResponse(ReminderBase):

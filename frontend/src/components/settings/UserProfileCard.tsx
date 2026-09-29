@@ -16,9 +16,9 @@ export function UserProfileCard() {
   return (
     <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-md">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 items-start">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0 mt-0.5 sm:mt-0">
               <User className="h-5 w-5" />
             </div>
             <div>
@@ -34,7 +34,7 @@ export function UserProfileCard() {
           {user && (
             <Badge
               variant={user.is_demo ? "warning" : "success"}
-              className="text-xs gap-1.5"
+              className="text-xs gap-1.5 shrink-0 self-start sm:self-auto"
             >
               {user.is_demo ? (
                 <>
@@ -102,8 +102,8 @@ export function UserProfileCard() {
         )}
       </CardContent>
 
-      <CardFooter className="border-t border-border/60 pt-4 flex items-center justify-between">
-        <Button asChild variant="outline" size="sm" className="gap-1.5 text-xs">
+      <CardFooter className="border-t border-border/60 pt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <Button asChild variant="outline" size="sm" className="gap-1.5 text-xs w-full sm:w-auto justify-center">
           <Link to="/login">
             <KeyRound className="h-3.5 w-3.5" />
             <span>Accedi o Cambia Account</span>
@@ -115,7 +115,7 @@ export function UserProfileCard() {
           size="sm"
           onClick={handleLogout}
           disabled={logoutMutation.isPending}
-          className="gap-1.5 text-xs"
+          className="gap-1.5 text-xs w-full sm:w-auto justify-center"
         >
           {logoutMutation.isPending ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
