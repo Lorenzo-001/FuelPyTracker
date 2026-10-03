@@ -279,6 +279,7 @@ La **Fase 4** trasforma lo scheletro in un'applicazione interattiva completa, fr
 | **Step 4.7** | **Impostazioni & Categorie** | Form soglie carburante, gestore categorie con tag interattivi, profilo & diagnostica | ✅ **Completato** |
 | **Step 4.8** | **Collaudo Globale E2E UX** | Certificazione browser end-to-end e documentazione conclusiva | ✅ **Completato** |
 | **Step 4.9** | **Mobile Refinement & Camera OCR** | Fix layout mobile, input numerici resilienti, fotocamera nativa e gestione km promemoria | ✅ **Completato** |
+| **Step 4.10** | **Session Resume, Scroll & Nav Polish** | Riavvio sessione dopo 30min inattività con intro splash, scroll-to-top, modale logout e titolo dinamico | ✅ **Completato** |
 
 ---
 
@@ -296,6 +297,27 @@ La **Fase 4** trasforma lo scheletro in un'applicazione interattiva completa, fr
 - **Inserimento Manuale Chilometraggio Promemoria (`ReminderFormModal.tsx` & `ReminderCard.tsx`):**
   - Campo obbligatorio "Chilometri Attuali del Veicolo *" nei controlli a frequenza chilometrica, precompilato automaticamente con il chilometraggio massimo rilevato (ultimo rifornimento) con validazione reattiva.
   - Finestra di conferma "Registra Controllo Eseguito" al completamento ("Segna come Eseguito"), che consente di confermare o rettificare manualmente il chilometraggio effettivo e la data al momento dell'intervento.
+
+---
+
+### 🔹 Sotto-Fase 4.10: Session Resume Manager, Scroll-To-Top & UX Navigation Polish ✅
+- **Session Resume Manager (`src/components/common/SessionResumeManager.tsx`):**
+  - **Monitoraggio Inattività:** Registrazione persistente dell'ultimo timestamp attivo in `localStorage` (`fpt_last_active_ts`) con throttling delle interazioni utente per non appesantire la CPU.
+  - **Soglia di Riavvio a 30 Minuti:** Al ritorno sull'app (evento `visibilitychange` da app switcher o `pageshow` da ripristino memoria *BFCache*), se sono trascorsi 30+ minuti viene avviato il flusso di ripartenza.
+  - **Schermata Intro di Benvenuto (1.5s):** Overlay scuro in glassmorphism con logo pulsante, glow circolare smeraldo e messaggio *"Bentornato! • Riavvio sessione e sincronizzazione dei dati di bordo in corso..."*.
+  - **Redirect e Sincronizzazione Dati Live:** Reindirizzamento automatico alla **Dashboard** (`/`) per chi riapre l'app da sezioni secondarie (es. `/settings`) e chiamata `queryClient.invalidateQueries()` per scaricare immediatamente i dati più aggiornati dal server.
+- **Scroll-To-Top Coordinato (`src/lib/utils.ts`, `AppLayout.tsx`, `Sidebar.tsx`, `BottomBar.tsx`, `Navbar.tsx`):**
+  - Funzione `scrollToTop(smooth)` operante sul contenitore principale con scorrimento interno (`main.overflow-y-auto`) e su `window`.
+  - Ripristino istantaneo in cima ad ogni cambio rotta (`location.pathname`) in `AppLayout`.
+  - Risalita fluida verso l'alto al click di qualsiasi voce di menu (Sidebar, BottomBar, BottomSheet "Altro", brand logo e user pill).
+- **Pop-up di Conferma Logout (`src/components/auth/LogoutConfirmDialog.tsx`):**
+  - Modale di sicurezza interattiva per confermare l'uscita dall'account, integrata sia in `UserProfileCard` (Impostazioni) sia nel pulsante di logout rapido della BottomBar mobile.
+- **Titolo Veicolo Dinamico (`src/pages/DashboardPage.tsx`):**
+  - Integrazione di `useSettings()` nel banner della Dashboard, sostituendo il nome fisso con l'anagrafica reale configurata dall'utente.
+- **Priorità Scheda Profilo Utente (`src/pages/SettingsPage.tsx`):**
+  - Spostamento del tab *Profilo & Diagnostica* come prima scheda attiva di default (`defaultValue="system"`).
+- **Normalizzazione Fuso Orario Heartbeat (`src/components/settings/ApiDiagnosticsCard.tsx` & Backend `/health`):**
+  - Backend aggiornato a `datetime.datetime.now(datetime.timezone.utc).isoformat()` e frontend dotato di normalizzazione UTC `Z` per convertire accuratamente l'orario di heartbeat nel fuso orario locale dell'utente (evitando il disallineamento di -2 ore in Italia).
 
 ---
 

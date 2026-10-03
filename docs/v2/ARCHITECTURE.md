@@ -854,6 +854,13 @@ Pipeline Monorepo multi-job eseguita su ogni `push` e `pull_request` verso rami 
 - **Chilometraggio Attuale Promemoria (`ReminderFormModal.tsx` & `ReminderCard.tsx`):**
   - Introduzione del campo obbligatorio per i chilometri attuali/di partenza nei controlli a base chilometrica, precompilato con l'ultimo valore registrato a sistema.
   - Dialogo di conferma e rettifica manuale dei chilometri rilevati all'atto della registrazione dell'intervento eseguito.
+- **Gestione Ciclo di Vita Sessione & Riavvio Inattività (`SessionResumeManager.tsx`):**
+  - Monitoraggio inattività con soglia di 30 minuti (`fpt_last_active_ts`), agganciato agli eventi `visibilitychange` e `pageshow` (BFCache su browser mobile).
+  - Intro animata di benvenuto (1.5s), sincronizzazione cache TanStack Query ed elegante redirect alla Dashboard se l'app è stata riaperta da pagine secondarie dopo una lunga assenza.
+- **Navigazione & Sicurezza:**
+  - Scroll-To-Top unificato per contenitore interno ed esterno al click di qualsiasi voce di menu e ad ogni cambio rotta.
+  - Pop-up di conferma disconnessione (`LogoutConfirmDialog.tsx`) per prevenire logout involontari.
+  - Titolo veicolo dinamico nella Dashboard da `useSettings()` e normalizzazione orario heartbeat UTC per eliminare il disallineamento di fuso orario (+2 ore).
 
 ### 5. Risoluzione Incompatibilità Dipendenze CI (`httpx` & `Starlette TestClient`)
 - **Problema riscontrato:** Nelle versioni di `httpx >= 0.28.0`, il parametro legacy `app=` è stato definitivamente rimosso da `httpx.Client.__init__()`. La versione di `fastapi==0.110.0` si appoggia a `starlette==0.36.3`, il cui `TestClient` effettua internamente la chiamata `super().__init__(app=app, ...)`. In ambiente CI pulito, la presenza di `httpx==0.28.1` causava l'eccezione `TypeError: Client.__init__() got an unexpected keyword argument 'app'`.

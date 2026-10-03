@@ -4,6 +4,7 @@ import { Sidebar } from "./Sidebar"
 import { Navbar } from "./Navbar"
 import { BottomBar } from "./BottomBar"
 import { scrollToTop } from "@/lib/utils"
+import { SessionResumeManager } from "@/components/common/SessionResumeManager"
 
 export function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -16,6 +17,9 @@ export function AppLayout() {
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-background text-foreground flex flex-row">
+      {/* Session Inactivity Resume & Welcome Splash */}
+      <SessionResumeManager />
+
       {/* Desktop Sidebar (Fissa a tutta altezza, visibile da md in su) */}
       <div className="hidden md:flex shrink-0 h-full">
         <Sidebar
@@ -43,3 +47,4 @@ export function AppLayout() {
     </div>
   )
 }
+
