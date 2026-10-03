@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { useSystemHealth } from "@/hooks/useSystemHealth"
 import { useCurrentUser } from "@/hooks/useAuth"
 import { isPublicDemoMode } from "@/lib/demo"
+import { scrollToTop } from "@/lib/utils"
 
 const pageTitles: Record<string, { title: string; category: string }> = {
   "/": { title: "Dashboard Generale", category: "Panoramica" },
@@ -37,11 +38,13 @@ export function Navbar() {
       {/* Left: Brand Icon (mobile) & Title / Breadcrumb */}
       <div className="flex items-center gap-3">
         {/* Mobile Brand Icon */}
-        <img
-          src="/logo.png"
-          alt="FuelPyTracker Logo"
-          className="md:hidden h-8 w-8 shrink-0 object-contain drop-shadow-[0_2px_8px_rgba(250,204,21,0.3)]"
-        />
+        <Link to="/" onClick={() => scrollToTop(true)} className="md:hidden">
+          <img
+            src="/logo.png"
+            alt="FuelPyTracker Logo"
+            className="h-8 w-8 shrink-0 object-contain drop-shadow-[0_2px_8px_rgba(250,204,21,0.3)]"
+          />
+        </Link>
 
         <div className="flex flex-col">
           <div className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -122,6 +125,7 @@ export function Navbar() {
         {/* User Pill / Profile */}
         <Link
           to={user || isDemo ? "/settings" : "/login"}
+          onClick={() => scrollToTop(true)}
           title={user?.email ? `Profilo utente: ${user.email}` : "Accedi alla tua area"}
           className="flex items-center gap-2 rounded-lg border border-border/70 bg-card/60 px-2 sm:px-2.5 py-1.5 text-xs text-muted-foreground hover:border-border hover:text-foreground transition-all"
         >

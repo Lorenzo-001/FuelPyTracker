@@ -14,12 +14,13 @@ import {
   ChevronRight,
   LogOut,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, scrollToTop } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { useReminders } from "@/hooks/useReminders"
 import { useCurrentUser, useLogout } from "@/hooks/useAuth"
 import { useSettings } from "@/hooks/useSettings"
 import { isPublicDemoMode } from "@/lib/demo"
+import { LogoutConfirmDialog } from "@/components/auth/LogoutConfirmDialog"
 import {
   Sheet,
   SheetContent,
@@ -30,6 +31,7 @@ import {
 
 export function BottomBar() {
   const [moreOpen, setMoreOpen] = useState(false)
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -72,6 +74,7 @@ export function BottomBar() {
         <NavLink
           to="/"
           end
+          onClick={() => scrollToTop(true)}
           className={({ isActive }) =>
             cn(
               "flex flex-col items-center justify-center flex-1 py-1 text-[10px] font-medium transition-colors",
@@ -92,6 +95,7 @@ export function BottomBar() {
         {/* Tab 2: Rifornimenti */}
         <NavLink
           to="/fuel"
+          onClick={() => scrollToTop(true)}
           className={({ isActive }) =>
             cn(
               "flex flex-col items-center justify-center flex-1 py-1 text-[10px] font-medium transition-colors",
@@ -125,6 +129,7 @@ export function BottomBar() {
         {/* Tab 3: Manutenzioni */}
         <NavLink
           to="/maintenance"
+          onClick={() => scrollToTop(true)}
           className={({ isActive }) =>
             cn(
               "flex flex-col items-center justify-center flex-1 py-1 text-[10px] font-medium transition-colors",
@@ -188,6 +193,7 @@ export function BottomBar() {
             onClick={() => {
               setMoreOpen(false)
               navigate("/settings")
+              scrollToTop(true)
             }}
             className="w-full p-3 rounded-xl border border-border/70 bg-muted/20 hover:bg-muted/30 transition-colors flex items-center justify-between mb-4 text-left"
           >
@@ -210,6 +216,7 @@ export function BottomBar() {
               onClick={() => {
                 setMoreOpen(false)
                 navigate("/reminders")
+                scrollToTop(true)
               }}
               className="w-full flex items-center justify-between p-3 rounded-xl border border-border/60 bg-card/60 hover:bg-muted/40 transition-colors text-left"
             >
@@ -247,6 +254,7 @@ export function BottomBar() {
               onClick={() => {
                 setMoreOpen(false)
                 navigate("/reports")
+                scrollToTop(true)
               }}
               className="w-full flex items-center justify-between p-3 rounded-xl border border-border/60 bg-card/60 hover:bg-muted/40 transition-colors text-left"
             >
@@ -267,6 +275,7 @@ export function BottomBar() {
               onClick={() => {
                 setMoreOpen(false)
                 navigate("/settings")
+                scrollToTop(true)
               }}
               className="w-full flex items-center justify-between p-3 rounded-xl border border-border/60 bg-card/60 hover:bg-muted/40 transition-colors text-left"
             >
@@ -292,6 +301,7 @@ export function BottomBar() {
                   onClick={() => {
                     setMoreOpen(false)
                     navigate("/settings")
+                    scrollToTop(true)
                   }}
                   className="flex items-center gap-3 min-w-0 text-left flex-1"
                 >
@@ -313,10 +323,7 @@ export function BottomBar() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setMoreOpen(false)
-                    logoutMutation.mutate()
-                  }}
+                  onClick={() => setLogoutDialogOpen(true)}
                   title="Disconnetti account"
                   className="p-2 rounded-lg text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10 transition-colors shrink-0 ml-1 border border-border/40"
                 >
@@ -329,6 +336,7 @@ export function BottomBar() {
                 onClick={() => {
                   setMoreOpen(false)
                   navigate("/login")
+                  scrollToTop(true)
                 }}
                 className="w-full flex items-center justify-between p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-left hover:bg-amber-500/15 transition-colors"
               >
@@ -349,6 +357,7 @@ export function BottomBar() {
                 onClick={() => {
                   setMoreOpen(false)
                   navigate("/login")
+                  scrollToTop(true)
                 }}
                 className="w-full flex items-center justify-between p-3 rounded-xl border border-border/60 bg-card/60 hover:bg-muted/40 transition-colors text-left"
               >
@@ -367,6 +376,18 @@ export function BottomBar() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Logout Confirmation Dialog */}
+      <LogoutConfirmDialog
+        open={logoutDialogOpen}
+        onOpenChange={setLogoutDialogOpen}
+        onConfirm={() => {
+          setMoreOpen(false)
+          logoutMutation.mutate()
+          setLogoutDialogOpen(false)
+        }}
+        isLoading={logoutMutation.isPending}
+      />
     </>
   )
 }

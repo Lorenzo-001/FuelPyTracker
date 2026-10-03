@@ -1,11 +1,18 @@
-import { useState } from "react"
-import { Outlet } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { Outlet, useLocation } from "react-router-dom"
 import { Sidebar } from "./Sidebar"
 import { Navbar } from "./Navbar"
 import { BottomBar } from "./BottomBar"
+import { scrollToTop } from "@/lib/utils"
 
 export function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const location = useLocation()
+
+  // Reset scroll del contenitore principale ad ogni cambio rotta
+  useEffect(() => {
+    scrollToTop(false)
+  }, [location.pathname])
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-background text-foreground flex flex-row">

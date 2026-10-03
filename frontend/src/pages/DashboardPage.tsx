@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useDashboardSummary } from "@/hooks/useDashboardSummary"
+import { useSettings } from "@/hooks/useSettings"
 import { DashboardCharts } from "@/components/dashboard/DashboardCharts"
 import { CarHealthWidget } from "@/components/dashboard/CarHealthWidget"
 import { TripCalculatorModal } from "@/components/dashboard/TripCalculatorModal"
@@ -24,6 +25,9 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const [timeRange, setTimeRange] = useState("ytd")
   const { data: summary, isLoading } = useDashboardSummary(timeRange)
+  const { data: settings } = useSettings()
+
+  const vehicleName = settings?.vehicle_name?.trim() || "Il Tuo Veicolo"
 
   const currentYear = new Date().getFullYear()
 
@@ -73,7 +77,7 @@ export default function DashboardPage() {
             </span>
           </div>
           <h2 className="text-2xl md:text-3xl font-black tracking-tight">
-            BMW Serie 1 — Riepilogo Operativo
+            {vehicleName} — Riepilogo Operativo
           </h2>
           <p className="text-xs md:text-sm text-muted-foreground max-w-2xl">
             Monitora l'efficienza energetica, l'andamento dei prezzi carburante e la salute meccanica in tempo reale.

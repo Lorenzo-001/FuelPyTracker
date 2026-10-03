@@ -1,16 +1,19 @@
+import { useState } from "react"
 import { User, LogOut, ShieldCheck, KeyRound, AlertCircle, Loader2 } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useCurrentUser, useLogout } from "@/hooks/useAuth"
 import { Link } from "react-router-dom"
+import { LogoutConfirmDialog } from "@/components/auth/LogoutConfirmDialog"
 
 export function UserProfileCard() {
   const { data: user, isLoading, isError } = useCurrentUser()
   const logoutMutation = useLogout()
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
 
   const handleLogout = () => {
-    logoutMutation.mutate()
+    setLogoutDialogOpen(true)
   }
 
   return (
@@ -125,6 +128,16 @@ export function UserProfileCard() {
           <span>Disconnetti</span>
         </Button>
       </CardFooter>
+
+      <LogoutConfirmDialog
+        open={logoutDialogOpen}
+        onOpenChange={setLogoutDialogOpen}
+        onConfirm={() => {
+          logoutMutation.mutate()
+          setLogoutDialogOpen(false)
+        }}
+        isLoading={logoutMutation.isPending}
+      />
     </Card>
   )
 }

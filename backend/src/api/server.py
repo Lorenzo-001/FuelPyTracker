@@ -118,6 +118,6 @@ def health_check():
         "status": "ok",
         "version": "2.0.0",
         "database": db_status,
-        "timestamp": datetime.datetime.utcnow().isoformat()
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
     }
 

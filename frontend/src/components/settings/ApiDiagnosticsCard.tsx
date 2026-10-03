@@ -77,7 +77,11 @@ export function ApiDiagnosticsCard() {
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Ultimo Heartbeat:</span>
               <span className="font-mono text-muted-foreground">
-                {new Date(health.timestamp).toLocaleTimeString("it-IT")}
+                {new Date(
+                  health.timestamp.endsWith("Z") || health.timestamp.includes("+")
+                    ? health.timestamp
+                    : `${health.timestamp}Z`
+                ).toLocaleTimeString("it-IT")}
               </span>
             </div>
           )}

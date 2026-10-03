@@ -12,7 +12,7 @@ import {
   Car,
   ShieldCheck,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, scrollToTop } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { useReminders } from "@/hooks/useReminders"
 import { useSettings } from "@/hooks/useSettings"
@@ -141,6 +141,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               key={item.href}
               to={item.href}
               end={item.href === "/"}
+              onClick={() => scrollToTop(true)}
               className={({ isActive }) =>
                 cn(
                   "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 relative",
@@ -199,6 +200,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {collapsed ? (
           <Link
             to="/settings"
+            onClick={() => scrollToTop(true)}
             className="flex justify-center"
             title={`Veicolo attivo: ${vehicleName} (${vehicleDetails})`}
           >
@@ -209,6 +211,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         ) : (
           <Link
             to="/settings"
+            onClick={() => scrollToTop(true)}
             className="block rounded-lg border border-border/60 bg-muted/20 p-2.5 hover:border-emerald-500/40 hover:bg-muted/30 transition-all group"
             title="Gestisci anagrafica veicolo nelle Impostazioni"
           >
