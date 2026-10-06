@@ -105,25 +105,12 @@ class TestDemoUser:
             assert dm.DEMO_USER.email == _FAKE_EMAIL
 
     def test_demo_user_raises_if_credentials_missing(self):
-        """Se DEMO_USER_ID/DEMO_USER_EMAIL sono vuoti E st.secrets non ha valori demo,
-        _build_demo_user solleva ValueError."""
-        # 1. Env vars vuote (mascherano valori da .env già caricato nel processo)
-        # 2. Mock di st.secrets per bloccare il fallback su secrets.toml
-        mock_secrets = {"demo": {}}
+        """Se DEMO_USER_ID/DEMO_USER_EMAIL sono vuoti, _build_demo_user solleva ValueError."""
         with patch.dict("os.environ", {"DEMO_USER_ID": "", "DEMO_USER_EMAIL": ""}), \
              patch("src.demo.is_demo_mode", return_value=False):
-            # Importiamo qui per evitare cache del modulo
-            import importlib, src.demo as dm
-            # Rimpiazziamo il singolo lookup st.secrets con una versione che restituisce {}
-            original_get = dm._get_demo_credential
-            def _empty_cred(env_key, secrets_key):
-                return None
-            dm._get_demo_credential = _empty_cred
-            try:
-                with pytest.raises(ValueError, match="DEMO_USER_ID"):
-                    dm._build_demo_user()
-            finally:
-                dm._get_demo_credential = original_get
+            import src.demo as dm
+            with pytest.raises(ValueError, match="DEMO_USER_ID"):
+                dm._build_demo_user()
 
 
 

@@ -18,7 +18,7 @@ ALIAS_MAP = {
     'full': 'pieno'
 }
 
-# Alias per ri-mappare i dati processati dalla UI (Data Editor di Streamlit)
+# Alias per ri-mappare i dati processati dalla UI (Tabella di staging import)
 # La UI tende a rinominare le colonne o aggiungere suffix (es. note_user)
 UI_REVERSE_MAP = {
     'data': 'data',

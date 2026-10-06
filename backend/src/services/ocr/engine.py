@@ -2,9 +2,6 @@ import os
 from pathlib import Path
 import base64
 import json
-import toml
-# pyrefly: ignore [missing-import]
-import streamlit as st
 from datetime import datetime
 # pyrefly: ignore [missing-import]
 from openai import OpenAI, APIConnectionError, RateLimitError, AuthenticationError, APIError
@@ -18,34 +15,8 @@ from src.demo import is_demo_mode, mock_analyze_receipt
 # =============================================================================
 
 def _get_openai_key() -> str | None:
-    """Recupera la chiave API di OpenAI da variabili d'ambiente, st.secrets o secrets.toml."""
-    env_key = os.environ.get("OPENAI_API_KEY", "").strip()
-    if env_key:
-        return env_key
-
-    try:
-        key = st.secrets.get("openai", {}).get("api_key")
-        if key:
-            return str(key)
-    except Exception:
-        pass
-
-    try:
-        candidates = [
-            Path(__file__).resolve().parents[3] / ".streamlit" / "secrets.toml",
-            Path.cwd() / "backend" / ".streamlit" / "secrets.toml",
-            Path.cwd() / ".streamlit" / "secrets.toml",
-        ]
-        for candidate in candidates:
-            if candidate.is_file():
-                data = toml.load(candidate)
-                k = data.get("openai", {}).get("api_key")
-                if k:
-                    return str(k)
-    except Exception:
-        pass
-
-    return None
+    """Recupera la chiave API di OpenAI dalle variabili d'ambiente OS."""
+    return os.environ.get("OPENAI_API_KEY", "").strip() or None
 
 
 def get_openai_client() -> OpenAI | None:
@@ -67,7 +38,7 @@ def analyze_receipt(file_buffer) -> ReceiptData:
     Invia l'immagine dello scontrino a OpenAI GPT-4o e restituisce dati strutturati.
     
     Args:
-        file_buffer: Oggetto file-like (bytes) caricato da Streamlit o FastAPI.
+        file_buffer: Oggetto file-like (bytes) caricato da FastAPI.
         
     Returns:
         ReceiptData: DTO popolato con i dati estratti (o errore nel campo raw_text).

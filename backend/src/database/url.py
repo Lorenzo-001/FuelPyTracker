@@ -15,7 +15,7 @@ def resolve_database_url(secrets_url: str | None = None) -> str:
     Risolve l'URL per SQLAlchemy con la seguente priorità:
     1. Variabile d'ambiente DATABASE_URL (con normalizzazione postgres:// -> postgresql://)
     2. Flag LOCAL_SQLITE=True (database SQLite sotto data/local.db)
-    3. secrets_url fornito esplicitamente (da Streamlit o da file di configurazione)
+    3. secrets_url fornito esplicitamente
     4. Solleva ValueError se nessuna sorgente è configurata.
     """
     # 1. Variabile d'ambiente OS (Docker, Render, Cloud Run, .env)
@@ -38,15 +38,14 @@ def resolve_database_url(secrets_url: str | None = None) -> str:
         return secrets_url
 
     raise ValueError(
-        "Database URL missing. Set DATABASE_URL env var, LOCAL_SQLITE=True, "
-        "or configure database.url in .streamlit/secrets.toml."
+        "Database URL missing. Set DATABASE_URL env var or LOCAL_SQLITE=True."
     )
 
 
 
 
 def engine_kwargs_for_url(url: str) -> dict:
-    """Extra create_engine kwargs (SQLite needs check_same_thread for Streamlit)."""
+    """Extra create_engine kwargs (SQLite needs check_same_thread for multi-threaded access)."""
     if url.startswith("sqlite"):
         return {"connect_args": {"check_same_thread": False}}
     return {}

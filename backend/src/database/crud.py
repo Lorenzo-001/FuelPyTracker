@@ -1,4 +1,3 @@
-import streamlit as st # <--- Nuovo Import per Cache
 from typing import List, Optional
 from datetime import date
 from sqlalchemy import func, desc, and_, or_
@@ -10,21 +9,17 @@ from src.config import DEFAULTS
 # SEZIONE: GESTIONE RIFORNIMENTI (Refueling)
 # ==========================================
 
-# Prefisso underscore: evita che Streamlit tenti di hashare la sessione DB.
-@st.cache_data(ttl=300, show_spinner=False)
-def get_all_refuelings(_db: Session, user_id: str) -> List[Refueling]:
-    """Restituisce storico filtrato per utente (Cachato)."""
-    return _db.query(Refueling).filter(Refueling.user_id == user_id).order_by(Refueling.date.desc()).all()
+def get_all_refuelings(db: Session, user_id: str) -> List[Refueling]:
+    """Restituisce storico filtrato per utente."""
+    return db.query(Refueling).filter(Refueling.user_id == user_id).order_by(Refueling.date.desc()).all()
 
-@st.cache_data(ttl=300, show_spinner=False)
-def get_last_refueling(_db: Session, user_id: str) -> Optional[Refueling]:
-    """Recupera l'ultimo inserimento dell'utente (Cachato)."""
-    return _db.query(Refueling).filter(Refueling.user_id == user_id).order_by(desc(Refueling.date)).first()
+def get_last_refueling(db: Session, user_id: str) -> Optional[Refueling]:
+    """Recupera l'ultimo inserimento dell'utente."""
+    return db.query(Refueling).filter(Refueling.user_id == user_id).order_by(desc(Refueling.date)).first()
 
-@st.cache_data(ttl=300, show_spinner=False)
-def get_max_km(_db: Session, user_id: str) -> int:
-    """Max KM dell'utente (Cachato)."""
-    max_km = _db.query(func.max(Refueling.total_km)).filter(Refueling.user_id == user_id).scalar()
+def get_max_km(db: Session, user_id: str) -> int:
+    """Max KM dell'utente."""
+    max_km = db.query(func.max(Refueling.total_km)).filter(Refueling.user_id == user_id).scalar()
     return max_km if max_km is not None else 0
 
 def get_neighbors(db: Session, user_id: str, target_date: date) -> dict:
@@ -59,7 +54,6 @@ def create_refueling(
     db.add(new_refueling)
     db.commit()
     db.refresh(new_refueling)
-    st.cache_data.clear()  # Invalida cache Streamlit per rendere il nuovo dato visibile
     
     return new_refueling
 
@@ -72,9 +66,6 @@ def update_refueling(db: Session, user_id: str, record_id: int, new_data: dict):
         db.commit()
         db.refresh(record)
         
-        # Pulizia Cache
-        st.cache_data.clear()
-        
         return record
     return None
 
@@ -85,9 +76,6 @@ def delete_refueling(db: Session, user_id: str, record_id: int) -> bool:
         db.delete(record)
         db.commit()
         
-        # Pulizia Cache
-        st.cache_data.clear()
-        
         return True
     return False
 
@@ -95,10 +83,9 @@ def delete_refueling(db: Session, user_id: str, record_id: int) -> bool:
 # SEZIONE: GESTIONE MANUTENZIONE (Maintenance)
 # ==========================================
 
-@st.cache_data(ttl=300, show_spinner=False)
-def get_all_maintenances(_db: Session, user_id: str) -> List[Maintenance]:
-    """Recupera storico manutenzioni (Cachato)."""
-    return _db.query(Maintenance).filter(Maintenance.user_id == user_id).order_by(Maintenance.date.desc()).all()
+def get_all_maintenances(db: Session, user_id: str) -> List[Maintenance]:
+    """Recupera storico manutenzioni."""
+    return db.query(Maintenance).filter(Maintenance.user_id == user_id).order_by(Maintenance.date.desc()).all()
 
 def create_maintenance(
     db: Session,
@@ -127,9 +114,6 @@ def create_maintenance(
     db.commit()
     db.refresh(new_maintenance)
     
-    # Pulizia Cache
-    st.cache_data.clear()
-    
     return new_maintenance
 
 def delete_maintenance(db: Session, user_id: str, record_id: int) -> bool:
@@ -137,9 +121,6 @@ def delete_maintenance(db: Session, user_id: str, record_id: int) -> bool:
     if record:
         db.delete(record)
         db.commit()
-        
-        # Pulizia Cache
-        st.cache_data.clear()
         return True
     return False
 
@@ -150,9 +131,6 @@ def update_maintenance(db: Session, user_id: str, record_id: int, new_data: dict
             setattr(record, key, value)
         db.commit()
         db.refresh(record)
-        
-        # Pulizia Cache
-        st.cache_data.clear()
         return True
     return False
 
@@ -187,10 +165,9 @@ def get_all_active_deadlines(db: Session, user_id: str) -> List[Maintenance]:
 # SEZIONE: GESTIONE REMINDERS
 # ==========================================
 
-@st.cache_data(ttl=300, show_spinner=False)
-def get_active_reminders(_db: Session, user_id: str) -> List[Reminder]:
+def get_active_reminders(db: Session, user_id: str) -> List[Reminder]:
     """Recupera solo i promemoria attivi dell'utente."""
-    return _db.query(Reminder).filter(
+    return db.query(Reminder).filter(
         and_(Reminder.user_id == user_id, Reminder.is_active == True)
     ).all()
 
@@ -218,7 +195,6 @@ def create_reminder(
     db.add(new_reminder)
     db.commit()
     db.refresh(new_reminder)
-    st.cache_data.clear()
     return new_reminder
 
 def log_reminder_execution(
@@ -251,7 +227,6 @@ def log_reminder_execution(
         rem.last_date_check = check_date
     
     db.commit()
-    st.cache_data.clear()
     return True
 
 def update_reminder(
@@ -272,7 +247,6 @@ def update_reminder(
         rem.notes = notes
         db.commit()
         db.refresh(rem)
-        st.cache_data.clear()
         return True
     return False
 
@@ -282,7 +256,6 @@ def delete_reminder(db: Session, user_id: str, reminder_id: int) -> bool:
         # La cascade="all, delete-orphan" nel modello gestisce la pulizia della history.
         db.delete(rem)
         db.commit()
-        st.cache_data.clear()
         return True
     return False
 
@@ -390,5 +363,4 @@ def update_settings(
     
     db.commit()
     db.refresh(settings)
-    st.cache_data.clear()
     return settings

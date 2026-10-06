@@ -13,8 +13,7 @@
 4. [Avvio del Server API (FastAPI & Uvicorn)](#4-avvio-del-server-api-fastapi--uvicorn)
 5. [Collaudo tramite Swagger UI](#5-collaudo-tramite-swagger-ui)
 6. [Esecuzione dei Test Unitari (pytest)](#6-esecuzione-dei-test-unitari-pytest)
-7. [Esecuzione Parallela con Streamlit V1](#7-esecuzione-parallela-con-streamlit-v1)
-8. [Avvio Rapido con Docker Compose (Full-Stack V2)](#8-avvio-rapido-con-docker-compose-full-stack-v2)
+7. [Avvio Rapido con Docker Compose (Full-Stack V2)](#7-avvio-rapido-con-docker-compose-full-stack-v2)
 
 ---
 
@@ -140,19 +139,7 @@ Per testare esclusivamente i componenti e i router della nuova API:
 
 ---
 
-## 7. Esecuzione Parallela con Streamlit V1
-
-Durante la fase transitoria di sviluppo della V2, l'applicazione Streamlit v1.1.0 può girare contemporaneamente in un terminale separato:
-
-```powershell
-.\venv\Scripts\streamlit run backend/main.py
-```
-- **Streamlit V1 UI:** `http://localhost:8501`
-- **FastAPI V2 API & Swagger:** `http://localhost:8000`
-
----
-
-## 8. Avvio Rapido con Docker Compose (Full-Stack V2)
+## 7. Avvio Rapido con Docker Compose (Full-Stack V2)
 
 A partire dalla Fase 5, puoi avviare l'intero stack applicativo (Backend FastAPI + Frontend React/Nginx) con un singolo comando Docker, senza necessità di installare Python o Node.js sull'host:
 

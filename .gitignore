@@ -39,12 +39,8 @@ pnpm-debug.log*
 !**/.env.example
 *.local
 **/*.local
-.streamlit/secrets.toml
-**/.streamlit/secrets.toml
-!.streamlit/config.toml
-!**/.streamlit/config.toml
-!.streamlit/secrets.toml.example
-!**/.streamlit/secrets.toml.example
+.streamlit/
+**/.streamlit/
 
 # Databases & Local Storage
 data/*.db

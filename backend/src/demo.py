@@ -8,9 +8,8 @@ Espone:
   - mock_analyze_receipt()     : Risposta OCR simulata (senza chiamate a OpenAI)
 
 Lettura del flag (priorità decrescente):
-  1. Variabile d'ambiente OS  (sviluppo locale, .env)
+  1. Variabile d'ambiente OS  (sviluppo locale, .env, CI, Docker)
   2. Se DEMO_MODE assente e LOCAL_SQLITE=True → demo on (bootstrap zero-cloud)
-  3. Streamlit Secrets        (Streamlit Cloud / deploy)
 
 Variabili richieste quando DEMO_MODE=True:
   DEMO_USER_ID     — UUID Supabase dell'utente demo
@@ -25,12 +24,6 @@ from types import SimpleNamespace
 
 from src.database.url import is_local_sqlite
 
-# Supporto opzionale per runtime Streamlit (legacy V1)
-try:
-    import streamlit as st
-except Exception:
-    st = None  # type: ignore
-
 
 # =============================================================================
 # FLAG HELPER
@@ -40,26 +33,15 @@ def is_demo_mode() -> bool:
     """
     Restituisce True se la modalità demo è attiva.
     Priorità:
-      1. Variabile OS DEMO_MODE (se presente in os.environ, è definitiva — no fallback)
+      1. Variabile OS DEMO_MODE (se presente in os.environ, è definitiva)
       2. LOCAL_SQLITE senza DEMO_MODE in env → True (bootstrap locale)
-      3. st.secrets [demo] enabled
     """
-    # 1. Variabile d'ambiente (locale + Docker + CI)
-    # Nota: controlliamo la presenza PRIMA del valore, così un override esplicito
-    # (es. DEMO_MODE="" nei test) non cade nel fallback st.secrets.
     if "DEMO_MODE" in os.environ:
         return os.environ["DEMO_MODE"].strip().lower() in ("1", "true", "yes")
 
-    # 2. Bootstrap SQLite: senza DEMO_MODE esplicito, entra come utente demo
     if is_local_sqlite():
         return True
 
-    # 3. Streamlit Secrets (Streamlit Cloud) — solo se env var non è settata
-    if st is not None:
-        try:
-            return bool(st.secrets.get("demo", {}).get("enabled", False))
-        except Exception:
-            pass
     return False
 
 
@@ -68,31 +50,14 @@ def writes_disabled() -> bool:
     return is_demo_mode() and not is_local_sqlite()
 
 
-def _get_demo_credential(env_key: str, secrets_key: str) -> str | None:
-    """
-    Legge una credenziale demo prima dall'env OS, poi da st.secrets.
-    Restituisce None se non trovata in nessuna sorgente.
-    """
+def _get_demo_credential(env_key: str) -> str | None:
+    """Legge una credenziale demo dall'ambiente OS."""
     val = os.environ.get(env_key, "").strip()
-    if val:
-        return val
-    if st is not None:
-        try:
-            return st.secrets.get("demo", {}).get(secrets_key) or None
-        except Exception:
-            pass
-    return None
+    return val or None
 
 
 # =============================================================================
 # DEMO USER
-# =============================================================================
-# I valori vengono risolti a runtime; le credenziali NON sono nel codice sorgente.
-# Configurare le variabili seguenti (env o st.secrets):
-#   DEMO_USER_ID     / [demo] user_id
-#   DEMO_USER_EMAIL  / [demo] user_email
-# Se DEMO_MODE=True e queste variabili mancano, l'app solleva ValueError
-# al primo accesso a DEMO_USER, evitando avvii silenziosi con dati corrotti.
 # =============================================================================
 
 def _build_demo_user() -> SimpleNamespace:
@@ -100,21 +65,18 @@ def _build_demo_user() -> SimpleNamespace:
     Costruisce il SimpleNamespace DEMO_USER leggendo le credenziali dall'ambiente.
     Solleva ValueError se le variabili obbligatorie mancano in modalità demo.
     """
-    user_id    = _get_demo_credential("DEMO_USER_ID",    "user_id")
-    user_email = _get_demo_credential("DEMO_USER_EMAIL", "user_email")
+    user_id = _get_demo_credential("DEMO_USER_ID")
+    user_email = _get_demo_credential("DEMO_USER_EMAIL")
 
     if not user_id or not user_email:
         raise ValueError(
             "[DEMO_MODE] Variabili DEMO_USER_ID e/o DEMO_USER_EMAIL non configurate. "
-            "Aggiungile al file .env (sviluppo) o ai Streamlit Secrets (deploy) prima "
-            "di avviare l'applicazione in modalità Demo."
+            "Aggiungile al file .env (sviluppo) prima di avviare l'applicazione in modalità Demo."
         )
 
     return SimpleNamespace(id=user_id, email=user_email)
 
 
-# Proprietà lazy: l'oggetto viene costruito solo quando viene effettivamente usato,
-# permettendo all'app di avviarsi normalmente anche senza le variabili (DEMO_MODE=False).
 class _LazyDemoUser:
     """Wrapper lazy per DEMO_USER: costruisce il SimpleNamespace al primo accesso."""
 
@@ -125,7 +87,6 @@ class _LazyDemoUser:
         if self._user is None:
             self._user = _build_demo_user()
         return self._user
-
 
     def __getattr__(self, name: str):
         return getattr(self._resolve(), name)
@@ -149,15 +110,15 @@ def mock_analyze_receipt():
     Returns:
         ReceiptData: DTO con dati di rifornimento fittizi ma coerenti.
     """
-    from src.services.ocr.models import ReceiptData  # Lazy import per prevenire import circolare con services.ocr
+    from src.services.ocr.models import ReceiptData  # Lazy import per prevenire import circolare
 
-    time.sleep(2)  # Latenza verosimile (≈ GPT-4o Vision)
+    time.sleep(2)
 
     rd = ReceiptData()
-    rd.raw_text        = "✅ [DEMO] Analisi simulata — nessuna chiamata API effettuata."
-    rd.total_cost      = 68.50
+    rd.raw_text = "✅ [DEMO] Analisi simulata — nessuna chiamata API effettuata."
+    rd.total_cost = 68.50
     rd.price_per_liter = 1.869
-    rd.liters          = round(rd.total_cost / rd.price_per_liter, 2)  # ≈ 36.65
-    rd.station_name    = "Eni Station Demo"
-    rd.date            = date.today()
+    rd.liters = round(rd.total_cost / rd.price_per_liter, 2)
+    rd.station_name = "Eni Station Demo"
+    rd.date = date.today()
     return rd

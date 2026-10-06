@@ -13,7 +13,7 @@ def parse_upload_file(db: Session, user_id: str, uploaded_file) -> dict:
     Rileva automaticamente il formato e smista ai moduli competenti (fuel/maintenance).
     
     Args:
-        uploaded_file: Oggetto file-like fornito da Streamlit uploader.
+        uploaded_file: Oggetto file-like fornito dall'uploader (FastAPI UploadFile).
         
     Returns:
         dict: Dizionario contenente i DataFrame processati o messaggi di errore globali.

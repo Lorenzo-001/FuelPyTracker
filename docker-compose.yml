@@ -13,7 +13,6 @@ services:
       - ./backend/.env
     volumes:
       - fuel-data:/app/data
-      - ./backend/.streamlit/secrets.toml:/app/.streamlit/secrets.toml:ro
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8000/health"]
       interval: 15s
