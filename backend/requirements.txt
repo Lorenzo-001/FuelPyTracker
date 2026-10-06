@@ -76,6 +76,7 @@ propcache==0.4.1
 
 # Utilities, Templating & CLI
 python-dotenv==1.0.1
+toml==0.10.2
 python-dateutil==2.8.2
 pytz==2023.3.post1
 tzdata==2023.3

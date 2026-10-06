@@ -16,7 +16,17 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, List, Optional
 
-import toml
+try:
+    import tomllib
+    def _parse_toml(path: Path) -> dict:
+        with open(path, "rb") as f:
+            return tomllib.load(f)
+    _TOML_DECODE_ERROR = tomllib.TOMLDecodeError
+except ImportError:  # pragma: no cover
+    import toml
+    def _parse_toml(path: Path) -> dict:
+        return toml.load(path)
+    _TOML_DECODE_ERROR = toml.TomlDecodeError
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +85,7 @@ def _load_config() -> dict:
         return _config_cache
 
     try:
-        parsed = toml.load(_CONFIG_PATH)
+        parsed = _parse_toml(_CONFIG_PATH)
         _config_cache = parsed
         logger.debug("config.toml caricato correttamente da %s", _CONFIG_PATH)
     except FileNotFoundError:
@@ -86,7 +96,7 @@ def _load_config() -> dict:
             _CONFIG_PATH,
         )
         _config_cache = _FALLBACK_CONFIG
-    except toml.TomlDecodeError as exc:
+    except _TOML_DECODE_ERROR as exc:
         logger.critical(
             "Errore di sintassi in config.toml: %s. "
             "L'applicazione userà i valori di default built-in.",
