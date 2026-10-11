@@ -5,6 +5,9 @@ import type {
   TokenResponse,
   UserResponse,
   MessageResponse,
+  PasswordResetConfirmRequest,
+  PasswordChangeRequest,
+  EmailChangeRequest,
 } from "@/types/auth"
 
 export const authApi = {
@@ -52,5 +55,26 @@ export const authApi = {
    */
   resetPassword: (email: string): Promise<MessageResponse> => {
     return apiClient.post<MessageResponse>("/auth/reset-password", { email })
+  },
+
+  /**
+   * Completa il recupero password impostando una nuova credenziale con il token.
+   */
+  confirmPasswordReset: (payload: PasswordResetConfirmRequest): Promise<MessageResponse> => {
+    return apiClient.post<MessageResponse>("/auth/update-password-recovery", payload)
+  },
+
+  /**
+   * Modifica la password dell'utente autenticato verificando la password attuale.
+   */
+  changePassword: (payload: PasswordChangeRequest): Promise<MessageResponse> => {
+    return apiClient.post<MessageResponse>("/auth/change-password", payload)
+  },
+
+  /**
+   * Richiede il cambio dell'indirizzo email con invio email di conferma.
+   */
+  changeEmail: (payload: EmailChangeRequest): Promise<MessageResponse> => {
+    return apiClient.post<MessageResponse>("/auth/change-email", payload)
   },
 }

@@ -6,7 +6,7 @@ import { useSettings } from "@/hooks/useSettings"
 import { FuelThresholdsCard } from "@/components/settings/FuelThresholdsCard"
 import { CategoryManagerCard } from "@/components/settings/CategoryManagerCard"
 import { OcrPreferencesCard } from "@/components/settings/OcrPreferencesCard"
-import { UserProfileCard } from "@/components/settings/UserProfileCard"
+import { UserProfileCard, UserPasswordCard, UserEmailCard } from "@/components/settings/UserProfileCard"
 import { ApiDiagnosticsCard } from "@/components/settings/ApiDiagnosticsCard"
 import { VehicleSettingsCard } from "@/components/settings/VehicleSettingsCard"
 
@@ -78,9 +78,18 @@ export default function SettingsPage() {
           </div>
 
           {/* Tab 1: Profilo & Diagnostica API */}
-          <TabsContent value="system" className="grid grid-cols-1 md:grid-cols-2 gap-6 outline-none">
-            <UserProfileCard />
-            <ApiDiagnosticsCard />
+          <TabsContent value="system" className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start outline-none">
+            {/* Colonna Sinistra: Identità Utente & Sicurezza Password */}
+            <div className="space-y-6">
+              <UserProfileCard />
+              <UserPasswordCard />
+            </div>
+
+            {/* Colonna Destra: Modifica Email & Diagnostica Sistema */}
+            <div className="space-y-6">
+              <UserEmailCard />
+              <ApiDiagnosticsCard />
+            </div>
           </TabsContent>
 
           {/* Tab 2: Soglie Carburante & OCR */}

@@ -160,3 +160,213 @@ def test_reset_password_demo(client):
         })
         assert response.status_code == 200
         assert response.json()["success"] is True
+        assert "Se l'indirizzo email è associato a un account" in response.json()["message"]
+
+
+def test_reset_password_anti_enumeration(client):
+    """Verifica la protezione anti-enumeration (risponde sempre 200 sia che l'email esista o meno)."""
+    with patch("src.api.routers.auth.is_demo_mode", return_value=False), \
+         patch("src.api.routers.auth.is_local_sqlite", return_value=False), \
+         patch("src.api.routers.auth.DEMO_MODE", False), \
+         patch("src.services.auth.auth_service.send_password_reset_email", return_value=(False, "User not found")):
+        response = client.post("/api/auth/reset-password", json={
+            "email": "nonexistent@example.com"
+        })
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+        assert "Se l'indirizzo email è associato a un account" in response.json()["message"]
+
+
+# =============================================================================
+# TEST: POST /api/auth/update-password-recovery
+# =============================================================================
+
+def test_update_password_recovery_validation(client):
+    """Verifica la validazione Pydantic per password troppo corta (< 8 car) o token mancante."""
+    # Password troppo corta
+    res1 = client.post("/api/auth/update-password-recovery", json={
+        "access_token": "valid_token_1234567890",
+        "new_password": "short"
+    })
+    assert res1.status_code == 422
+
+    # Token troppo corto
+    res2 = client.post("/api/auth/update-password-recovery", json={
+        "access_token": "short",
+        "new_password": "validPassword123"
+    })
+    assert res2.status_code == 422
+
+
+def test_update_password_recovery_demo(client):
+    """Verifica che in ambiente Demo il reset password ritorni esito positivo simulato."""
+    with patch("src.api.routers.auth.is_demo_mode", return_value=True):
+        res = client.post("/api/auth/update-password-recovery", json={
+            "access_token": "recovery-jwt-token-123456",
+            "new_password": "newSecurePassword123"
+        })
+        assert res.status_code == 200
+        assert res.json()["success"] is True
+        assert "Demo" in res.json()["message"]
+
+
+def test_update_password_recovery_success(client):
+    """Verifica il successo dell'aggiornamento con token valido."""
+    with patch("src.api.routers.auth.is_demo_mode", return_value=False), \
+         patch("src.api.routers.auth.is_local_sqlite", return_value=False), \
+         patch("src.api.routers.auth.DEMO_MODE", False), \
+         patch("src.services.auth.auth_service.update_password_with_recovery_token", return_value=(True, "Password aggiornata con successo!")):
+        res = client.post("/api/auth/update-password-recovery", json={
+            "access_token": "valid-recovery-token-12345678",
+            "new_password": "brandNewPassword123"
+        })
+        assert res.status_code == 200
+        assert res.json()["success"] is True
+
+
+def test_update_password_recovery_invalid_token(client):
+    """Verifica errore HTTP 400 se il token è scaduto o non valido."""
+    with patch("src.api.routers.auth.is_demo_mode", return_value=False), \
+         patch("src.api.routers.auth.is_local_sqlite", return_value=False), \
+         patch("src.api.routers.auth.DEMO_MODE", False), \
+         patch("src.services.auth.auth_service.update_password_with_recovery_token", return_value=(False, "Il link di recupero è scaduto o non è valido.")):
+        res = client.post("/api/auth/update-password-recovery", json={
+            "access_token": "expired-token-1234567890",
+            "new_password": "brandNewPassword123"
+        })
+        assert res.status_code == 400
+        assert "scaduto o non è valido" in res.json()["detail"]
+
+
+# =============================================================================
+# TEST: POST /api/auth/change-password
+# =============================================================================
+
+def test_change_password_identical_error(client):
+    """Verifica rifiuto con HTTP 400 se la nuova password coincide con la vecchia."""
+    res = client.post("/api/auth/change-password", json={
+        "current_password": "samePassword123",
+        "new_password": "samePassword123"
+    }, headers={"X-User-Id": "some-user"})
+    assert res.status_code == 400
+    assert "diversa da quella attuale" in res.json()["detail"]
+
+
+def test_change_password_demo(client):
+    """Verifica che in ambiente demo risponda con esito positivo simulato."""
+    with patch("src.api.routers.auth.is_demo_mode", return_value=True):
+        res = client.post("/api/auth/change-password", json={
+            "current_password": "oldPassword123",
+            "new_password": "newSecurePassword123"
+        })
+        assert res.status_code == 200
+        assert res.json()["success"] is True
+        assert "Demo" in res.json()["message"]
+
+
+def test_change_password_success(client):
+    """Verifica successo del cambio password per utente reale."""
+    dummy_jwt = jwt.encode({"sub": "real-uuid-1", "email": "test@domain.com"}, "secret", algorithm="HS256")
+    with patch("src.api.routers.auth.is_demo_mode", return_value=False), \
+         patch("src.api.routers.auth.is_local_sqlite", return_value=False), \
+         patch("src.api.routers.auth.DEMO_MODE", False), \
+         patch("src.services.auth.auth_service.update_user_password_secure", return_value=(True, "Password aggiornata con successo!")):
+        res = client.post(
+            "/api/auth/change-password",
+            json={
+                "current_password": "oldPassword123",
+                "new_password": "brandNewPassword123"
+            },
+            headers={"Authorization": f"Bearer {dummy_jwt}"}
+        )
+        assert res.status_code == 200
+        assert res.json()["success"] is True
+
+
+def test_change_password_wrong_current(client):
+    """Verifica errore HTTP 400 se la password attuale è errata."""
+    dummy_jwt = jwt.encode({"sub": "real-uuid-1", "email": "test@domain.com"}, "secret", algorithm="HS256")
+    with patch("src.api.routers.auth.is_demo_mode", return_value=False), \
+         patch("src.api.routers.auth.is_local_sqlite", return_value=False), \
+         patch("src.api.routers.auth.DEMO_MODE", False), \
+         patch("src.services.auth.auth_service.update_user_password_secure", return_value=(False, "La password attuale inserita non è corretta.")):
+        res = client.post(
+            "/api/auth/change-password",
+            json={
+                "current_password": "wrongOldPassword",
+                "new_password": "brandNewPassword123"
+            },
+            headers={"Authorization": f"Bearer {dummy_jwt}"}
+        )
+        assert res.status_code == 400
+        assert "non è corretta" in res.json()["detail"]
+
+
+# =============================================================================
+# TEST: POST /api/auth/change-email
+# =============================================================================
+
+def test_change_email_demo(client):
+    """Verifica che in demo risponda con esito simulato."""
+    with patch("src.api.routers.auth.is_demo_mode", return_value=True):
+        res = client.post("/api/auth/change-email", json={
+            "new_email": "newdemo@example.com"
+        })
+        assert res.status_code == 200
+        assert res.json()["success"] is True
+
+
+def test_change_email_success(client):
+    """Verifica successo della richiesta di cambio email per utente autenticato."""
+    dummy_jwt = jwt.encode({"sub": "real-uuid-1", "email": "test@domain.com"}, "secret", algorithm="HS256")
+    with patch("src.api.routers.auth.is_demo_mode", return_value=False), \
+         patch("src.api.routers.auth.is_local_sqlite", return_value=False), \
+         patch("src.api.routers.auth.DEMO_MODE", False), \
+         patch("src.services.auth.auth_service.update_user_email", return_value=(True, "Richiesta inviata!")):
+        res = client.post(
+            "/api/auth/change-email",
+            json={"new_email": "updated@domain.com"},
+            headers={"Authorization": f"Bearer {dummy_jwt}"}
+        )
+        assert res.status_code == 200
+        assert res.json()["success"] is True
+
+
+def test_change_password_unauthorized(client):
+    """Verifica rifiuto con HTTP 401 per tentativo di cambio password senza credenziali."""
+    with patch("src.api.deps.is_demo_mode", return_value=False), \
+         patch("src.api.deps.is_local_sqlite", return_value=False), \
+         patch("src.api.deps.DEMO_MODE", False):
+        res = client.post("/api/auth/change-password", json={
+            "current_password": "currentPassword123",
+            "new_password": "newPassword123"
+        })
+        assert res.status_code == 401
+
+
+def test_change_email_unauthorized(client):
+    """Verifica rifiuto con HTTP 401 per tentativo di cambio email senza credenziali."""
+    with patch("src.api.deps.is_demo_mode", return_value=False), \
+         patch("src.api.deps.is_local_sqlite", return_value=False), \
+         patch("src.api.deps.DEMO_MODE", False):
+        res = client.post("/api/auth/change-email", json={
+            "new_email": "brandnew@example.com"
+        })
+        assert res.status_code == 401
+
+
+def test_change_email_identical_error(client):
+    """Verifica rifiuto con HTTP 400 se la nuova email coincide con quella attuale."""
+    current_mail = "user@domain.com"
+    dummy_jwt = jwt.encode({"sub": "real-uuid-1", "email": current_mail}, "secret", algorithm="HS256")
+    with patch("src.api.routers.auth.is_demo_mode", return_value=False), \
+         patch("src.api.routers.auth.is_local_sqlite", return_value=False), \
+         patch("src.api.routers.auth.DEMO_MODE", False):
+        res = client.post(
+            "/api/auth/change-email",
+            json={"new_email": current_mail},
+            headers={"Authorization": f"Bearer {dummy_jwt}"}
+        )
+        assert res.status_code == 400
+        assert "coincide con quello attuale" in res.json()["detail"]
+

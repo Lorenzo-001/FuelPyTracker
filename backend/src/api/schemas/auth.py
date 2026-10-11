@@ -39,6 +39,24 @@ class PasswordResetRequest(BaseModel):
     email: EmailStr
 
 
+class PasswordResetConfirmRequest(BaseModel):
+    """Payload per il completamento del recupero password via token ricevuto via email."""
+    access_token: str = Field(..., min_length=10, description="Token di recupero fornito da Supabase via email")
+    refresh_token: str | None = Field(None, description="Refresh token opzionale")
+    new_password: str = Field(..., min_length=8, max_length=128, description="Nuova password scelta (min 8 caratteri)")
+
+
+class PasswordChangeRequest(BaseModel):
+    """Payload per la modifica protetta della password da parte dell'utente autenticato."""
+    current_password: str = Field(..., min_length=1, description="Password attuale dell'utente per verifica identità")
+    new_password: str = Field(..., min_length=8, max_length=128, description="Nuova password desiderata (min 8 caratteri)")
+
+
+class EmailChangeRequest(BaseModel):
+    """Payload per la richiesta di modifica indirizzo email."""
+    new_email: EmailStr = Field(..., description="Nuovo indirizzo email desiderato")
+
+
 class MessageResponse(BaseModel):
     """Risposta generica con messaggio informativo."""
     message: str

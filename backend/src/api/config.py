@@ -37,3 +37,6 @@ DEMO_USER_EMAIL = os.environ.get("DEMO_USER_EMAIL", "demo@local.fuelpytracker")
 
 # Chiave opzionale per validazione firma JWT (Supabase JWT Secret)
 SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "").strip() or None
+
+# URL dell'applicazione Frontend per redirect email (es. password reset o verifica email)
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173").strip().rstrip("/")

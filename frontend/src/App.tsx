@@ -10,6 +10,7 @@ import RemindersPage from "@/pages/RemindersPage"
 import ReportsPage from "@/pages/ReportsPage"
 import SettingsPage from "@/pages/SettingsPage"
 import LoginPage from "@/pages/LoginPage"
+import ResetPasswordPage from "@/pages/ResetPasswordPage"
 import NotFoundPage from "@/pages/NotFoundPage"
 
 import { Toaster } from "@/components/ui/sonner"
@@ -32,8 +33,9 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          {/* Rotta di autenticazione pubblica */}
+          {/* Rotte di autenticazione pubblica */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           {/* Rotte applicative protette (accesso con token o modalità vetrina demo) */}
           <Route element={<ProtectedRoute />}>

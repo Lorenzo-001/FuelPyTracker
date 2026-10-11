@@ -9,6 +9,7 @@ import { useLogin, useRegister } from "@/hooks/useAuth"
 import { authStorage } from "@/services/api/client"
 import { isPublicDemoMode } from "@/lib/demo"
 import { toast } from "sonner"
+import { ForgotPasswordModal } from "@/components/auth/ForgotPasswordModal"
 
 export default function LoginPage() {
   const loginMutation = useLogin()
@@ -19,6 +20,7 @@ export default function LoginPage() {
   // Login form state
   const [loginEmail, setLoginEmail] = useState("")
   const [loginPassword, setLoginPassword] = useState("")
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false)
 
   // Register form state
   const [regEmail, setRegEmail] = useState("")
@@ -125,10 +127,19 @@ export default function LoginPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                      <Lock className="h-3.5 w-3.5 text-emerald-400" />
-                      Password
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                        <Lock className="h-3.5 w-3.5 text-emerald-400" />
+                        Password
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setIsForgotModalOpen(true)}
+                        className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 hover:underline transition-colors focus:outline-none"
+                      >
+                        Password dimenticata?
+                      </button>
+                    </div>
                     <Input
                       type="password"
                       value={loginPassword}
@@ -252,6 +263,13 @@ export default function LoginPage() {
           </Tabs>
         </Card>
       </div>
+
+      <ForgotPasswordModal
+        key={isForgotModalOpen ? "forgot-open" : "forgot-closed"}
+        isOpen={isForgotModalOpen}
+        onClose={() => setIsForgotModalOpen(false)}
+        defaultEmail={loginEmail}
+      />
     </div>
   )
 }

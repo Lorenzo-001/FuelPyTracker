@@ -84,81 +84,134 @@ def get_current_user():
     return None
 
 
-def update_user_password_secure(email: str, old_password: str, new_password: str):
+def update_user_password_secure(email: str, old_password: str, new_password: str) -> tuple[bool, str]:
     """
     Aggiorna la password verificando prima che la vecchia sia corretta.
-    Gestisce l'errore di password identica traducendolo.
-    Usa un client temporaneo per la verifica per non corrompere la sessione attiva.
+    Usa un client isolato usa-e-getta autenticato con la vecchia password per non corrompere altre sessioni.
     """
     url, key = _get_supabase_credentials()
     if not url or not key:
         return False, "Credenziali Supabase non configurate."
 
-    # Client usa-e-getta per verificare le credenziali senza invalidare la sessione attiva.
     try:
         temp_client = create_client(url, key)
-        temp_client.auth.sign_in_with_password({
+        auth_res = temp_client.auth.sign_in_with_password({
             "email": email,
             "password": old_password
         })
+        if not auth_res or not auth_res.user:
+            return False, "La password attuale inserita non è corretta."
     except Exception:
         return False, "La password attuale inserita non è corretta."
 
-    # Vecchia password verificata: aggiorna via client principale.
+    # Vecchia password verificata: aggiorna sul client appena autenticato
     try:
-        attributes = {"password": new_password}
-        main_client = get_client()
-        if not main_client:
-            return False, "Client Supabase non disponibile."
-        main_client.auth.update_user(attributes)
+        temp_client.auth.update_user({"password": new_password})
         return True, "Password aggiornata con successo!"
     except Exception as e:
         err_msg = str(e)
         if "New password should be different from the old password" in err_msg:
-            return False, "Errore: La nuova password deve essere diversa dalla precedente."
-        return False, f"Errore imprevisto: {err_msg}"
+            return False, "La nuova password deve essere diversa dalla precedente."
+        return False, f"Errore durante l'aggiornamento della password: {err_msg}"
 
 
-def update_user_email(new_email: str):
+def update_user_email(new_email: str, user_token: str | None = None) -> tuple[bool, str]:
     """
     Richiede il cambio email.
-    Nota: Supabase invierà una mail di conferma al nuovo indirizzo (e una notifica al vecchio).
-    L'aggiornamento effettivo avviene solo dopo il click sul link.
+    Supabase invierà un'email di conferma al nuovo indirizzo (e notifica al vecchio).
     """
-    client = get_client()
-    if not client:
-        return False, "Client Supabase non disponibile."
+    url, key = _get_supabase_credentials()
+    if not url or not key:
+        return False, "Credenziali Supabase non configurate."
 
     try:
-        attributes = {"email": new_email}
-        client.auth.update_user(attributes)
-        return True, "Richiesta inviata! Controlla la tua posta (sia vecchia che nuova) per confermare il cambio."
+        temp_client = create_client(url, key)
+        if user_token:
+            temp_client.auth._request(
+                "PUT",
+                "user",
+                body={"email": new_email},
+                jwt=user_token,
+            )
+        else:
+            main_client = get_client()
+            if not main_client:
+                return False, "Client Supabase non disponibile."
+            main_client.auth.update_user({"email": new_email})
+        return True, "Richiesta inviata! Controlla la tua casella di posta per confermare l'indirizzo."
     except Exception as e:
-        return False, str(e)
+        logger.warning("Errore cambio email in %s: %s", new_email, e)
+        return False, f"Impossibile aggiornare l'email: {e}"
 
 
-def send_password_reset_email(email: str):
-    """Invia la mail di recupero password con redirect verso la nuova rotta frontend /reset-password."""
+def send_password_reset_email(email: str) -> tuple[bool, str]:
+    """Invia la mail di recupero password con redirect verso la rotta frontend /reset-password."""
     client = get_client()
     if not client:
         return False, "Client Supabase non configurato."
 
     try:
+        from src.api.config import FRONTEND_URL
+        frontend_url = FRONTEND_URL
+    except Exception:
         frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5173").rstrip("/")
-        redirect_url = f"{frontend_url}/reset-password"
 
+    redirect_url = f"{frontend_url}/reset-password"
+
+    try:
         client.auth.reset_password_email(email, options={
             "redirect_to": redirect_url
         })
         return True, "Email di recupero inviata! Controlla la tua casella di posta."
     except Exception as e:
+        logger.warning("Errore invio email recupero per %s: %s", email, e)
         return False, str(e)
 
 
+def update_password_with_recovery_token(
+    access_token: str,
+    new_password: str,
+    refresh_token: str | None = None,
+) -> tuple[bool, str]:
+    """
+    Aggiorna la password dell'utente utilizzando il Bearer access_token ricevuto
+    dal link di recupero email di Supabase Auth.
+    Usa un client isolato con sessione associata al token.
+    """
+    url, key = _get_supabase_credentials()
+    if not url or not key:
+        return False, "Credenziali Supabase non configurate."
+
+    try:
+        temp_client = create_client(url, key)
+        if refresh_token:
+            try:
+                temp_client.auth.set_session(access_token, refresh_token)
+                temp_client.auth.update_user({"password": new_password})
+                return True, "Password aggiornata con successo!"
+            except Exception as e_session:
+                logger.debug("set_session non riuscito, tento chiamata diretta con bearer: %s", e_session)
+
+        # Chiamata diretta con Bearer token su endpoint Supabase Auth /user
+        temp_client.auth._request(
+            "PUT",
+            "user",
+            body={"password": new_password},
+            jwt=access_token,
+        )
+        return True, "Password aggiornata con successo!"
+    except Exception as exc:
+        err_msg = str(exc)
+        logger.warning("Fallimento aggiornamento password via recovery token: %s", exc)
+        if "New password should be different from the old password" in err_msg:
+            return False, "La nuova password deve essere diversa da quella precedente."
+        if any(w in err_msg.lower() for w in ["invalid", "expired", "jwt", "unauthorized", "token"]):
+            return False, "Il link di recupero è scaduto o non è valido. Richiedi un nuovo link."
+        return False, f"Impossibile aggiornare la password: {err_msg}"
+
+
 def exchange_code_for_session(auth_code: str):
-    """
-    Scambia il codice PKCE per una sessione utente attiva.
-    """
+    """Scambia il codice PKCE per una sessione utente attiva."""
     client = get_client()
     if not client:
         return False, "Client Supabase non configurato."
@@ -166,25 +219,6 @@ def exchange_code_for_session(auth_code: str):
         res = client.auth.exchange_code_for_session({"auth_code": auth_code})
         return True, res.user
     except Exception as e:
-        return False, str(e)
-
-
-def update_password_head(new_password: str):
-    """
-    Aggiorna la password SENZA chiedere la vecchia.
-    Da usare SOLO nel flusso di recupero password (quando l'utente è loggato via link email).
-    """
-    client = get_client()
-    if not client:
-        return False, "Client Supabase non configurato."
-    try:
-        attributes = {"password": new_password}
-        client.auth.update_user(attributes)
-        return True, "Password impostata con successo!"
-    except Exception as e:
-        err_msg = str(e)
-        if "New password should be different from the old password" in err_msg:
-            return False, "La nuova password deve essere diversa da quella precedente."
         return False, str(e)
 
 
