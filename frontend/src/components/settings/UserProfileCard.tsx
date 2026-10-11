@@ -7,12 +7,15 @@ import {
   Loader2,
   Copy,
   Check,
+  Palette,
 } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useCurrentUser, useLogout } from "@/hooks/useAuth"
+import { useTheme } from "@/hooks/useTheme"
 import { LogoutConfirmDialog } from "@/components/auth/LogoutConfirmDialog"
+import { ThemeSelectionModal } from "@/components/theme/ThemeSelectionModal"
 import { toast } from "sonner"
 
 export { UserPasswordCard } from "./UserPasswordCard"
@@ -20,8 +23,10 @@ export { UserEmailCard } from "./UserEmailCard"
 
 export function UserProfileCard() {
   const { data: user, isLoading, isError } = useCurrentUser()
+  const { currentConfig } = useTheme()
   const logoutMutation = useLogout()
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
+  const [themeModalOpen, setThemeModalOpen] = useState(false)
   const [copiedId, setCopiedId] = useState(false)
 
   const handleCopyId = () => {
@@ -146,6 +151,18 @@ export function UserProfileCard() {
                     LocalStorage (fpt_access_token)
                   </span>
                 </div>
+                <div className="flex items-center justify-between pt-1 border-t border-border/30">
+                  <span>Tema Grafico:</span>
+                  <button
+                    type="button"
+                    onClick={() => setThemeModalOpen(true)}
+                    className="flex items-center gap-1.5 font-medium text-emerald-400 hover:text-emerald-300 hover:underline transition-colors focus:outline-none"
+                    title="Modifica tema grafico"
+                  >
+                    <Palette className="h-3 w-3" />
+                    <span>{currentConfig.name} (Modifica)</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -160,6 +177,11 @@ export function UserProfileCard() {
           setLogoutDialogOpen(false)
         }}
         isLoading={logoutMutation.isPending}
+      />
+
+      <ThemeSelectionModal
+        open={themeModalOpen}
+        onOpenChange={setThemeModalOpen}
       />
     </>
   )

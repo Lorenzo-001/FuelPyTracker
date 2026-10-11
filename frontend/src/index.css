@@ -3,25 +3,29 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
+  /* =========================================================================
+     1. TEMA LIGHT (Clean Light — Luminoso Professionale)
+     ========================================================================= */
+  :root,
+  .theme-light {
+    --background: 210 40% 98%;          /* #f8fafc - Bianco neve / perla */
+    --foreground: 222 47% 11%;          /* #0f172a - Ardesia scuro ad alto contrasto */
+    --card: 0 0% 100%;                  /* #ffffff - Bianco puro */
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 160 84% 39%;
+    --primary: 160 84% 39%;             /* #10b981 - Smeraldo vivido */
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222 47% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222 47% 11.2%;
+    --secondary: 210 40% 95%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 94%;
+    --muted-foreground: 215.4 16.3% 40%;
+    --accent: 210 40% 95%;
+    --accent-foreground: 222 47% 11%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    --border: 214.3 31.8% 88%;          /* Bordo definito */
+    --input: 214.3 31.8% 88%;
     --ring: 160 84% 39%;
     --radius: 0.75rem;
 
@@ -31,26 +35,29 @@
     --brand-rose: 350 89% 60%;
   }
 
-  .dark {
-    /* Deep sleek dark slate aesthetic */
-    --background: 222 47% 8%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 11%;
+  /* =========================================================================
+     2. TEMA DARK SLATE (Default Ribilanciato — Contrasto Netto Card/Sfondo)
+     ========================================================================= */
+  .dark,
+  .theme-slate {
+    --background: 222 47% 7%;           /* #0a0f1d - Sfondo ardesia profondo */
+    --foreground: 210 40% 98%;           /* #f8fafc - Testo chiaro nitido */
+    --card: 220 38% 13%;                 /* #141c2e - Card sollevata con netto stacco visivo (~13% vs 7%) */
     --card-foreground: 210 40% 98%;
-    --popover: 222 47% 11%;
+    --popover: 220 38% 13%;
     --popover-foreground: 210 40% 98%;
-    --primary: 158 75% 48%;
-    --primary-foreground: 222 47% 8%;
-    --secondary: 217 33% 16%;
+    --primary: 158 75% 48%;              /* Smeraldo vivace */
+    --primary-foreground: 222 47% 7%;
+    --secondary: 217 33% 18%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 15%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 18%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 70%;     /* Grigio chiaro leggibile */
+    --accent: 217 33% 20%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 18%;
-    --input: 217 33% 18%;
+    --border: 217 33% 24%;               /* Bordo card nitido e definito */
+    --input: 217 33% 24%;
     --ring: 158 75% 48%;
     --radius: 0.75rem;
 
@@ -58,6 +65,37 @@
     --brand-amber: 38 92% 50%;
     --brand-indigo: 226 75% 64%;
     --brand-rose: 350 89% 60%;
+  }
+
+  /* =========================================================================
+     3. TEMA OLED (High-Contrast — Nero Assoluto & Grafite)
+     ========================================================================= */
+  .theme-oled {
+    --background: 0 0% 0%;               /* #000000 - Nero assoluto */
+    --foreground: 0 0% 100%;             /* #ffffff - Bianco brillante */
+    --card: 0 0% 8%;                     /* #141414 - Grafite scura a rilievo */
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 158 84% 50%;              /* Smeraldo fluorescente ad altissimo impatto */
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 13%;
+    --muted-foreground: 0 0% 75%;        /* Testo secondario chiaro e definito */
+    --accent: 0 0% 17%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 85% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 22%;                  /* Bordi definiti per delineare i contenitori */
+    --input: 0 0% 22%;
+    --ring: 158 84% 50%;
+    --radius: 0.75rem;
+
+    --brand-emerald: 158 84% 50%;
+    --brand-amber: 38 95% 52%;
+    --brand-indigo: 226 80% 68%;
+    --brand-rose: 350 90% 62%;
   }
 }
 
@@ -67,6 +105,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    transition: background-color 0.2s ease, color 0.15s ease;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }

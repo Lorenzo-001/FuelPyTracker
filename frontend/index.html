@@ -16,6 +16,22 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
     rel="stylesheet">
+  <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem('fpt_theme') || 'dark-slate';
+        if (theme === 'light') {
+          document.documentElement.className = 'theme-light';
+        } else if (theme === 'oled') {
+          document.documentElement.className = 'dark theme-oled';
+        } else {
+          document.documentElement.className = 'dark theme-slate';
+        }
+      } catch (e) {
+        document.documentElement.className = 'dark theme-slate';
+      }
+    })();
+  </script>
 </head>
 
 <body

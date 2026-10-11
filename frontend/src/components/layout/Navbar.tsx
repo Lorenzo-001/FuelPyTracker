@@ -1,9 +1,11 @@
+import { useState } from "react"
 import { useLocation, Link } from "react-router-dom"
 import {
   Plus,
   Server,
   User,
   Sparkles,
+  Palette,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -11,6 +13,7 @@ import { useSystemHealth } from "@/hooks/useSystemHealth"
 import { useCurrentUser } from "@/hooks/useAuth"
 import { isPublicDemoMode } from "@/lib/demo"
 import { scrollToTop } from "@/lib/utils"
+import { ThemeSelectionModal } from "@/components/theme/ThemeSelectionModal"
 
 const pageTitles: Record<string, { title: string; category: string }> = {
   "/": { title: "Dashboard Generale", category: "Panoramica" },
@@ -27,6 +30,7 @@ export function Navbar() {
   const { data: healthData, isError, isLoading } = useSystemHealth()
   const { data: user } = useCurrentUser()
   const isDemo = isPublicDemoMode()
+  const [themeModalOpen, setThemeModalOpen] = useState(false)
 
   const currentMeta = pageTitles[location.pathname] || {
     title: "FuelPyTracker",
@@ -122,6 +126,19 @@ export function Navbar() {
           </Link>
         </Button>
 
+        {/* Theme Selector Button */}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setThemeModalOpen(true)}
+          title="Personalizza Aspetto & Tema"
+          className="h-9 px-2 sm:px-2.5 text-xs gap-1.5 border-border/70 bg-card/60 hover:bg-card hover:border-emerald-500/40 hover:text-emerald-400 transition-all text-muted-foreground"
+        >
+          <Palette className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+          <span className="hidden lg:inline text-xs font-medium">Tema</span>
+        </Button>
+
         {/* User Pill / Profile */}
         <Link
           to={user || isDemo ? "/settings" : "/login"}
@@ -137,6 +154,11 @@ export function Navbar() {
           </span>
         </Link>
       </div>
+
+      <ThemeSelectionModal
+        open={themeModalOpen}
+        onOpenChange={setThemeModalOpen}
+      />
     </header>
   )
 }
