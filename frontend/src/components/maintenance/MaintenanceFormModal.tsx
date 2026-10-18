@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react"
+import { useState, useMemo } from "react"
 import { useForm, type FieldErrors } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -73,11 +73,13 @@ interface MaintenanceFormModalProps {
   initialData?: MaintenanceResponse | null
 }
 
-export function MaintenanceFormModal({
-  open,
+function MaintenanceFormContent({
   onOpenChange,
   initialData,
-}: MaintenanceFormModalProps) {
+}: {
+  onOpenChange: (open: boolean) => void
+  initialData?: MaintenanceResponse | null
+}) {
   const isEditing = !!initialData
   const createMutation = useCreateMaintenance()
   const updateMutation = useUpdateMaintenance()
@@ -94,46 +96,36 @@ export function MaintenanceFormModal({
     return list
   }, [settings])
 
-  const [selectedPreset, setSelectedPreset] = useState<string>("Tagliando")
-  const [customExpenseType, setCustomExpenseType] = useState<string>("")
-  const [showDeadlines, setShowDeadlines] = useState(false)
-  const todayStr = new Date().toISOString().split("T")[0]
+  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], [])
+
+  const isPreset = Boolean(
+    initialData &&
+      availableCategories
+        .filter((c) => c !== "Altro")
+        .includes(initialData.expense_type)
+  )
+
+  const [selectedPreset, setSelectedPreset] = useState<string>(() => {
+    if (!initialData) return "Tagliando"
+    return isPreset ? initialData.expense_type : "Altro"
+  })
+  const [customExpenseType, setCustomExpenseType] = useState<string>(() => {
+    if (!initialData) return ""
+    return isPreset ? "" : (initialData.expense_type === "Altro" ? "" : initialData.expense_type)
+  })
+  const [showDeadlines, setShowDeadlines] = useState<boolean>(() => {
+    return !!(initialData?.expiry_km || initialData?.expiry_date)
+  })
 
   const {
     register,
     handleSubmit,
     setValue,
-    reset,
     formState: { errors, isSubmitting },
   } = useForm<MaintenanceFormData>({
     resolver: zodResolver(maintenanceSchema),
-    defaultValues: {
-      date: todayStr,
-      total_km: undefined,
-      expense_type: "Tagliando",
-      cost: undefined,
-      description: "",
-      expiry_km: null,
-      expiry_date: null,
-    },
-  })
-
-  useEffect(() => {
-    if (open) {
-      if (initialData) {
-        const isPreset = availableCategories
-          .filter((c) => c !== "Altro")
-          .includes(initialData.expense_type)
-        if (isPreset) {
-          setSelectedPreset(initialData.expense_type)
-          setCustomExpenseType("")
-        } else {
-          setSelectedPreset("Altro")
-          setCustomExpenseType(
-            initialData.expense_type === "Altro" ? "" : initialData.expense_type
-          )
-        }
-        reset({
+    defaultValues: initialData
+      ? {
           date: initialData.date,
           total_km: initialData.total_km,
           expense_type: initialData.expense_type,
@@ -141,12 +133,8 @@ export function MaintenanceFormModal({
           description: initialData.description || "",
           expiry_km: initialData.expiry_km || null,
           expiry_date: initialData.expiry_date || null,
-        })
-        setShowDeadlines(!!(initialData.expiry_km || initialData.expiry_date))
-      } else {
-        setSelectedPreset("Tagliando")
-        setCustomExpenseType("")
-        reset({
+        }
+      : {
           date: todayStr,
           total_km: undefined,
           expense_type: "Tagliando",
@@ -154,11 +142,8 @@ export function MaintenanceFormModal({
           description: "",
           expiry_km: null,
           expiry_date: null,
-        })
-        setShowDeadlines(false)
-      }
-    }
-  }, [open, initialData, reset, todayStr, availableCategories])
+        },
+  })
 
   const handleSelectPreset = (cat: string) => {
     setSelectedPreset(cat)
@@ -232,9 +217,8 @@ export function MaintenanceFormModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+    <>
+      <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl font-bold">
             <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400">
               <Wrench className="h-5 w-5" />
@@ -495,6 +479,25 @@ export function MaintenanceFormModal({
             </Button>
           </DialogFooter>
         </form>
+    </>
+  )
+}
+
+export function MaintenanceFormModal({
+  open,
+  onOpenChange,
+  initialData,
+}: MaintenanceFormModalProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        {open && (
+          <MaintenanceFormContent
+            key={initialData ? `edit-${initialData.id}` : "new"}
+            onOpenChange={onOpenChange}
+            initialData={initialData}
+          />
+        )}
       </DialogContent>
     </Dialog>
   )

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useMemo } from "react"
 import {
   Dialog,
   DialogContent,
@@ -26,73 +26,105 @@ interface ImportRowEditModalProps {
   ) => void
 }
 
-export function ImportRowEditModal({
-  open,
-  onOpenChange,
+function getInitialImportRowState(
+  rowData: Record<string, unknown>,
+  type: "fuel" | "maintenance"
+) {
+  const d = String(rowData.Data || "").split("T")[0]
+  const km = Number(rowData.Km || 0)
+
+  if (type === "fuel") {
+    const p = Number(rowData.Prezzo || 0)
+    const c = Number(rowData.Costo || 0)
+    const l = Number(rowData.Litri || (p > 0 && c > 0 ? c / p : 0))
+    const rawUserNote =
+      rowData.Note_User !== undefined && rowData.Note_User !== null
+        ? String(rowData.Note_User)
+        : ""
+    const isSysNote =
+      rawUserNote.includes("verrà ignorato") || rawUserNote.includes("Record identico")
+
+    return {
+      dateVal: d,
+      kmVal: km,
+      priceVal: p,
+      costVal: c,
+      litersVal: Number(l.toFixed(2)),
+      fullTankVal: Boolean(rowData.Pieno ?? true),
+      noteUserVal: isSysNote ? "" : rawUserNote,
+      maintTypeVal: "Tagliando",
+      descVal: "",
+      expiryKmVal: "",
+      expiryDateVal: "",
+    }
+  }
+
+  const expiryKmRaw =
+    rowData["Scadenza Km"] !== undefined &&
+    rowData["Scadenza Km"] !== null &&
+    String(rowData["Scadenza Km"]).trim() !== "" &&
+    String(rowData["Scadenza Km"]).trim() !== "null"
+      ? String(rowData["Scadenza Km"])
+      : ""
+
+  const expiryDateRaw =
+    rowData["Scadenza Data"] &&
+    String(rowData["Scadenza Data"]).trim() !== "" &&
+    String(rowData["Scadenza Data"]).trim() !== "null"
+      ? String(rowData["Scadenza Data"]).split("T")[0]
+      : ""
+
+  return {
+    dateVal: d,
+    kmVal: km,
+    priceVal: 0,
+    costVal: Number(rowData.Costo || 0),
+    litersVal: 0,
+    fullTankVal: true,
+    noteUserVal: "",
+    maintTypeVal: String(rowData.Tipo || "Tagliando"),
+    descVal: String(rowData.Descrizione || ""),
+    expiryKmVal: expiryKmRaw,
+    expiryDateVal: expiryDateRaw,
+  }
+}
+
+function ImportRowEditForm({
   rowIndex,
   type,
   rowData,
   onSave,
-}: ImportRowEditModalProps) {
+  onCancel,
+}: {
+  rowIndex: number | null
+  type: "fuel" | "maintenance"
+  rowData: Record<string, unknown>
+  onSave: (
+    updatedRow: Record<string, unknown>,
+    index: number,
+    type: "fuel" | "maintenance"
+  ) => void
+  onCancel: () => void
+}) {
+  const initial = useMemo(
+    () => getInitialImportRowState(rowData, type),
+    [rowData, type]
+  )
+
   // Campi specifici per Rifornimenti
-  const [dateVal, setDateVal] = useState("")
-  const [kmVal, setKmVal] = useState<number>(0)
-  const [priceVal, setPriceVal] = useState<number>(0)
-  const [costVal, setCostVal] = useState<number>(0)
-  const [litersVal, setLitersVal] = useState<number>(0)
-  const [fullTankVal, setFullTankVal] = useState(true)
-  const [noteUserVal, setNoteUserVal] = useState("")
+  const [dateVal, setDateVal] = useState(initial.dateVal)
+  const [kmVal, setKmVal] = useState<number>(initial.kmVal)
+  const [priceVal, setPriceVal] = useState<number>(initial.priceVal)
+  const [costVal, setCostVal] = useState<number>(initial.costVal)
+  const [litersVal, setLitersVal] = useState<number>(initial.litersVal)
+  const [fullTankVal, setFullTankVal] = useState(initial.fullTankVal)
+  const [noteUserVal, setNoteUserVal] = useState(initial.noteUserVal)
 
   // Campi specifici per Manutenzioni
-  const [maintTypeVal, setMaintTypeVal] = useState("Tagliando")
-  const [descVal, setDescVal] = useState("")
-  const [expiryKmVal, setExpiryKmVal] = useState<string>("")
-  const [expiryDateVal, setExpiryDateVal] = useState<string>("")
-
-  useEffect(() => {
-    if (rowData && open) {
-      const d = String(rowData.Data || "").split("T")[0]
-      setDateVal(d)
-      setKmVal(Number(rowData.Km || 0))
-
-      if (type === "fuel") {
-        const p = Number(rowData.Prezzo || 0)
-        const c = Number(rowData.Costo || 0)
-        const l = Number(rowData.Litri || (p > 0 && c > 0 ? c / p : 0))
-        setPriceVal(p)
-        setCostVal(c)
-        setLitersVal(Number(l.toFixed(2)))
-        setFullTankVal(Boolean(rowData.Pieno ?? true))
-        // Usa esclusivamente la nota personale dell'utente, mai la nota diagnostica di sistema
-        const rawUserNote =
-          rowData.Note_User !== undefined && rowData.Note_User !== null
-            ? String(rowData.Note_User)
-            : ""
-        const isSysNote =
-          rawUserNote.includes("verrà ignorato") || rawUserNote.includes("Record identico")
-        setNoteUserVal(isSysNote ? "" : rawUserNote)
-      } else {
-        setMaintTypeVal(String(rowData.Tipo || "Tagliando"))
-        setCostVal(Number(rowData.Costo || 0))
-        setDescVal(String(rowData.Descrizione || ""))
-        setExpiryKmVal(
-          rowData["Scadenza Km"] !== undefined &&
-            rowData["Scadenza Km"] !== null &&
-            String(rowData["Scadenza Km"]).trim() !== "" &&
-            String(rowData["Scadenza Km"]).trim() !== "null"
-            ? String(rowData["Scadenza Km"])
-            : ""
-        )
-        setExpiryDateVal(
-          rowData["Scadenza Data"] &&
-            String(rowData["Scadenza Data"]).trim() !== "" &&
-            String(rowData["Scadenza Data"]).trim() !== "null"
-            ? String(rowData["Scadenza Data"]).split("T")[0]
-            : ""
-        )
-      }
-    }
-  }, [rowData, open, type])
+  const [maintTypeVal, setMaintTypeVal] = useState(initial.maintTypeVal)
+  const [descVal, setDescVal] = useState(initial.descVal)
+  const [expiryKmVal, setExpiryKmVal] = useState<string>(initial.expiryKmVal)
+  const [expiryDateVal, setExpiryDateVal] = useState<string>(initial.expiryDateVal)
 
   // Calcolo automatico litri per rifornimenti (non editabili manualmente)
   const handlePriceChange = (newPrice: number) => {
@@ -187,7 +219,7 @@ export function ImportRowEditModal({
     }
 
     onSave(updated, rowIndex, type)
-    onOpenChange(false)
+    onCancel()
   }
 
   const currentStatus = String(rowData?.Stato || "Nuovo")
@@ -309,9 +341,8 @@ export function ImportRowEditModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+    <>
+      <DialogHeader>
           <DialogTitle className="flex items-center gap-2.5 text-xl font-bold">
             <div className={`p-2 rounded-xl ${type === "fuel" ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"}`}>
               {type === "fuel" ? <Fuel className="h-5 w-5" /> : <Wrench className="h-5 w-5" />}
@@ -562,7 +593,7 @@ export function ImportRowEditModal({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={onCancel}
             >
               Annulla
             </Button>
@@ -577,6 +608,31 @@ export function ImportRowEditModal({
             </Button>
           </DialogFooter>
         </form>
+    </>
+  )
+}
+
+export function ImportRowEditModal({
+  open,
+  onOpenChange,
+  rowIndex,
+  type,
+  rowData,
+  onSave,
+}: ImportRowEditModalProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        {open && rowData && (
+          <ImportRowEditForm
+            key={`${rowIndex}-${rowData.db_id ?? ""}`}
+            rowIndex={rowIndex}
+            type={type}
+            rowData={rowData}
+            onSave={onSave}
+            onCancel={() => onOpenChange(false)}
+          />
+        )}
       </DialogContent>
     </Dialog>
   )

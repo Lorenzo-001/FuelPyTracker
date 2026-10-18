@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 
 from fpdf import FPDF
+from fpdf.enums import XPos, YPos
 from sqlalchemy.orm import Session
 
 from src.database import crud
@@ -52,13 +53,13 @@ class ServicePDF(FPDF):
             self.set_xy(25, 12)
             self.set_font('Helvetica', 'B', 18)
             self.set_text_color(44, 62, 80)
-            self.cell(0, 12, 'FuelPyTracker', 0, 1, 'L')
+            self.cell(0, 12, 'FuelPyTracker', border=0, align='L', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
             
             # Sottotitolo Descrittivo
             self.set_xy(25, 20)
             self.set_font('Helvetica', 'I', 9)
             self.set_text_color(100, 100, 100)
-            self.cell(0, 5, 'Digital Maintenance Record System', 0, 1, 'L')
+            self.cell(0, 5, 'Digital Maintenance Record System', border=0, align='L', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
             
             self.ln(10)
 
@@ -72,7 +73,7 @@ class ServicePDF(FPDF):
         self.set_font('Helvetica', 'B', 8)
         self.set_text_color(255, 255, 255)
         self.set_xy(10, 13)
-        self.cell(12, 10, 'FPT', 0, 0, 'C')
+        self.cell(12, 10, 'FPT', border=0, align='C', new_x=XPos.RIGHT, new_y=YPos.TOP)
 
     def footer(self):
         """
@@ -89,8 +90,8 @@ class ServicePDF(FPDF):
             "DOCUMENTO GENERATO AUTOMATICAMENTE. "
             "I dati riportati sono stati inseriti dall'utente e non costituiscono certificazione legale della casa madre."
         )
-        self.cell(0, 5, disclaimer, 0, 1, 'C')
-        self.cell(0, 5, f'Pagina {self.page_no()}/{{nb}}', 0, 0, 'R')
+        self.cell(0, 5, disclaimer, border=0, align='C', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        self.cell(0, 5, f'Pagina {self.page_no()}/{{nb}}', border=0, align='R', new_x=XPos.RIGHT, new_y=YPos.TOP)
 
     def section_label(self, label, value):
         """
@@ -102,7 +103,7 @@ class ServicePDF(FPDF):
         """
         self.set_font('Helvetica', 'B', 9)
         self.set_text_color(100, 100, 100)
-        self.cell(30, 6, label.upper(), 0, 0, 'L')
+        self.cell(30, 6, label.upper(), border=0, align='L', new_x=XPos.RIGHT, new_y=YPos.TOP)
         
         self.set_font('Helvetica', 'B', 10)
         self.set_text_color(0, 0, 0)
@@ -112,7 +113,7 @@ class ServicePDF(FPDF):
             value = str(value).encode('latin-1', 'replace').decode('latin-1')
         except Exception: 
             pass
-        self.cell(60, 6, value, 0, 0, 'L')
+        self.cell(60, 6, value, border=0, align='L', new_x=XPos.RIGHT, new_y=YPos.TOP)
 
 
 # =============================================================================
@@ -168,11 +169,11 @@ def generate_maintenance_report(
     # 3. Rendering Intestazione Report
     pdf.set_font('Helvetica', 'B', 14)
     pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 10, report_title, 0, 1, 'C')
+    pdf.cell(0, 10, report_title, border=0, align='C', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     
     pdf.set_font('Helvetica', '', 9)
     pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 5, f"Data emissione: {datetime.now().strftime('%d/%m/%Y')}", 0, 1, 'C')
+    pdf.cell(0, 5, f"Data emissione: {datetime.now().strftime('%d/%m/%Y')}", border=0, align='C', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(5)
 
     # 4. Rendering Scheda Tecnica Veicolo
@@ -209,12 +210,12 @@ def generate_maintenance_report(
     pdf.set_x(12)
     pdf.set_font('Helvetica', 'B', 9)
     pdf.set_text_color(100, 100, 100)
-    pdf.cell(30, 6, "TOTALE SPESO:", 0, 0, 'L')
+    pdf.cell(30, 6, "TOTALE SPESO:", border=0, align='L', new_x=XPos.RIGHT, new_y=YPos.TOP)
     
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(231, 76, 60)
     # Formattazione valuta manuale per evitare glifi non supportati
-    pdf.cell(60, 6, f"{total_spent:,.2f} EUR".replace(',', 'X').replace('.', ',').replace('X', '.'), 0, 0, 'L')
+    pdf.cell(60, 6, f"{total_spent:,.2f} EUR".replace(',', 'X').replace('.', ',').replace('X', '.'), border=0, align='L', new_x=XPos.RIGHT, new_y=YPos.TOP)
 
     pdf.ln(15)
 

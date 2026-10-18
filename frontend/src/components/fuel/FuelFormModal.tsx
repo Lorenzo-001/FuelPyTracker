@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react"
-import { useForm } from "react-hook-form"
+import { useState, useMemo } from "react"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import {
@@ -62,12 +62,15 @@ interface FuelFormModalProps {
   prefillData?: Partial<RefuelingFormData> | null
 }
 
-export function FuelFormModal({
-  open,
+function FuelFormContent({
   onOpenChange,
   initialData,
   prefillData,
-}: FuelFormModalProps) {
+}: {
+  onOpenChange: (open: boolean) => void
+  initialData?: RefuelingResponse | null
+  prefillData?: Partial<RefuelingFormData> | null
+}) {
   const isEditing = !!initialData
   const createMutation = useCreateRefueling()
   const updateMutation = useUpdateRefueling()
@@ -84,7 +87,57 @@ export function FuelFormModal({
   const [isOcrOpen, setIsOcrOpen] = useState(false)
   const { data: ocrStatus } = useOcrStatus()
 
-  const todayStr = new Date().toISOString().split("T")[0]
+  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], [])
+
+  const defaultValues = useMemo(() => {
+    if (initialData) {
+      return {
+        date: initialData.date,
+        total_km: initialData.total_km,
+        price_per_liter: initialData.price_per_liter,
+        total_cost: initialData.total_cost,
+        liters: initialData.liters,
+        is_full_tank: initialData.is_full_tank,
+        notes: initialData.notes || "",
+      }
+    }
+    if (prefillData) {
+      return {
+        date: prefillData.date || todayStr,
+        total_km: prefillData.total_km,
+        price_per_liter: prefillData.price_per_liter,
+        total_cost: prefillData.total_cost,
+        liters: prefillData.liters,
+        is_full_tank: prefillData.is_full_tank ?? true,
+        notes: prefillData.notes || "",
+      }
+    }
+    return {
+      date: todayStr,
+      total_km: undefined,
+      price_per_liter: undefined,
+      total_cost: undefined,
+      liters: undefined,
+      is_full_tank: true,
+      notes: "",
+    }
+  }, [initialData, prefillData, todayStr])
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<RefuelingFormData>({
+    resolver: zodResolver(refuelingSchema),
+    defaultValues,
+  })
+
+  const [watchedTotalKm, watchedDate, watchedPrice, watchedCost, watchedIsFull] = useWatch({
+    control,
+    name: ["total_km", "date", "price_per_liter", "total_cost", "is_full_tank"],
+  })
 
   const handleOcrApply = (data: {
     date?: string
@@ -101,70 +154,6 @@ export function FuelFormModal({
     toast.success("Dati dello scontrino inseriti nel modulo!")
     setIsOcrOpen(false)
   }
-
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<RefuelingFormData>({
-    resolver: zodResolver(refuelingSchema),
-    defaultValues: {
-      date: todayStr,
-      total_km: undefined,
-      price_per_liter: undefined,
-      total_cost: undefined,
-      liters: undefined,
-      is_full_tank: true,
-      notes: "",
-    },
-  })
-
-  const watchedTotalKm = watch("total_km")
-  const watchedDate = watch("date")
-  const watchedPrice = watch("price_per_liter")
-  const watchedCost = watch("total_cost")
-  const watchedIsFull = watch("is_full_tank")
-
-  // Reset form when modal opens with initialData or prefillData
-  useEffect(() => {
-    if (open) {
-      if (initialData) {
-        reset({
-          date: initialData.date,
-          total_km: initialData.total_km,
-          price_per_liter: initialData.price_per_liter,
-          total_cost: initialData.total_cost,
-          liters: initialData.liters,
-          is_full_tank: initialData.is_full_tank,
-          notes: initialData.notes || "",
-        })
-      } else if (prefillData) {
-        reset({
-          date: prefillData.date || todayStr,
-          total_km: prefillData.total_km,
-          price_per_liter: prefillData.price_per_liter,
-          total_cost: prefillData.total_cost,
-          liters: prefillData.liters,
-          is_full_tank: prefillData.is_full_tank ?? true,
-          notes: prefillData.notes || "",
-        })
-      } else {
-        reset({
-          date: todayStr,
-          total_km: undefined,
-          price_per_liter: undefined,
-          total_cost: undefined,
-          liters: undefined,
-          is_full_tank: true,
-          notes: "",
-        })
-      }
-      setValidationState(null)
-    }
-  }, [open, initialData, prefillData, reset, todayStr])
 
   // Bidirectional calculation: Euro & Price -> Liters
   const handleCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -252,9 +241,8 @@ export function FuelFormModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+    <>
+      <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl font-bold">
             <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
               <Fuel className="h-5 w-5" />
@@ -543,6 +531,27 @@ export function FuelFormModal({
           onApplyData={handleOcrApply}
           actionLabel="Inserisci nel Form"
         />
+    </>
+  )
+}
+
+export function FuelFormModal({
+  open,
+  onOpenChange,
+  initialData,
+  prefillData,
+}: FuelFormModalProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        {open && (
+          <FuelFormContent
+            key={initialData ? `edit-${initialData.id}` : (prefillData ? `prefill-${prefillData.date ?? ""}-${prefillData.total_km ?? ""}` : "new")}
+            onOpenChange={onOpenChange}
+            initialData={initialData}
+            prefillData={prefillData}
+          />
+        )}
       </DialogContent>
     </Dialog>
   )

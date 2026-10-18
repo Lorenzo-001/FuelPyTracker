@@ -14,16 +14,52 @@ interface VehicleSelectorProps {
   error?: string
 }
 
+// Parse helper to extract state from value string
+function parseVehicleValue(str: string) {
+  if (!str) {
+    return {
+      mode: "catalog" as const,
+      selectedBrand: "",
+      selectedModel: "",
+      customBrand: "",
+      customModel: "",
+      extraDetails: "",
+    }
+  }
+  const guessed = guessBrandAndModel(str)
+  if (guessed.brand) {
+    return {
+      mode: "catalog" as const,
+      selectedBrand: guessed.brand,
+      selectedModel: guessed.model || (guessed.extra ? "__custom__" : ""),
+      customBrand: "",
+      customModel: !guessed.model && guessed.extra ? guessed.extra : "",
+      extraDetails: !guessed.model && guessed.extra ? "" : guessed.extra,
+    }
+  }
+  return {
+    mode: "manual" as const,
+    selectedBrand: "__custom__",
+    selectedModel: "",
+    customBrand: str,
+    customModel: "",
+    extraDetails: "",
+  }
+}
+
 export function VehicleSelector({ value, onChange, error }: VehicleSelectorProps) {
+  const [prevValue, setPrevValue] = useState(value)
+  const [lastEmittedValue, setLastEmittedValue] = useState(value)
+
   // Mode: "catalog" (Smart Combobox) vs "manual" (Free text input)
-  const [mode, setMode] = useState<"catalog" | "manual">("catalog")
+  const [mode, setMode] = useState<"catalog" | "manual">(() => parseVehicleValue(value).mode)
 
   // State for guided selection
-  const [selectedBrand, setSelectedBrand] = useState<string>("")
-  const [selectedModel, setSelectedModel] = useState<string>("")
-  const [customBrand, setCustomBrand] = useState<string>("")
-  const [customModel, setCustomModel] = useState<string>("")
-  const [extraDetails, setExtraDetails] = useState<string>("")
+  const [selectedBrand, setSelectedBrand] = useState<string>(() => parseVehicleValue(value).selectedBrand)
+  const [selectedModel, setSelectedModel] = useState<string>(() => parseVehicleValue(value).selectedModel)
+  const [customBrand, setCustomBrand] = useState<string>(() => parseVehicleValue(value).customBrand)
+  const [customModel, setCustomModel] = useState<string>(() => parseVehicleValue(value).customModel)
+  const [extraDetails, setExtraDetails] = useState<string>(() => parseVehicleValue(value).extraDetails)
 
   // Dropdown open states
   const [brandDropdownOpen, setBrandDropdownOpen] = useState(false)
@@ -36,41 +72,19 @@ export function VehicleSelector({ value, onChange, error }: VehicleSelectorProps
   const brandRef = useRef<HTMLDivElement>(null)
   const modelRef = useRef<HTMLDivElement>(null)
 
-  // Parse helper to extract state from value string
-  const syncFromValue = (str: string) => {
-    if (!str) return
-    const guessed = guessBrandAndModel(str)
-    if (guessed.brand) {
-      setSelectedBrand(guessed.brand)
-      setSelectedModel(guessed.model || (guessed.extra ? "__custom__" : ""))
-      if (!guessed.model && guessed.extra) {
-        setCustomModel(guessed.extra)
-        setExtraDetails("")
-      } else {
-        setExtraDetails(guessed.extra)
-        setCustomModel("")
-      }
-      setCustomBrand("")
-    } else {
-      setSelectedBrand("__custom__")
-      setCustomBrand(str)
-      setSelectedModel("")
-      setCustomModel("")
-      setExtraDetails("")
+  // Synchronize state when external value prop changes
+  if (value !== prevValue) {
+    setPrevValue(value)
+    if (value !== lastEmittedValue) {
+      const parsed = parseVehicleValue(value)
+      setMode(parsed.mode)
+      setSelectedBrand(parsed.selectedBrand)
+      setSelectedModel(parsed.selectedModel)
+      setCustomBrand(parsed.customBrand)
+      setCustomModel(parsed.customModel)
+      setExtraDetails(parsed.extraDetails)
     }
   }
-
-  // Initialize from value on mount or external changes
-  useEffect(() => {
-    if (value) {
-      const guessed = guessBrandAndModel(value)
-      if (guessed.brand) {
-        syncFromValue(value)
-      } else {
-        setMode("manual")
-      }
-    }
-  }, [value]) // Synchronize when value changes
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -117,7 +131,9 @@ export function VehicleSelector({ value, onChange, error }: VehicleSelectorProps
     const parts: string[] = []
     if (finalBrand) parts.push(finalBrand)
     if (extraDetails.trim()) parts.push(extraDetails.trim())
-    onChange(parts.join(" ").trim() || "Il mio Veicolo")
+    const nextVal = parts.join(" ").trim() || "Il mio Veicolo"
+    setLastEmittedValue(nextVal)
+    onChange(nextVal)
   }
 
   const handleSelectModel = (model: string) => {
@@ -131,7 +147,9 @@ export function VehicleSelector({ value, onChange, error }: VehicleSelectorProps
     if (finalBrand) parts.push(finalBrand)
     if (finalModel) parts.push(finalModel)
     if (extraDetails.trim()) parts.push(extraDetails.trim())
-    onChange(parts.join(" ").trim() || "Il mio Veicolo")
+    const nextVal = parts.join(" ").trim() || "Il mio Veicolo"
+    setLastEmittedValue(nextVal)
+    onChange(nextVal)
   }
 
   const handleExtraChange = (extra: string) => {
@@ -143,7 +161,9 @@ export function VehicleSelector({ value, onChange, error }: VehicleSelectorProps
     if (finalBrand) parts.push(finalBrand)
     if (finalModel) parts.push(finalModel)
     if (extra.trim()) parts.push(extra.trim())
-    onChange(parts.join(" ").trim() || "Il mio Veicolo")
+    const nextVal = parts.join(" ").trim() || "Il mio Veicolo"
+    setLastEmittedValue(nextVal)
+    onChange(nextVal)
   }
 
   const handleCustomBrandChange = (cBrand: string) => {
@@ -155,7 +175,9 @@ export function VehicleSelector({ value, onChange, error }: VehicleSelectorProps
     if (finalBrand) parts.push(finalBrand)
     if (finalModel) parts.push(finalModel)
     if (extraDetails.trim()) parts.push(extraDetails.trim())
-    onChange(parts.join(" ").trim() || "Il mio Veicolo")
+    const nextVal = parts.join(" ").trim() || "Il mio Veicolo"
+    setLastEmittedValue(nextVal)
+    onChange(nextVal)
   }
 
   const handleCustomModelChange = (cModel: string) => {
@@ -167,12 +189,19 @@ export function VehicleSelector({ value, onChange, error }: VehicleSelectorProps
     if (finalBrand) parts.push(finalBrand)
     if (finalModel) parts.push(finalModel)
     if (extraDetails.trim()) parts.push(extraDetails.trim())
-    onChange(parts.join(" ").trim() || "Il mio Veicolo")
+    const nextVal = parts.join(" ").trim() || "Il mio Veicolo"
+    setLastEmittedValue(nextVal)
+    onChange(nextVal)
   }
 
   const handleSwitchToCatalog = () => {
     setMode("catalog")
-    syncFromValue(value)
+    const parsed = parseVehicleValue(value)
+    setSelectedBrand(parsed.selectedBrand)
+    setSelectedModel(parsed.selectedModel)
+    setCustomBrand(parsed.customBrand)
+    setCustomModel(parsed.customModel)
+    setExtraDetails(parsed.extraDetails)
   }
 
   const handleSwitchToManual = () => {
@@ -224,7 +253,10 @@ export function VehicleSelector({ value, onChange, error }: VehicleSelectorProps
         <div className="space-y-1">
           <Input
             value={value}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => {
+              setLastEmittedValue(e.target.value)
+              onChange(e.target.value)
+            }}
             placeholder="Es. BMW Serie 1 118d, Fiat Panda 1.2, Moto Yamaha MT-07..."
             className="text-xs"
           />

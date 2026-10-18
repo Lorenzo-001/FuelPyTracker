@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import {
@@ -114,8 +114,9 @@ export function ReminderFormModal({
   const {
     register,
     handleSubmit,
+    control,
     setValue,
-    watch,
+    getValues,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<ReminderFormData>({
@@ -130,7 +131,11 @@ export function ReminderFormModal({
     },
   })
 
-  const freqType = watch("frequency_type")
+  const freqType = useWatch({ control, name: "frequency_type" })
+  const [currentKmVal, freqKmVal] = useWatch({
+    control,
+    name: ["current_km", "frequency_km"],
+  })
 
   useEffect(() => {
     if (open) {
@@ -166,7 +171,7 @@ export function ReminderFormModal({
     } else {
       setValue("frequency_km", preset.km, { shouldValidate: true })
       setValue("frequency_days", null)
-      if (!watch("current_km") && latestRefuelingKm > 0) {
+      if (!getValues("current_km") && latestRefuelingKm > 0) {
         setValue("current_km", latestRefuelingKm, { shouldValidate: true })
       }
     }
@@ -279,7 +284,7 @@ export function ReminderFormModal({
                 onClick={() => {
                   setValue("frequency_type", "days")
                   setValue("frequency_km", null)
-                  if (!watch("frequency_days")) setValue("frequency_days", 30)
+                  if (!getValues("frequency_days")) setValue("frequency_days", 30)
                 }}
                 className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
                   freqType === "days"
@@ -296,8 +301,8 @@ export function ReminderFormModal({
                 onClick={() => {
                   setValue("frequency_type", "km")
                   setValue("frequency_days", null)
-                  if (!watch("frequency_km")) setValue("frequency_km", 5000)
-                  if (!watch("current_km") && latestRefuelingKm > 0) {
+                  if (!getValues("frequency_km")) setValue("frequency_km", 5000)
+                  if (!getValues("current_km") && latestRefuelingKm > 0) {
                     setValue("current_km", latestRefuelingKm, { shouldValidate: true })
                   }
                 }}
@@ -389,10 +394,10 @@ export function ReminderFormModal({
                 {errors.frequency_km && (
                   <p className="text-xs text-rose-400">{errors.frequency_km.message}</p>
                 )}
-                {Boolean(watch("current_km") && watch("frequency_km")) && (
+                {Boolean(currentKmVal && freqKmVal) && (
                   <p className="text-[11px] text-emerald-400 font-mono">
                     ✓ Prossima scadenza prevista a: {(
-                      (Number(watch("current_km")) || 0) + (Number(watch("frequency_km")) || 0)
+                      (Number(currentKmVal) || 0) + (Number(freqKmVal) || 0)
                     ).toLocaleString("it-IT")} km
                   </p>
                 )}

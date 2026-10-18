@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react"
-import { useForm, Controller } from "react-hook-form"
+import { useForm, Controller, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Car, Save, Loader2, RotateCcw, ShieldCheck, Fuel, Hash } from "lucide-react"
@@ -45,7 +45,6 @@ export function VehicleSettingsCard({ settings }: VehicleSettingsCardProps) {
     register,
     handleSubmit,
     reset,
-    watch,
     setValue,
     formState: { errors, isDirty, isSubmitting },
   } = useForm<VehicleFormData>({
@@ -57,7 +56,7 @@ export function VehicleSettingsCard({ settings }: VehicleSettingsCardProps) {
     },
   })
 
-  const currentFuelType = watch("vehicle_fuel_type")
+  const currentFuelType = useWatch({ control, name: "vehicle_fuel_type" })
   const isCustomFuel = !POPULAR_FUEL_TYPES.slice(0, -1).some(
     (f) => f.toLowerCase() === currentFuelType?.trim().toLowerCase()
   )
