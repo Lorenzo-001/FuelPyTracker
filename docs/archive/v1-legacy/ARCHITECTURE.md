@@ -1,6 +1,5 @@
 # ARCHITECTURE.md — FuelPyTracker v1.1.0
 
-> **Destinatari:** Tech Lead, Recruiter tecnici, Developer Onboarding.
 > Questo documento descrive le decisioni ingegneristiche alla base di FuelPyTracker: perché sono state scelte determinate tecnologie, come è strutturato il codice e quali sfide architetturali sono state affrontate e risolte.
 
 ---

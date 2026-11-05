@@ -1,32 +1,49 @@
-# React + TypeScript + Vite
+# 💻 FuelPyTracker — Frontend Client (V2.0)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+> **Single Page Application reattiva per il tracciamento del veicolo, sviluppata con React 19, TypeScript, Vite e Tailwind CSS.**
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🚀 Script Disponibili
 
-## React Compiler
+Dalla cartella `frontend/`:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- `npm run dev`: Avvia il server di sviluppo locale con Hot Module Replacement (HMR) su `http://localhost:5173`.
+- `npm run build`: Compila l'applicazione per la produzione e verifica i tipi con `tsc -b`.
+- `npm run preview`: Avvia un server locale per visualizzare l'anteprima della build di produzione.
+- `npm run lint`: Esegue il linter ultrarapido `oxlint` sui file TypeScript e TSX.
 
-## Expanding the Oxlint configuration
+---
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## 📂 Struttura del Progetto
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```
+frontend/src/
+├── components/          # Componenti riutilizzabili (modali, selector, layout, forms)
+│   ├── auth/            # Form di login, registrazione e recupero credenziali
+│   ├── dashboard/       # KPI cards, grafici temporali, calcolatore viaggio
+│   ├── fuel/            # Modali e tabelle rifornimenti, Smart OCR dialog
+│   ├── layout/          # Navbar desktop, bottom navigation mobile, theme selector
+│   ├── maintenance/     # Gestione tagliandi, scadenze e form interventi
+│   ├── reminders/       # Scadenziario controlli periodici
+│   ├── reports/         # Pipeline di importazione e generatore libretto PDF
+│   └── settings/        # Schede configurazione profilo veicolo e sicurezza
+├── context/             # React Context (AuthContext, ThemeContext)
+├── hooks/               # Custom hooks per data fetching e mutazioni (TanStack Query)
+├── lib/                 # Utility condivise, client API axios/fetch, parser
+├── pages/               # Pagine principali dell'applicazione
+└── types/               # Definizioni TypeScript e contratti di dominio
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+---
+
+## 🎨 Temi e Anti-Flicker Boot
+
+L'applicazione supporta tre temi grafici nativi:
+- `dark` (Dark Slate)
+- `black` (OLED Pure Black)
+- `light` (Clean Light)
+
+All'avvio, un micro-script inline presente in `index.html` legge la preferenza salvata in `localStorage` e assegna la classe corrispondente all'elemento radice prima del primo ciclo di render React, eliminando qualsiasi sfarfallio bianco (*Flash of Unstyled Content*).
+
+Per maggiori dettagli sull'architettura complessiva, consulta la documentazione in [`docs/architecture/FRONTEND.md`](../docs/architecture/FRONTEND.md).

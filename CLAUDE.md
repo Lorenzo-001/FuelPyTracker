@@ -2,19 +2,19 @@
 
 Concise rules for agents working in this repo. [`AGENTS.md`](./AGENTS.md) is a stub pointer (Cursor loads it); edit this file only.
 
-## Product
+## Product (V2.0)
 
-- Hub **data-driven** per gestione veicolo: rifornimenti, consumi (km/L), manutenzioni/scadenze, import/export, OCR scontrini (opzionale).
-- Stack: **Streamlit** + **Supabase** (Auth + Postgres RLS) + **SQLAlchemy**; OCR opzionale via OpenAI GPT-4o Vision.
-- UI copy: Italian (README e stringhe utente). Demo pubblica: `DEMO_MODE=True` (read-only, utente fittizio, OpenAI mock).
+- Hub **data-driven** per gestione veicolo: rifornimenti, consumi (km/L), manutenzioni/scadenze, promemoria, import/export, libretto PDF, Smart OCR scontrini.
+- Stack: **FastAPI (Python 3.12)** backend + **React 19 / TypeScript / Vite / Tailwind** frontend + **SQLAlchemy** (Dual DB: SQLite locale o Supabase Postgres RLS) + Vision OCR.
+- UI copy: Italian (README e stringhe utente). Demo pubblica: `DEMO_MODE=True` (read-only, utente fittizio, AI mock).
 
 ## Orientation
 
-1. Entry: [`main.py`](./main.py) → `src/ui`, `src/auth`, `src/database`, `src/services`.
-2. UI pages: `src/ui/components/<page>/` with a thin `*.py` orchestrator (`fuel.py`, `settings.py`, …) plus tab/panel modules — see [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
-3. Secrets: `.streamlit/secrets.toml` (from `.streamlit/secrets.toml.example`); env: `.env` from `.env.example`. Never commit secrets.
-4. Tests: `tests/unit/` with **pytest**.
-5. Skill logo/IP: `.cursor/skills/ip-as-logo`.
+1. Backend: `backend/` → `src/api` (router modulari), `src/services`, `src/models`, `src/database`. Entry: `backend/src/main.py`.
+2. Frontend: `frontend/` → `src/components`, `src/hooks`, `src/context`, `src/pages`. Entry: `frontend/src/main.tsx`.
+3. Docs: `docs/functional/`, `docs/architecture/`, `docs/technical/`, `docs/archive/`.
+4. Env: `.env` da `.env.example`. Mai committare credenziali o file `.env`.
+5. Tests: `backend/tests/` con **pytest** (unit ed e2e); frontend con `npm run lint` (`oxlint`) e `npm run build` (`tsc`).
 
 ## Creative / multi-step work (Superpowers)
 
@@ -26,24 +26,25 @@ For new features or non-trivial UX (not typo fixes):
 
 Do not skip to implementation on ambiguous “build X” requests.
 
-## Git & PRs
+## Git & PRs (Hard Rules)
 
 1. Branch from updated `main`: `feat/…`, `fix/…`, or `docs/…`. One concern per PR.
-2. Before opening/asking to merge: `pytest` (and any lint the repo already uses).
+2. Before opening/asking to merge: `pytest` and frontend typecheck (`tsc -b`).
 3. **Open PRs only on** https://github.com/Lorenzo-001/FuelPyTracker/pulls  
    (`gh pr create --repo Lorenzo-001/FuelPyTracker --head Never-lab:<branch> --base main`).  
    Push branches to `origin` (`Never-lab/FuelPyTracker`). Never target `Never-lab/.../pulls` as the review host.
 4. Wait for CI green; do not merge while red/pending.
 5. Never push straight to `main`. No force-push to `main`.
 6. Commit only when the user asks (or explicitly says “vai / fai commit / apri PR”).
-7. **Do not commit:** `.superpowers/sdd/*`, local session diffs/reports, secrets, `.env`, `.streamlit/secrets.toml`.
+7. **Do not commit:** `.superpowers/sdd/*`, local session diffs/reports, secrets, `.env`, `_cantiere/`.
 8. Never `Co-authored-by: Cursor`.
 
 ## Code & tests
 
-- Prefer pure helpers in `src/services` / logic modules — cover with pytest; Streamlit UI wiring verified by running the app when needed.
+- Backend: Prefer pure helpers and modular services in `backend/src/services` — cover with pytest.
+- Frontend: Ensure state synchronization via TanStack Query and clean component separation; 0 linter warnings.
 - Keep diffs surgical; no drive-by refactors.
-- Match existing patterns (SQLAlchemy session usage, Supabase auth, demo-mode guards).
+- Match existing patterns (SQLAlchemy session usage, Supabase auth / SQLite local, demo-mode guards).
 - Do not weaken RLS or demo write-locks.
 
 ## Language
@@ -63,5 +64,4 @@ Do not skip to implementation on ambiguous “build X” requests.
 - Chat: Italian. Code: English. **FuelPyTracker:** UI strings Italian; **PR/issue su Lorenzo-001 in italiano**; commit messages English.
 - Before posting PR bodies or issue comments: skill **`no-ai-slop`**.
 - Never `Co-authored-by: Cursor`.
-- Prefer `ponytail` + Karpathy; Superpowers only when the slice is new/ambiguous. No default `docs/superpowers/specs|plans` MD — decisions in chat/claude-mem (liquidazi style).
 - PRs: only https://github.com/Lorenzo-001/FuelPyTracker/pulls (`--repo Lorenzo-001/FuelPyTracker`, head `Never-lab:<branch>`).
