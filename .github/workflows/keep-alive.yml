@@ -1,0 +1,38 @@
+name: Keep-Alive Backend (Anti-Sleep)
+
+on:
+  schedule:
+    # Esegue un ping ogni 14 minuti per impedire lo sleep del free tier di Render (timeout a 15 min)
+    - cron: '*/14 * * * *'
+  workflow_dispatch: # Permette di testare il ping manualmente dalla scheda Actions di GitHub
+
+jobs:
+  ping:
+    name: Ping /health Endpoint
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Send keep-alive healthcheck
+        env:
+          TARGET_URL: ${{ vars.RENDER_BACKEND_URL }}
+        run: |
+          if [ -z "$TARGET_URL" ]; then
+            echo "⚠️ [INFO] Nessuna variabile 'RENDER_BACKEND_URL' impostata nei Repository Settings di GitHub."
+            echo "👉 Per attivare l'anti-sleep automatico: vai in Settings -> Secrets and variables -> Actions -> Variables -> Aggiungi 'RENDER_BACKEND_URL' con l'URL del tuo backend Render (es. https://tuo-backend.onrender.com)."
+            exit 0
+          fi
+
+          # Normalizza l'URL rimuovendo trailing slash se presente
+          CLEAN_URL="${TARGET_URL%/}"
+          HEALTH_URL="${CLEAN_URL}/health"
+
+          echo "🚀 Invio ping di keep-alive a: $HEALTH_URL"
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$HEALTH_URL")
+
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "✅ Ping riuscito: HTTP $HTTP_STATUS (Backend attivo e sveglio)"
+          else
+            echo "❌ Errore durante il ping: HTTP $HTTP_STATUS"
+            exit 1
+          fi
