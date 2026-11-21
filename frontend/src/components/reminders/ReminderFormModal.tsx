@@ -81,12 +81,31 @@ const reminderSchema = z
 
 type ReminderFormData = z.infer<typeof reminderSchema>
 
-const PRESETS = [
-  { title: "Controllo Pressione Pneumatici", type: "days" as const, days: 30, km: null },
-  { title: "Verifica Livello Olio Motore", type: "km" as const, days: null, km: 3000 },
-  { title: "Rabbocco Liquido Tergicristalli", type: "days" as const, days: 60, km: null },
-  { title: "Controllo Liquido Refrigerante", type: "km" as const, days: null, km: 10000 },
-  { title: "Lavaggio & Cura Carrozzeria", type: "days" as const, days: 30, km: null },
+const PRESET_DEFAULTS: Record<
+  string,
+  { type: "days" | "km"; days: number | null; km: number | null }
+> = {
+  "controllo livello olio": { type: "km", days: null, km: 3000 },
+  "verifica livello olio motore": { type: "km", days: null, km: 3000 },
+  "pressione pneumatici": { type: "days", days: 30, km: null },
+  "controllo pressione pneumatici": { type: "days", days: 30, km: null },
+  "liquido lavavetri": { type: "days", days: 60, km: null },
+  "liquido tergicristalli": { type: "days", days: 60, km: null },
+  "rabbocco liquido tergicristalli": { type: "days", days: 60, km: null },
+  "pulizia filtro abitacolo": { type: "days", days: 180, km: null },
+  "verifica pastiglie freno": { type: "km", days: null, km: 15000 },
+  "inversione gomme": { type: "km", days: null, km: 10000 },
+  "controllo liquido refrigerante": { type: "km", days: null, km: 10000 },
+  "lavaggio & cura carrozzeria": { type: "days", days: 30, km: null },
+}
+
+const DEFAULT_REMINDER_TYPES = [
+  "Controllo Livello Olio",
+  "Pressione Pneumatici",
+  "Liquido Lavavetri",
+  "Pulizia Filtro Abitacolo",
+  "Verifica Pastiglie Freno",
+  "Controllo Liquido Refrigerante",
 ]
 
 interface ReminderFormModalProps {
@@ -131,6 +150,7 @@ export function ReminderFormModal({
     },
   })
 
+  const currentTitle = useWatch({ control, name: "title" })
   const freqType = useWatch({ control, name: "frequency_type" })
   const [currentKmVal, freqKmVal] = useWatch({
     control,
@@ -161,8 +181,16 @@ export function ReminderFormModal({
     }
   }, [open, initialData, latestRefuelingKm, reset])
 
-  const applyPreset = (preset: typeof PRESETS[0]) => {
-    setValue("title", preset.title, { shouldValidate: true })
+  const availableTypes =
+    settings?.reminder_types && settings.reminder_types.length > 0
+      ? settings.reminder_types
+      : DEFAULT_REMINDER_TYPES
+
+  const applyPresetByTitle = (titleStr: string) => {
+    setValue("title", titleStr, { shouldValidate: true })
+    const preset = PRESET_DEFAULTS[titleStr.toLowerCase().trim()]
+    if (!preset) return
+
     setValue("frequency_type", preset.type, { shouldValidate: true })
     if (preset.type === "days") {
       setValue("frequency_days", preset.days, { shouldValidate: true })
@@ -231,28 +259,25 @@ export function ReminderFormModal({
                 Suggerimenti Rapidi & Categorie
               </Label>
               <div className="flex flex-wrap gap-1.5">
-                {PRESETS.map((p) => (
-                  <Badge
-                    key={p.title}
-                    variant="outline"
-                    onClick={() => applyPreset(p)}
-                    className="cursor-pointer hover:bg-muted/50 transition-all text-xs py-1"
-                  >
-                    {p.title}
-                  </Badge>
-                ))}
-                {settings?.reminder_types
-                  ?.filter((t) => !PRESETS.some((p) => p.title.toLowerCase() === t.toLowerCase()))
-                  .map((customType) => (
+                {availableTypes.map((typeTitle) => {
+                  const isSelected =
+                    (currentTitle || "").trim().toLowerCase() ===
+                    typeTitle.trim().toLowerCase()
+                  return (
                     <Badge
-                      key={customType}
+                      key={typeTitle}
                       variant="outline"
-                      onClick={() => setValue("title", customType, { shouldValidate: true })}
-                      className="cursor-pointer hover:bg-cyan-500/20 text-cyan-300 border-cyan-500/30 transition-all text-xs py-1"
+                      onClick={() => applyPresetByTitle(typeTitle)}
+                      className={`cursor-pointer transition-all text-xs py-1 px-2.5 ${
+                        isSelected
+                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-xs ring-1 ring-emerald-500/30"
+                          : "hover:bg-muted/50 text-muted-foreground"
+                      }`}
                     >
-                      {customType}
+                      {typeTitle}
                     </Badge>
-                  ))}
+                  )
+                })}
               </div>
             </div>
           )}

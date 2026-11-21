@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { cn, scrollToTop } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
+import { Logo } from "@/components/common/Logo"
 import { useReminders } from "@/hooks/useReminders"
 import { useSettings } from "@/hooks/useSettings"
 
@@ -97,10 +98,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         )}
       >
         <div className="flex items-center gap-3 overflow-hidden">
-          <img
-            src="/logo.png"
-            alt="FuelPyTracker Logo"
-            className="h-10 w-10 shrink-0 object-contain drop-shadow-[0_2px_10px_rgba(250,204,21,0.3)] transition-transform duration-200 hover:scale-105"
+          <Logo
+            size={40}
+            interactive={true}
+            title="FuelPyTracker — Clicca per animare"
           />
           {!collapsed && (
             <div className="flex flex-col truncate">

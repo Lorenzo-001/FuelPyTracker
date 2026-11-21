@@ -23,7 +23,7 @@ export function ReminderHistoryModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg font-bold">
             <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
@@ -36,7 +36,10 @@ export function ReminderHistoryModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-2 space-y-2.5">
+        <div
+          id="reminder-history-scroll-list"
+          className="py-2 space-y-2.5 max-h-[300px] overflow-y-auto pr-2"
+        >
           {isLoading ? (
             <p className="text-xs text-muted-foreground text-center py-6">
               Caricamento storico in corso...

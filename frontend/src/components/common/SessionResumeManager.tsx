@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { useQueryClient } from "@tanstack/react-query"
 import { Loader2 } from "lucide-react"
+import { Logo } from "@/components/common/Logo"
 
 /** Soglia di inattività per il riavvio della sessione (30 minuti in millisecondi) */
 const INACTIVITY_THRESHOLD_MS = 30 * 60 * 1000
@@ -134,10 +135,10 @@ export function SessionResumeManager() {
         {/* Logo con aureola ed effetto respiro */}
         <div className="relative mb-6 flex items-center justify-center">
           <div className="absolute -inset-4 bg-emerald-500/25 rounded-full blur-2xl animate-pulse" />
-          <img
-            src="/logo.png"
-            alt="FuelPyTracker Logo"
-            className="relative h-20 w-20 object-contain drop-shadow-[0_4px_24px_rgba(16,185,129,0.45)] animate-in zoom-in-75 duration-500"
+          <Logo
+            size={80}
+            interactive={true}
+            className="relative drop-shadow-[0_4px_24px_rgba(250,204,21,0.45)] animate-in zoom-in-75 duration-500"
           />
         </div>
 

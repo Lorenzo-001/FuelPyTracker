@@ -13,6 +13,7 @@ import { useSystemHealth } from "@/hooks/useSystemHealth"
 import { useCurrentUser } from "@/hooks/useAuth"
 import { isPublicDemoMode } from "@/lib/demo"
 import { scrollToTop } from "@/lib/utils"
+import { Logo } from "@/components/common/Logo"
 import { ThemeSelectionModal } from "@/components/theme/ThemeSelectionModal"
 
 const pageTitles: Record<string, { title: string; category: string }> = {
@@ -42,13 +43,13 @@ export function Navbar() {
       {/* Left: Brand Icon (mobile) & Title / Breadcrumb */}
       <div className="flex items-center gap-3">
         {/* Mobile Brand Icon */}
-        <Link to="/" onClick={() => scrollToTop(true)} className="md:hidden">
-          <img
-            src="/logo.png"
-            alt="FuelPyTracker Logo"
-            className="h-8 w-8 shrink-0 object-contain drop-shadow-[0_2px_8px_rgba(250,204,21,0.3)]"
+        <div className="md:hidden flex items-center">
+          <Logo
+            size={32}
+            interactive={true}
+            title="FuelPyTracker — Clicca per animare"
           />
-        </Link>
+        </div>
 
         <div className="flex flex-col">
           <div className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground">
