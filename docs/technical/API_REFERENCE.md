@@ -74,6 +74,6 @@ Di seguito sono descritti i moduli principali in cui sono organizzate le rotte d
 - **Categorie Personalizzate (`POST` e `DELETE` su `/maintenance-categories` e `/reminder-categories`):** Aggiunta e rimozione delle categorie utilizzate nei moduli di manutenzione e promemoria.
 
 ### 8. Health Check (`/health` e `/api/health`)
-- **Stato del Servizio (`GET` e `HEAD`):** Endpoint leggero di diagnostica che verifica l'operatività del server FastAPI e controlla con una query rapida (`SELECT 1`) la connessione attiva al database.
+- **Stato del Servizio (`GET` e `HEAD`):** Endpoint leggero di diagnostica che verifica l'operatività del server FastAPI e controlla con una query rapida (`SELECT 1`) la connessione attiva al database. Espone inoltre lo stato operativo della modalità demo (`demo_mode`) e l'eventuale blocco scritture (`writes_disabled`), permettendo al frontend di allineare automaticamente l'esperienza di navigazione senza passare da schermate di login.
 
 </div>

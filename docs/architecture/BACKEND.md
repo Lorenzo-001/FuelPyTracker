@@ -66,8 +66,8 @@ Il cuore logico dell'applicazione risiede nella cartella `backend/src/services/`
 - **Analisi Immagini (`engine.py`, `pipeline.py`):** Codifica temporaneamente in memoria la foto dello scontrino e la invia al modello **OpenAI GPT-4o Vision** per estrarre in formato JSON data, spesa totale, prezzo al litro, litri erogati e nome del distributore.
 - **Ricalcolo Matematico di Verifica:** Se sullo scontrino uno dei tre valori numerici (totale, prezzo/L, litri) risulta sbiadito o mancante, il servizio lo ricava matematicamente dagli altri due valori letti.
 
-### 5. Autenticazione e Modalità Demo (`services/auth/`, `demo.py`)
+### 5. Autenticazione e Modalità Demo (`services/auth/`, `demo.py`, `deps.py`)
 - **Gestione Identità (`auth_service.py`):** Si interfaccia con Supabase Auth per login, registrazione e recupero password, validando i token JWT nelle chiamate protette.
-- **Protezione Modalità Demo (`demo.py`):** Quando è attiva la variabile `DEMO_MODE=True`, blocca qualsiasi modifica o cancellazione sui dati dimostrativi e sostituisce le chiamate esterne verso OpenAI con risposte simulate realistiche.
+- **Protezione e Isolamento Modalità Demo (`demo.py`, `deps.py`):** Quando è attiva la variabile `DEMO_MODE=True`, vincola rigorosamente qualsiasi richiesta all'identità demo `DEMO_USER_ID`, disabilita gli endpoint di registrazione e recupero credenziali, e comunica lo stato operativo al frontend tramite `/health`, garantendo la separazione totale dai tenant reali.
 
 </div>

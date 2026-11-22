@@ -27,6 +27,11 @@ Per mantenere l'interfaccia veloce e sempre allineata con il database, il fronte
 - **Controlli in Tempo Reale:** I moduli di inserimento controllano subito i valori digitati (ad esempio il calcolo automatico dei litri a partire da spesa e prezzo al litro, oppure la verifica che i chilometri inseriti siano superiori a quelli del pieno precedente).
 - **Strumenti Istantanei:** I filtri di ricerca nella tabella rifornimenti e i cambi di periodo nei grafici lavorano direttamente sui dati caricati, rispondendo all'istante.
 
+### 3. Rilevamento Trasparente della Modalità Demo (Zero-Login)
+- **Controllo Diretto dal Server:** All'avvio dell'applicazione, la route guard (`ProtectedRoute`) interroga l'endpoint `/health` del backend. Se riceve `demo_mode: true`, concede l'accesso diretto alla Dashboard (`/`) senza richiedere credenziali e senza mostrare maschere di autenticazione.
+- **Blocco Schermate Riservate:** In modalità demo, qualsiasi tentativo di accedere direttamente a `/login` o `/reset-password` viene reindirizzato istantaneamente alla Dashboard. Dalle impostazioni vengono inoltre nascosti il pulsante di disconnessione e i moduli di cambio password ed email.
+- **Isolamento da Produzione:** Nella normale istanza personale (`demo_mode: false`), l'interfaccia si presenta come un'applicazione riservata standard: richiede l'accesso con email e password reale su Supabase e non espone alcun riferimento o pulsante legato alla demo.
+
 ---
 
 ## 🎨 Sistema dei Temi e Stile Grafico

@@ -125,10 +125,12 @@ OPENAI_API_KEY=sk-proj-...
 *Se la chiave `OPENAI_API_KEY` non viene impostata (oppure se è attiva la modalità demo), la funzione di scansione non genera errori ma risponde con dati simulati di prova.*
 
 ### 3. Modalità Dimostrativa
-Per avviare l'applicazione in modalità dimostrativa (sola lettura, con utente di prova pre-autenticato e scansione OCR simulata):
+Per avviare l'applicazione in modalità dimostrativa pubblica (con utente di prova pre-autenticato, scansione OCR simulata e isolamento fisico tramite SQLite locale):
 ```env
+LOCAL_SQLITE=True
 DEMO_MODE=True   # Imposta False per l'utilizzo reale con salvataggio dati
 ```
+*In questa configurazione, il backend comunica lo stato demo tramite l'endpoint `/health`, consentendo al frontend di accedere direttamente alla dashboard senza mostrare schermate di login o registrazione, nascondendo le opzioni di disconnessione e garantendo l'isolamento totale dai dati reali.*
 
 ---
 
