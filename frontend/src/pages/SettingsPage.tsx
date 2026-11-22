@@ -3,6 +3,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useSettings } from "@/hooks/useSettings"
+import { useSystemHealth } from "@/hooks/useSystemHealth"
+import { isPublicDemoMode } from "@/lib/demo"
 import { FuelThresholdsCard } from "@/components/settings/FuelThresholdsCard"
 import { CategoryManagerCard } from "@/components/settings/CategoryManagerCard"
 import { OcrPreferencesCard } from "@/components/settings/OcrPreferencesCard"
@@ -12,6 +14,8 @@ import { VehicleSettingsCard } from "@/components/settings/VehicleSettingsCard"
 
 export default function SettingsPage() {
   const { data: settings, isLoading, isError, error, refetch } = useSettings()
+  const { data: health } = useSystemHealth()
+  const isDemo = isPublicDemoMode() || Boolean(health?.demo_mode)
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10">
@@ -82,12 +86,12 @@ export default function SettingsPage() {
             {/* Colonna Sinistra: Identità Utente & Sicurezza Password */}
             <div className="space-y-6">
               <UserProfileCard />
-              <UserPasswordCard />
+              {!isDemo && <UserPasswordCard />}
             </div>
 
             {/* Colonna Destra: Modifica Email & Diagnostica Sistema */}
             <div className="space-y-6">
-              <UserEmailCard />
+              {!isDemo && <UserEmailCard />}
               <ApiDiagnosticsCard />
             </div>
           </TabsContent>

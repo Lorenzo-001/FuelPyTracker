@@ -40,11 +40,17 @@ def get_current_user_id(
 ) -> str:
     """
     Estrae e valida l'ID utente dalla richiesta:
-    1. Se presente un Bearer token (JWT Supabase), ne estrae il claim 'sub'.
-    2. Se presente l'header 'X-User-Id' (dev/testing), ne restituisce il valore.
-    3. Se in modalità Demo o SQLite locale, effettua il fallback sull'utente demo.
-    4. Negli altri casi solleva un errore 401 Unauthorized.
+    1. Se in modalità DEMO_MODE esplicita (ambiente demo pubblico), vincola rigorosamente
+       ogni richiesta a DEMO_USER_ID per impedire qualsiasi spoofing di altri tenant.
+    2. Se presente un Bearer token (JWT Supabase), ne estrae il claim 'sub'.
+    3. Se presente l'header 'X-User-Id' (dev/testing), ne restituisce il valore.
+    4. Se in modalità Demo o SQLite locale, effettua il fallback sull'utente demo.
+    5. Negli altri casi solleva un errore 401 Unauthorized.
     """
+    # 0. Blindatura di sicurezza per la demo pubblica
+    if DEMO_MODE:
+        return DEMO_USER_ID
+
     # Gestisce sia l'iniezione FastAPI (str) sia la chiamata diretta nei test (Header object o None)
     auth_val = authorization if isinstance(authorization, str) else None
     uid_val = x_user_id if isinstance(x_user_id, str) else None

@@ -8,12 +8,14 @@ import { Input } from "@/components/ui/input"
 import { useLogin, useRegister } from "@/hooks/useAuth"
 import { authStorage } from "@/services/api/client"
 import { isPublicDemoMode } from "@/lib/demo"
+import { useSystemHealth } from "@/hooks/useSystemHealth"
 import { toast } from "sonner"
 import { ForgotPasswordModal } from "@/components/auth/ForgotPasswordModal"
 
 export default function LoginPage() {
   const loginMutation = useLogin()
   const registerMutation = useRegister()
+  const { data: health } = useSystemHealth()
 
   const [activeTab, setActiveTab] = useState<"login" | "register">("login")
 
@@ -27,9 +29,12 @@ export default function LoginPage() {
   const [regPassword, setRegPassword] = useState("")
   const [regConfirmPassword, setRegConfirmPassword] = useState("")
 
-  // Se l'utente ha già una sessione attiva (non demo temporanea), reindirizza direttamente alla dashboard
   const token = authStorage.getToken()
-  if (token && !isPublicDemoMode()) {
+  const isDemo = isPublicDemoMode() || Boolean(health?.demo_mode)
+
+  // Se l'applicazione è in modalità demo o l'utente ha già una sessione attiva,
+  // la schermata di login non deve essere accessibile e reindirizza alla dashboard
+  if (isDemo || token) {
     return <Navigate to="/" replace />
   }
 

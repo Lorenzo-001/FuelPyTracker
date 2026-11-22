@@ -122,20 +122,22 @@ export function UserProfileCard() {
                   </div>
                 </div>
 
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setLogoutDialogOpen(true)}
-                  disabled={logoutMutation.isPending}
-                  className="gap-1.5 text-xs w-full sm:w-auto shrink-0"
-                >
-                  {logoutMutation.isPending ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <LogOut className="h-3.5 w-3.5" />
-                  )}
-                  <span>Disconnetti</span>
-                </Button>
+                {!user.is_demo && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setLogoutDialogOpen(true)}
+                    disabled={logoutMutation.isPending}
+                    className="gap-1.5 text-xs w-full sm:w-auto shrink-0"
+                  >
+                    {logoutMutation.isPending ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <LogOut className="h-3.5 w-3.5" />
+                    )}
+                    <span>Disconnetti</span>
+                  </Button>
+                )}
               </div>
 
               <div className="text-xs text-muted-foreground space-y-1.5 p-3 rounded-lg bg-muted/10 border border-border/40">

@@ -102,6 +102,7 @@ def health_check():
     """
     Endpoint di health-check.
     Verifica lo stato del server e la connettività al database.
+    Espone lo stato operativo di demo mode e blocco scritture per il frontend.
     Supporta sia richieste GET che HEAD per compatibilità con i monitor di uptime (es. UptimeRobot).
     """
     db_status = "unknown"
@@ -114,10 +115,15 @@ def health_check():
     except Exception as exc:
         db_status = f"error: {str(exc)}"
 
+    from src.demo import is_demo_mode, writes_disabled
+    from src.api.config import DEMO_MODE
+
     return {
         "status": "ok",
         "version": "2.0.0",
         "database": db_status,
+        "demo_mode": bool(is_demo_mode() or DEMO_MODE),
+        "writes_disabled": writes_disabled(),
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
     }
 

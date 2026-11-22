@@ -1,31 +1,35 @@
 /**
  * Helper per la gestione della Modalità Demo Vetrina Pubblica (Read-Only).
  * Consente di visualizzare l'applicazione senza autenticazione ma con azioni di scrittura bloccate.
+ * Lo stato è determinato esclusivamente dalla configurazione del backend (health.demo_mode)
+ * o dalla variabile d'ambiente di deploy (VITE_PUBLIC_DEMO).
  */
 import { toast } from "sonner"
 
+let _runtimeDemoMode: boolean | null = null
+
+/**
+ * Imposta lo stato demo rilevato a runtime dal backend.
+ */
+export function setRuntimeDemoMode(isDemo: boolean): void {
+  _runtimeDemoMode = isDemo
+}
+
 /**
  * Rileva se l'applicazione è in esecuzione in modalità Demo Vetrina.
- * Attivo se:
- * 1. È presente il parametro URL '?demo=true'
- * 2. È impostata la variabile d'ambiente VITE_PUBLIC_DEMO === 'true'
+ * Priorità:
+ * 1. Risposta live del backend (/health -> demo_mode)
+ * 2. Variabile d'ambiente VITE_PUBLIC_DEMO === 'true'
  */
 export function isPublicDemoMode(): boolean {
-  if (typeof window !== "undefined") {
-    try {
-      const searchParams = new URLSearchParams(window.location.search)
-      if (searchParams.get("demo") === "true") {
-        return true
-      }
-    } catch {
-      // Ignora errori di parsing URL
-    }
+  if (_runtimeDemoMode !== null) {
+    return _runtimeDemoMode
   }
   return import.meta.env.VITE_PUBLIC_DEMO === "true"
 }
 
 /**
- * Restituisce true se le scritture e cancellazioni devono essere bloccate (come writes_disabled in V1).
+ * Restituisce true se le scritture e cancellazioni devono essere bloccate.
  */
 export function isWritesDisabled(): boolean {
   return isPublicDemoMode()

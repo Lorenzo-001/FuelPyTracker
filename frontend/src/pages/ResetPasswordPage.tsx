@@ -1,15 +1,18 @@
 import React, { useState } from "react"
-import { useNavigate, useLocation, Link } from "react-router-dom"
+import { useNavigate, useLocation, Link, Navigate } from "react-router-dom"
 import { Fuel, Lock, KeyRound, ArrowRight, Loader2, CheckCircle2, AlertTriangle, Eye, EyeOff } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { authApi } from "@/services/api/authApi"
+import { isPublicDemoMode } from "@/lib/demo"
+import { useSystemHealth } from "@/hooks/useSystemHealth"
 import { toast } from "sonner"
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { data: health } = useSystemHealth()
 
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -59,6 +62,11 @@ export default function ResetPasswordPage() {
       tokenError: "Nessun token di recupero rilevato. Utilizza il link ricevuto via email.",
     }
   }, [location])
+
+  const isDemo = isPublicDemoMode() || Boolean(health?.demo_mode)
+  if (isDemo) {
+    return <Navigate to="/" replace />
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
